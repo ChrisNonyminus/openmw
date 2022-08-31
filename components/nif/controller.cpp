@@ -336,15 +336,36 @@ namespace Nif
         data.post(nif);
     }
 
-    void NiColorInterpolator::read(NIFStream *nif)
+    void NiColorInterpolator::read(NIFStream* nif)
     {
         defaultVal = nif->getVector4();
         data.read(nif);
     }
 
-    void NiColorInterpolator::post(NIFFile *nif)
+    void NiColorInterpolator::post(NIFFile* nif)
     {
         data.post(nif);
+    }
+
+    void NiMultiTargetTransformController::read(NIFStream* nif)
+    {
+        Controller::read(nif);
+        unsigned short numExtraTargets = nif->getUShort();
+        for (unsigned short i = 0; i < numExtraTargets; i++)
+        {
+            NodePtr node;
+            node.read(nif);
+            mExtraTargets.push_back(std::move(node));
+        }
+    }
+
+    void NiMultiTargetTransformController::post(NIFFile* nif)
+    {
+        Controller::post(nif);
+        for (auto& node : mExtraTargets)
+        {
+            node.post(nif);
+        }
     }
 
 }

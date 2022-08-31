@@ -157,6 +157,15 @@ struct NiFloatInterpController : public Controller
     void post(NIFFile *nif) override;
 };
 
+struct NiMultiTargetTransformController : public Controller
+{
+    bool mManagerControlled;
+    std::vector<NodePtr> mExtraTargets;
+
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
+};
+
 struct NiAlphaController : public NiFloatInterpController { };
 struct NiRollController : public NiFloatInterpController { };
 
