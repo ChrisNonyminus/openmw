@@ -146,6 +146,7 @@ enum RecordType
   RC_NiAlphaAccumulator,
   RC_NiSortAdjustNode,
   RC_NiMultiTargetTransformController,
+  RC_NiFloatExtraDataController,
 };
 
 /// Base class for all records

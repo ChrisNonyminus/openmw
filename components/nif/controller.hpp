@@ -169,6 +169,20 @@ struct NiMultiTargetTransformController : public Controller
 struct NiAlphaController : public NiFloatInterpController { };
 struct NiRollController : public NiFloatInterpController { };
 
+struct NiExtraDataController : public NiFloatInterpController
+{
+    std::string mExtraDataName;
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
+};
+
+struct NiFloatExtraDataController : public NiExtraDataController
+{
+    NiFloatDataPtr mFloatData;
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
+};
+
 struct NiGeomMorpherController : public Controller
 {
     NiMorphDataPtr data;

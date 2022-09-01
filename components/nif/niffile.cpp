@@ -163,6 +163,7 @@ static std::map<std::string, CreateRecord> makeFactory()
         {"NiClusterAccumulator"         , &construct <NiClusterAccumulator        , RC_NiClusterAccumulator       >},
         {"NiAlphaAccumulator"           , &construct <NiAlphaAccumulator          , RC_NiAlphaAccumulator         >},
         {"NiMultiTargetTransformController", &construct<NiMultiTargetTransformController, RC_NiMultiTargetTransformController> },
+        { "NiFloatExtraDataController", &construct<NiFloatExtraDataController, RC_NiFloatExtraDataController> },
     };
 }
 
