@@ -64,6 +64,8 @@ namespace MWWorld
 
         virtual RecordId read (ESM::ESMReader& reader, bool overrideOnly = false) { return RecordId(); }
         ///< Read into dynamic storage
+
+        virtual ESM::RecNameInts getRecName() = 0;
     };
 
     template <class T>
@@ -217,6 +219,8 @@ namespace MWWorld
         RecordId load(ESM::ESMReader &esm) override;
         void write(ESM::ESMWriter& writer, Loading::Listener& progress) const override;
         RecordId read(ESM::ESMReader& reader, bool overrideOnly = false) override;
+
+        ESM::RecNameInts getRecName() override { return T::sRecordId; }
     };
 
     template <>
@@ -245,6 +249,8 @@ namespace MWWorld
 
         iterator begin(size_t plugin) const;
         iterator end(size_t plugin) const;
+
+        ESM::RecNameInts getRecName() override { return ESM::REC_LTEX; }
     };
 
     template <>
@@ -286,6 +292,8 @@ namespace MWWorld
 
         RecordId load(ESM::ESMReader &esm) override;
         void setUp() override;
+
+        ESM::RecNameInts getRecName() override { return ESM::Land::sRecordId; }
     private:
         bool mBuilt = false;
     };
@@ -363,6 +371,8 @@ namespace MWWorld
         bool erase(std::string_view id);
 
         bool erase(int x, int y);
+
+        ESM::RecNameInts getRecName() override { return ESM::Cell::sRecordId; }
     };
 
     template <>
@@ -392,7 +402,9 @@ namespace MWWorld
         const ESM::Pathgrid *find(int x, int y) const;
         const ESM::Pathgrid* find(std::string_view name) const;
         const ESM::Pathgrid *search(const ESM::Cell &cell) const;
-        const ESM::Pathgrid *find(const ESM::Cell &cell) const;
+        const ESM::Pathgrid* find(const ESM::Cell& cell) const;
+
+        ESM::RecNameInts getRecName() override { return ESM::Pathgrid::sRecordId; }
     };
 
 
@@ -456,6 +468,8 @@ namespace MWWorld
         size_t getSize() const override;
         iterator begin() const;
         iterator end() const;
+
+        ESM::RecNameInts getRecName() override { throw std::runtime_error("WeaponType does not have a recName"); }
     };
 
     template <>
@@ -494,6 +508,8 @@ namespace MWWorld
         void listIdentifier(std::vector<std::string> &list) const override;
 
         const MWDialogue::KeywordSearch<std::string, int>& getDialogIdKeywordSearch() const;
+
+        ESM::RecNameInts getRecName() override { return ESM::Dialogue::sRecordId; }
     };
 
 } //end namespace
