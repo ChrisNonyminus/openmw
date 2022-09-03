@@ -2941,6 +2941,10 @@ namespace MWWorld
         gameContentLoader.addLoader(".omwaddon", esmLoader);
         gameContentLoader.addLoader(".project", esmLoader);
 
+        // hacky
+        ESM4::Reader::sFilenames = content;
+        ESM4::Reader::sReadersCache.resize(content.size());
+
         OMWScriptsLoader omwScriptsLoader(mStore);
         gameContentLoader.addLoader(".omwscripts", omwScriptsLoader);
 

@@ -81,7 +81,7 @@ namespace ESM4 {
 
         ReaderContext        mCtx;
 
-        const ToUTF8::StatelessUtf8Encoder* mEncoder;
+        ToUTF8::Utf8Encoder* mEncoder;
 
         std::size_t          mFileSize;
 
@@ -124,9 +124,13 @@ namespace ESM4 {
         // Closes the currently open file first, if any.
         void open(Files::IStreamPtr&& stream, const std::string& filename);
 
-        Reader() = default;
-
     public:
+
+        Reader();
+
+        static std::vector<ESM::Reader*> sReadersCache;
+
+        static std::vector<std::string> sFilenames;
 
         Reader(Files::IStreamPtr&& esmStream, const std::string& filename);
         ~Reader();
@@ -140,7 +144,7 @@ namespace ESM4 {
 
         inline bool isEsm4() const final { return true; }
 
-        inline void setEncoder(const ToUTF8::StatelessUtf8Encoder* encoder) final { mEncoder = encoder; };
+        inline void setEncoder(ToUTF8::Utf8Encoder* encoder) final { mEncoder = encoder; };
 
         const std::vector<ESM::MasterData>& getGameFiles() const final { return mHeader.mMaster; }
 
@@ -292,6 +296,9 @@ namespace ESM4 {
 
         // Used for error handling
         [[noreturn]] void fail(const std::string& msg);
+
+        uint32_t getIndex() { return mCtx.modIndex; }
+        void setIndex(uint32_t idx) { mCtx.modIndex = idx; }
     };
 }
 

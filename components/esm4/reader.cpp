@@ -55,7 +55,8 @@
 
 namespace ESM4
 {
-
+std::vector<ESM::Reader*> Reader::sReadersCache;
+std::vector<std::string> Reader::sFilenames;
 ReaderContext::ReaderContext() : modIndex(0), recHeaderSize(sizeof(RecordHeader)),
     filePos(0), fileRead(0), recordRead(0), currWorld(0), currCell(0), cellGridValid(false)
 {
@@ -181,6 +182,13 @@ void Reader::open(Files::IStreamPtr&& stream, const std::string &filename)
     }
 
     throw std::runtime_error("Unknown file format"); // can't yet use fail() as mCtx is not setup
+}
+
+Reader::Reader()
+    : mEncoder(nullptr)
+    , mFileSize(0)
+{
+    mCtx.modIndex = 0;
 }
 
 void Reader::openRaw(const std::string& filename)
@@ -496,13 +504,13 @@ void Reader::exitGroupCheck()
         mCtx.groupStack.back().second += lastGroupSize;
         lastGroupSize = mCtx.groupStack.back().first.groupSize;
 
-        assert (lastGroupSize >= mCtx.groupStack.back().second && "Read more records than available");
-//#if 0
+        //assert (lastGroupSize >= mCtx.groupStack.back().second && "Read more records than available");
+#if 0
         if (mCtx.groupStack.back().second > lastGroupSize) // FIXME: debugging only
             std::cerr << printLabel(mCtx.groupStack.back().first.label,
                                           mCtx.groupStack.back().first.type)
                       << " read more records than available" << std::endl;
-//#endif
+#endif
     }
 }
 

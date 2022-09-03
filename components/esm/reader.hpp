@@ -30,7 +30,7 @@ namespace ESM
 
         virtual inline bool hasMoreRecs() const = 0;
 
-        virtual inline void setEncoder(const ToUTF8::StatelessUtf8Encoder* encoder) = 0;
+        virtual inline void setEncoder(ToUTF8::Utf8Encoder* encoder) = 0;
 
         // used to check for dependencies e.g. CS::Editor::run()
         virtual inline const std::vector<ESM::MasterData>& getGameFiles() const = 0;
@@ -52,7 +52,7 @@ namespace ESM
 
     protected:
         bool getStringImpl(std::string& str, std::size_t size,
-                std::istream& stream, const ToUTF8::StatelessUtf8Encoder* encoder, bool hasNull = false);
+                std::istream& stream, ToUTF8::Utf8Encoder* encoder, bool hasNull = false);
     };
 }
 

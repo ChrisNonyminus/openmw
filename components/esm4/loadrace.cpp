@@ -44,7 +44,7 @@ void ESM4::Race::load(ESM4::Reader& reader)
     std::uint32_t esmVer = reader.esmVersion();
     bool isTES4 = esmVer == ESM::VER_080 || esmVer == ESM::VER_100;
     bool isFONV = esmVer == ESM::VER_132 || esmVer == ESM::VER_133 || esmVer == ESM::VER_134;
-    bool isFO3 = false;
+    bool isFO3 = esmVer == ESM::VER_094;
 
     bool isMale = false;
     int curr_part = -1; // 0 = head, 1 = body, 2 = egt, 3 = hkx

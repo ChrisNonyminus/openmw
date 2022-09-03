@@ -146,8 +146,24 @@ namespace MWWorld
     const T* Store<T>::searchRandom(std::string_view id, Misc::Rng::Generator& prng) const
     {
         std::vector<const T*> results;
-        std::copy_if(mShared.begin(), mShared.end(), std::back_inserter(results),
-                [&id](const T* item) { return Misc::StringUtils::ciStartsWith(item->mId, id); });
+        if constexpr (requires (T& item) { item.mId; })
+            std::copy_if(mShared.begin(), mShared.end(), std::back_inserter(results),
+                [&id](const T* item)
+                { return Misc::StringUtils::ciStartsWith(item->mId, id); });
+        else if constexpr(requires (T& item) { item.mEditorId; })
+            std::copy_if(mShared.begin(), mShared.end(), std::back_inserter(results),
+                [&id](const T* item)
+                { return Misc::StringUtils::ciStartsWith(item->mEditorId, id); });
+        else if constexpr (requires(T & item) { item.mFormId; })
+        {
+            std::copy_if(mShared.begin(), mShared.end(), std::back_inserter(results),
+                [&id](const T* item)
+                {
+                    std::stringstream toHex;
+                    toHex << std::hex << item->mFormId;
+                    return Misc::StringUtils::ciStartsWith(toHex.str(), id);
+                });
+        }
         if(!results.empty())
             return results[Misc::Rng::rollDice(results.size(), prng)];
         return nullptr;
@@ -167,17 +183,22 @@ namespace MWWorld
     template<typename T>
     RecordId Store<T>::load(ESM::ESMReader &esm)
     {
-        T record;
-        bool isDeleted = false;
+        if constexpr (requires(T & item) { item.mFormId; })
+            return RecordId();
+        else if constexpr (requires(T & item) { item.mId; })
+        {
+            T record;
+            bool isDeleted = false;
 
-        record.load(esm, isDeleted);
-        Misc::StringUtils::lowerCaseInPlace(record.mId); // TODO: remove this line once we have ported our remaining code base to lowercase on lookup
+            record.load(esm, isDeleted);
+            Misc::StringUtils::lowerCaseInPlace(record.mId); // TODO: remove this line once we have ported our remaining code base to lowercase on lookup
 
-        std::pair<typename Static::iterator, bool> inserted = mStatic.insert_or_assign(record.mId, record);
-        if (inserted.second)
-            mShared.push_back(&inserted.first->second);
+            std::pair<typename Static::iterator, bool> inserted = mStatic.insert_or_assign(record.mId, record);
+            if (inserted.second)
+                mShared.push_back(&inserted.first->second);
 
-        return RecordId(record.mId, isDeleted);
+            return RecordId(record.mId, isDeleted);
+        }
     }
     template<typename T>
     void Store<T>::setUp()
@@ -212,54 +233,183 @@ namespace MWWorld
         list.reserve(list.size() + getSize());
         typename std::vector<T *>::const_iterator it = mShared.begin();
         for (; it != mShared.end(); ++it) {
-            list.push_back((*it)->mId);
+
+            if constexpr (requires(T & item) { item.mId; })
+            {
+                list.push_back((*it)->mId);
+            }
+            else if constexpr (requires(T & item) { item.mEditorId; })
+            {
+                list.push_back((*it)->mEditorId);
+            }
+            else if constexpr (requires(T & item) { item.mFormId; })
+            {
+                std::stringstream ss;
+                ss << std::hex << (*it)->mFormId;
+                list.push_back(ss.str());
+            }
         }
     }
     template<typename T>
     T *Store<T>::insert(const T &item, bool overrideOnly)
     {
-        if(overrideOnly)
+        if constexpr (requires(T & item) { item.mId; })
         {
-            auto it = mStatic.find(item.mId);
-            if(it == mStatic.end())
-                return nullptr;
+            if (overrideOnly)
+            {
+                auto it = mStatic.find(item.mId);
+                if (it == mStatic.end())
+                    return nullptr;
+            }
+            std::pair<typename Dynamic::iterator, bool> result = mDynamic.insert_or_assign(item.mId, item);
+            T* ptr = &result.first->second;
+            if (result.second)
+                mShared.push_back(ptr);
+            return ptr;
         }
-        std::pair<typename Dynamic::iterator, bool> result = mDynamic.insert_or_assign(item.mId, item);
-        T *ptr = &result.first->second;
-        if (result.second)
-            mShared.push_back(ptr);
-        return ptr;
+        else if constexpr (requires(T & item) { item.mEditorId; })
+        {
+            if (overrideOnly)
+            {
+                auto it = mStatic.find(item.mEditorId);
+                if (it == mStatic.end())
+                    return nullptr;
+            }
+            std::pair<typename Dynamic::iterator, bool> result = mDynamic.insert_or_assign(item.mEditorId, item);
+            T* ptr = &result.first->second;
+            if (result.second)
+                mShared.push_back(ptr);
+            return ptr;
+        }
+        else if constexpr (requires(T & item) { item.mFormId; })
+        {
+            std::stringstream ss;
+            ss << std::hex << item.mFormId;
+            if (overrideOnly)
+            {
+                auto it = mStatic.find(ss.str());
+                if (it == mStatic.end())
+                    return nullptr;
+            }
+            std::pair<typename Dynamic::iterator, bool> result = mDynamic.insert_or_assign(ss.str(), item);
+            T* ptr = &result.first->second;
+            if (result.second)
+                mShared.push_back(ptr);
+            return ptr;
+        }
+        throw std::runtime_error("Store<T>::insert(): Item does not have any id");
     }
     template<typename T>
     T *Store<T>::insertStatic(const T &item)
     {
-        std::pair<typename Static::iterator, bool> result = mStatic.insert_or_assign(item.mId, item);
-        T *ptr = &result.first->second;
-        if (result.second)
-            mShared.push_back(ptr);
-        return ptr;
+
+        if constexpr (requires(T & item) { item.mId; })
+        {
+            std::pair<typename Static::iterator, bool> result = mStatic.insert_or_assign(item.mId, item);
+            T* ptr = &result.first->second;
+            if (result.second)
+                mShared.push_back(ptr);
+            return ptr;
+        }
+        else if constexpr (requires(T & item) { item.mEditorId; })
+        {
+            std::pair<typename Static::iterator, bool> result = mStatic.insert_or_assign(item.mEditorId, item);
+            T* ptr = &result.first->second;
+            if (result.second)
+                mShared.push_back(ptr);
+            return ptr;
+        }
+        else if constexpr (requires(T & item) { item.mFormId; })
+        {
+            std::stringstream ss;
+            ss << std::hex << item.mFormId;
+            std::pair<typename Static::iterator, bool> result = mStatic.insert_or_assign(ss.str(), item);
+            T* ptr = &result.first->second;
+            if (result.second)
+                mShared.push_back(ptr);
+            return ptr;
+        }
+        throw std::runtime_error("Store<T>::insertStatic(): Item does not have any id");
     }
     template<typename T>
     bool Store<T>::eraseStatic(std::string_view id)
     {
-        typename Static::iterator it = mStatic.find(id);
 
-        if (it != mStatic.end()) {
-            // delete from the static part of mShared
-            typename std::vector<T *>::iterator sharedIter = mShared.begin();
-            typename std::vector<T *>::iterator end = sharedIter + mStatic.size();
+        if constexpr (requires(T & item) { item.mId; })
+        {
+            typename Static::iterator it = mStatic.find(id);
 
-            while (sharedIter != mShared.end() && sharedIter != end) {
-                if(Misc::StringUtils::ciEqual((*sharedIter)->mId, id)) {
-                    mShared.erase(sharedIter);
-                    break;
+            if (it != mStatic.end())
+            {
+                // delete from the static part of mShared
+                typename std::vector<T*>::iterator sharedIter = mShared.begin();
+                typename std::vector<T*>::iterator end = sharedIter + mStatic.size();
+
+                while (sharedIter != mShared.end() && sharedIter != end)
+                {
+                    if (Misc::StringUtils::ciEqual((*sharedIter)->mId, id))
+                    {
+                        mShared.erase(sharedIter);
+                        break;
+                    }
+                    ++sharedIter;
                 }
-                ++sharedIter;
+                mStatic.erase(it);
             }
-            mStatic.erase(it);
-        }
 
-        return true;
+            return true;
+        }
+        else if constexpr (requires(T & item) { item.mEditorId; })
+        {
+            typename Static::iterator it = mStatic.find(id);
+
+            if (it != mStatic.end())
+            {
+                // delete from the static part of mShared
+                typename std::vector<T*>::iterator sharedIter = mShared.begin();
+                typename std::vector<T*>::iterator end = sharedIter + mStatic.size();
+
+                while (sharedIter != mShared.end() && sharedIter != end)
+                {
+                    if (Misc::StringUtils::ciEqual((*sharedIter)->mEditorId, id))
+                    {
+                        mShared.erase(sharedIter);
+                        break;
+                    }
+                    ++sharedIter;
+                }
+                mStatic.erase(it);
+            }
+
+            return true;
+        }
+        else if constexpr (requires(T & item) { item.mFormId; })
+        {
+            typename Static::iterator it = mStatic.find(id);
+
+            if (it != mStatic.end())
+            {
+                // delete from the static part of mShared
+                typename std::vector<T*>::iterator sharedIter = mShared.begin();
+                typename std::vector<T*>::iterator end = sharedIter + mStatic.size();
+
+                while (sharedIter != mShared.end() && sharedIter != end)
+                {
+                    std::stringstream ss;
+                    ss << std::hex << (*sharedIter)->mFormId;
+                    if (Misc::StringUtils::ciEqual(ss.str(), id))
+                    {
+                        mShared.erase(sharedIter);
+                        break;
+                    }
+                    ++sharedIter;
+                }
+                mStatic.erase(it);
+            }
+
+            return true;
+        }
+        return false;
     }
 
     template<typename T>
@@ -279,29 +429,111 @@ namespace MWWorld
     template<typename T>
     bool Store<T>::erase(const T &item)
     {
-        return erase(item.mId);
+        if constexpr (requires(T & item) { item.mId; })
+        {
+            return erase(item.mId);
+        }
+        else if constexpr (requires(T & item) { item.mEditorId; })
+        {
+            return erase(item.mEditorId);
+        }
+        else if constexpr (requires(T & item) { item.mFormId; })
+        {
+            std::stringstream ss;
+            ss << std::hex << item.mFormId;
+            return erase(ss.str());
+        }
     }
-    template<typename T>
+    template <class T>
+    RecordId Store<T>::load(ESM4::Reader& esm)
+    {
+        T record;
+        if constexpr (requires { record.mFormId; })
+        {
+
+            bool isDeleted = false;
+
+            record.load(esm);
+            isDeleted = (record.mFlags & ESM4::Rec_Deleted) != 0;
+
+            std::stringstream id;
+            if constexpr (requires { record.mEditorId; })
+            {
+                Misc::StringUtils::trim(record.mEditorId);
+                if (record.mEditorId == "")
+                {
+                    std::stringstream toHex;
+                    toHex << std::hex << record.mFormId;
+                    record.mEditorId = toHex.str();
+                }
+                Misc::StringUtils::lowerCaseInPlace(record.mEditorId); // TODO: remove this line once we have ported our remaining code base to lowercase on lookup
+                id << record.mEditorId;
+            }
+            else
+                id << std::hex << record.mFormId;
+
+            std::pair<typename Static::iterator, bool> inserted = mStatic.insert_or_assign(id.str(), record);
+            if (inserted.second)
+                mShared.push_back(&inserted.first->second);
+
+            return RecordId(id.str(), isDeleted);
+        }
+        return RecordId();
+    }
+    template <typename T>
     void Store<T>::write (ESM::ESMWriter& writer, Loading::Listener& progress) const
     {
-        for (typename Dynamic::const_iterator iter (mDynamic.begin()); iter!=mDynamic.end();
-             ++iter)
+        if constexpr (requires(T & item) { item.mId; })
         {
-            writer.startRecord (T::sRecordId);
-            iter->second.save (writer);
-            writer.endRecord (T::sRecordId);
+            for (typename Dynamic::const_iterator iter(mDynamic.begin()); iter != mDynamic.end();
+                 ++iter)
+            {
+                writer.startRecord(T::sRecordId);
+                iter->second.save(writer);
+                writer.endRecord(T::sRecordId);
+            }
         }
     }
     template<typename T>
     RecordId Store<T>::read(ESM::ESMReader& reader, bool overrideOnly)
     {
+        if constexpr (requires(T & item) { item.mId; })
+        {
+            T record;
+            bool isDeleted = false;
+
+            record.load(reader, isDeleted);
+            insert(record, overrideOnly);
+
+            return RecordId(record.mId, isDeleted);
+        }
+        else if constexpr (requires(T & item) { item.mFormId; })
+        {
+            return RecordId();
+        }
+    }
+
+    template <class T>
+    RecordId Store<T>::read(ESM4::Reader& reader, bool overrideOnly)
+    {
         T record;
-        bool isDeleted = false;
+        if constexpr (requires { record.mFormId; })
+        {
+            bool isDeleted = false;
 
-        record.load (reader, isDeleted);
-        insert (record, overrideOnly);
+            record.load(reader);
+            isDeleted = (record.mFlags & ESM4::Rec_Deleted) != 0;
+            insert(record, overrideOnly);
 
-        return RecordId(record.mId, isDeleted);
+            std::stringstream id;
+            if constexpr (requires { record.mEditorId; })
+                id << record.mEditorId;
+            else
+                id << std::hex << record.mFormId;
+
+            return RecordId(id.str(), isDeleted);
+        }
+        return RecordId();
     }
 
     // LandTexture
@@ -1168,4 +1400,4 @@ template class MWWorld::Store<ESM::Spell>;
 template class MWWorld::Store<ESM::StartScript>;
 template class MWWorld::Store<ESM::Static>;
 template class MWWorld::Store<ESM::Weapon>;
-
+template class MWWorld::Store<ESM4::Activator>;

@@ -206,4 +206,171 @@ namespace MWClass
 
         throw std::runtime_error("Unexpected soundgen type: " + std::string(name));
     }
+
+    
+
+    TES4Activator::TES4Activator()
+        : MWWorld::RegisteredClass<TES4Activator>(ESM::RecNameInts::REC_ACTI4)
+    {
+    }
+
+    void TES4Activator::insertObjectRendering(const MWWorld::Ptr& ptr, const std::string& model, MWRender::RenderingInterface& renderingInterface) const
+    {
+        if (!model.empty())
+        {
+            renderingInterface.getObjects().insertModel(ptr, model, true);
+            ptr.getRefData().getBaseNode()->setNodeMask(MWRender::Mask_Static);
+        }
+    }
+
+    void TES4Activator::insertObject(const MWWorld::Ptr& ptr, const std::string& model, const osg::Quat& rotation, MWPhysics::PhysicsSystem& physics) const
+    {
+        insertObjectPhysics(ptr, model, rotation, physics);
+    }
+
+    void TES4Activator::insertObjectPhysics(const MWWorld::Ptr& ptr, const std::string& model, const osg::Quat& rotation, MWPhysics::PhysicsSystem& physics) const
+    {
+        physics.addObject(ptr, model, rotation, MWPhysics::CollisionType_World);
+    }
+
+    std::string TES4Activator::getModel(const MWWorld::ConstPtr& ptr) const
+    {
+        return getClassModel<ESM4::Activator>(ptr);
+    }
+
+    bool TES4Activator::isActivator() const
+    {
+        return true;
+    }
+
+    bool TES4Activator::useAnim() const
+    {
+        return true;
+    }
+
+    std::string_view TES4Activator::getName(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Activator>* ref = ptr.get<ESM4::Activator>();
+
+        return ref->mBase->mFullName;
+    }
+
+    std::string_view TES4Activator::getScript(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Activator>* ref = ptr.get<ESM4::Activator>();
+        std::stringstream ss;
+        ss << std::hex << ref->mBase->mScriptId;
+        return ss.str();
+    }
+
+    bool TES4Activator::hasToolTip(const MWWorld::ConstPtr& ptr) const
+    {
+        return !getName(ptr).empty();
+    }
+
+    MWGui::ToolTipInfo TES4Activator::getToolTipInfo(const MWWorld::ConstPtr& ptr, int count) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Activator>* ref = ptr.get<ESM4::Activator>();
+
+        MWGui::ToolTipInfo info;
+        std::string_view name = getName(ptr);
+        info.caption = MyGUI::TextIterator::toTagsString(MWGui::toUString(name)) + MWGui::ToolTips::getCountString(count);
+
+        std::string text;
+        if (MWBase::Environment::get().getWindowManager()->getFullHelp())
+        {
+            std::stringstream ss;
+            ss << std::hex << ref->mBase->mScriptId;
+            text += MWGui::ToolTips::getCellRefString(ptr.getCellRef());
+            text += MWGui::ToolTips::getMiscString(ss.str(), "Script");
+        }
+        info.text = text;
+
+        return info;
+    }
+
+    std::unique_ptr<MWWorld::Action> TES4Activator::activate(const MWWorld::Ptr& ptr, const MWWorld::Ptr& actor) const
+    {
+        // TODO
+        return std::make_unique<MWWorld::NullAction>();
+    }
+
+    MWWorld::Ptr TES4Activator::copyToCellImpl(const MWWorld::ConstPtr& ptr, MWWorld::CellStore& cell) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Activator>* ref = ptr.get<ESM4::Activator>();
+
+        return MWWorld::Ptr(cell.insert(ref), &cell);
+    }
+
+    std::string_view TES4Activator::getSoundIdFromSndGen(const MWWorld::Ptr& ptr, std::string_view name) const
+    {
+        const std::string model = getModel(ptr); // Assume it's not empty, since we wouldn't have gotten the soundgen otherwise
+        const MWWorld::ESMStore& store = MWBase::Environment::get().getWorld()->getStore();
+        std::string_view creatureId;
+        const VFS::Manager* const vfs = MWBase::Environment::get().getResourceSystem()->getVFS();
+
+        for (const ESM::Creature& iter : store.get<ESM::Creature>())
+        {
+            if (!iter.mModel.empty() && Misc::StringUtils::ciEqual(model, Misc::ResourceHelpers::correctMeshPath(iter.mModel, vfs)))
+            {
+                creatureId = !iter.mOriginal.empty() ? iter.mOriginal : iter.mId;
+                break;
+            }
+        }
+
+        int type = getSndGenTypeFromName(name);
+
+        std::vector<const ESM::SoundGenerator*> fallbacksounds;
+        auto& prng = MWBase::Environment::get().getWorld()->getPrng();
+        if (!creatureId.empty())
+        {
+            std::vector<const ESM::SoundGenerator*> sounds;
+            for (auto sound = store.get<ESM::SoundGenerator>().begin(); sound != store.get<ESM::SoundGenerator>().end(); ++sound)
+            {
+                if (type == sound->mType && !sound->mCreature.empty() && (Misc::StringUtils::ciEqual(creatureId, sound->mCreature)))
+                    sounds.push_back(&*sound);
+                if (type == sound->mType && sound->mCreature.empty())
+                    fallbacksounds.push_back(&*sound);
+            }
+
+            if (!sounds.empty())
+                return sounds[Misc::Rng::rollDice(sounds.size(), prng)]->mSound;
+            if (!fallbacksounds.empty())
+                return fallbacksounds[Misc::Rng::rollDice(fallbacksounds.size(), prng)]->mSound;
+        }
+        else
+        {
+            // The activator doesn't have a corresponding creature ID, but we can try to use the defaults
+            for (auto sound = store.get<ESM::SoundGenerator>().begin(); sound != store.get<ESM::SoundGenerator>().end(); ++sound)
+                if (type == sound->mType && sound->mCreature.empty())
+                    fallbacksounds.push_back(&*sound);
+
+            if (!fallbacksounds.empty())
+                return fallbacksounds[Misc::Rng::rollDice(fallbacksounds.size(), prng)]->mSound;
+        }
+
+        return {};
+    }
+
+    int TES4Activator::getSndGenTypeFromName(std::string_view name)
+    {
+        if (name == "left")
+            return ESM::SoundGenerator::LeftFoot;
+        if (name == "right")
+            return ESM::SoundGenerator::RightFoot;
+        if (name == "swimleft")
+            return ESM::SoundGenerator::SwimLeft;
+        if (name == "swimright")
+            return ESM::SoundGenerator::SwimRight;
+        if (name == "moan")
+            return ESM::SoundGenerator::Moan;
+        if (name == "roar")
+            return ESM::SoundGenerator::Roar;
+        if (name == "scream")
+            return ESM::SoundGenerator::Scream;
+        if (name == "land")
+            return ESM::SoundGenerator::Land;
+
+        throw std::runtime_error("Unexpected soundgen type: " + std::string(name));
+    }
 }

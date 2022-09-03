@@ -15,6 +15,9 @@
 #include <components/misc/strings/algorithm.hpp>
 #include <components/misc/rng.hpp>
 
+#include <components/esm4/reader.hpp>
+#include <components/esm4/records.hpp>
+
 #include "../mwdialogue/keywordsearch.hpp"
 
 namespace ESM
@@ -56,6 +59,7 @@ namespace MWWorld
         virtual size_t getSize() const = 0;
         virtual int getDynamicSize() const { return 0; }
         virtual RecordId load(ESM::ESMReader &esm) = 0;
+        virtual RecordId load(ESM4::Reader& esm) { return RecordId(); }
 
         virtual bool eraseStatic(std::string_view id) { return false; }
         virtual void clearDynamic() {}
@@ -63,6 +67,8 @@ namespace MWWorld
         virtual void write (ESM::ESMWriter& writer, Loading::Listener& progress) const {}
 
         virtual RecordId read (ESM::ESMReader& reader, bool overrideOnly = false) { return RecordId(); }
+
+        virtual RecordId read (ESM4::Reader& reader, bool overrideOnly = false) { return RecordId(); }
         ///< Read into dynamic storage
 
         virtual ESM::RecNameInts getRecName() = 0;
@@ -217,8 +223,12 @@ namespace MWWorld
         bool erase(const T &item);
 
         RecordId load(ESM::ESMReader &esm) override;
+        RecordId load(ESM4::Reader &esm) override;
         void write(ESM::ESMWriter& writer, Loading::Listener& progress) const override;
         RecordId read(ESM::ESMReader& reader, bool overrideOnly = false) override;
+
+
+        RecordId read(ESM4::Reader& reader, bool overrideOnly = false) override;
 
         ESM::RecNameInts getRecName() override { return T::sRecordId; }
     };
