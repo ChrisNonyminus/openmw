@@ -60,6 +60,52 @@ namespace MWWorld
                 State_Unloaded, State_Preloaded, State_Loaded
             };
 
+            // https://gpfault.net/posts/mapping-types-to-values.txt.html
+            class TypeMap
+            {
+            private:
+                typedef std::map<int, CellRefListBase*> InternalMap;
+                InternalMap mMap;
+
+            public:
+                typedef typename InternalMap::iterator iterator;
+                typedef typename InternalMap::const_iterator const_iterator;
+                typedef typename InternalMap::value_type value_type;
+
+                const_iterator begin() const { return mMap.begin(); }
+                const_iterator end() const { return mMap.end(); }
+                iterator begin() { return mMap.begin(); }
+                iterator end() { return mMap.end(); }
+
+                template <class Key>
+                iterator find() { return mMap.find(getTypeId<Key>()); }
+
+                template <class Key>
+                const_iterator find() const { return mMap.find(getTypeId<Key>()); }
+
+                template <class Key>
+                CellRefList<Key>& get() { return *static_cast<CellRefList<Key>*>(find<Key>()->second); }
+
+                template <class Key>
+                const CellRefList<Key>& get() const { return *static_cast<CellRefList<Key>*>(find<Key>()->second); }
+
+                template <class Key>
+                void put(CellRefList<Key>*&& value)
+                {
+                    mMap[getTypeId<Key>()] = std::forward<CellRefList<Key>*>(value);
+                }
+
+            private:
+                template <class Key>
+                inline static int getTypeId()
+                {
+                    static const int id = sLastTypeId++;
+                    return id;
+                }
+
+                static int sLastTypeId;
+            };
+
         private:
 
             const MWWorld::ESMStore& mStore;
@@ -77,30 +123,9 @@ namespace MWWorld
             float mWaterLevel;
 
             MWWorld::TimeStamp mLastRespawn;
-
-            // List of refs owned by this cell
-            CellRefList<ESM::Activator>         mActivators;
-            CellRefList<ESM::Potion>            mPotions;
-            CellRefList<ESM::Apparatus>         mAppas;
-            CellRefList<ESM::Armor>             mArmors;
-            CellRefList<ESM::Book>              mBooks;
-            CellRefList<ESM::Clothing>          mClothes;
-            CellRefList<ESM::Container>         mContainers;
-            CellRefList<ESM::Creature>          mCreatures;
-            CellRefList<ESM::Door>              mDoors;
-            CellRefList<ESM::Ingredient>        mIngreds;
-            CellRefList<ESM::CreatureLevList>   mCreatureLists;
-            CellRefList<ESM::ItemLevList>       mItemLists;
-            CellRefList<ESM::Light>             mLights;
-            CellRefList<ESM::Lockpick>          mLockpicks;
-            CellRefList<ESM::Miscellaneous>     mMiscItems;
-            CellRefList<ESM::NPC>               mNpcs;
-            CellRefList<ESM::Probe>             mProbes;
-            CellRefList<ESM::Repair>            mRepairs;
-            CellRefList<ESM::Static>            mStatics;
-            CellRefList<ESM::Weapon>            mWeapons;
-            CellRefList<ESM::BodyPart>          mBodyParts;
-
+            
+            // map of lists stored by this cell
+            TypeMap mTypeMap;
             typedef std::map<LiveCellRefBase*, MWWorld::CellStore*> MovedRefTracker;
             // References owned by a different cell that have been moved here.
             // <reference, cell the reference originally came from>
@@ -151,33 +176,41 @@ namespace MWWorld
             bool forEachInternal (Visitor& visitor)
             {
                 return
-                    forEachImp (visitor, mActivators) &&
-                    forEachImp (visitor, mPotions) &&
-                    forEachImp (visitor, mAppas) &&
-                    forEachImp (visitor, mArmors) &&
-                    forEachImp (visitor, mBooks) &&
-                    forEachImp (visitor, mClothes) &&
-                    forEachImp (visitor, mContainers) &&
-                    forEachImp (visitor, mDoors) &&
-                    forEachImp (visitor, mIngreds) &&
-                    forEachImp (visitor, mItemLists) &&
-                    forEachImp (visitor, mLights) &&
-                    forEachImp (visitor, mLockpicks) &&
-                    forEachImp (visitor, mMiscItems) &&
-                    forEachImp (visitor, mProbes) &&
-                    forEachImp (visitor, mRepairs) &&
-                    forEachImp (visitor, mStatics) &&
-                    forEachImp (visitor, mWeapons) &&
-                    forEachImp (visitor, mBodyParts) &&
-                    forEachImp (visitor, mCreatures) &&
-                    forEachImp (visitor, mNpcs) &&
-                    forEachImp (visitor, mCreatureLists);
+                    forEachImp (visitor, get<ESM::Activator>()) &&
+                    forEachImp (visitor, get<ESM::Potion>()) &&
+                    forEachImp (visitor, get<ESM::Apparatus>()) &&
+                    forEachImp (visitor, get<ESM::Armor>()) &&
+                    forEachImp (visitor, get<ESM::Book>()) &&
+                    forEachImp (visitor, get<ESM::Clothing>()) &&
+                    forEachImp (visitor, get<ESM::Container>()) &&
+                    forEachImp (visitor, get<ESM::Door>()) &&
+                    forEachImp (visitor, get<ESM::Ingredient>()) &&
+                    forEachImp (visitor, get<ESM::ItemLevList>()) &&
+                    forEachImp (visitor, get<ESM::Light>()) &&
+                    forEachImp (visitor, get<ESM::Lockpick>()) &&
+                    forEachImp (visitor, get<ESM::Miscellaneous>()) &&
+                    forEachImp (visitor, get<ESM::Probe>()) &&
+                    forEachImp (visitor, get<ESM::Repair>()) &&
+                    forEachImp (visitor, get<ESM::Static>()) &&
+                    forEachImp (visitor, get<ESM::Weapon>()) &&
+                    forEachImp (visitor, get<ESM::BodyPart>()) &&
+                    forEachImp (visitor, get<ESM::Creature>()) &&
+                    forEachImp (visitor, get<ESM::NPC>()) &&
+                    forEachImp (visitor, get<ESM::CreatureLevList>());
             }
 
             /// @note If you get a linker error here, this means the given type can not be stored in a cell. The supported types are
             /// defined at the bottom of this file.
             template <class T>
-            CellRefList<T>& get();
+            CellRefList<T>& get()
+            {
+                return mTypeMap.get<T>();
+            }
+            template <class T>
+            const CellRefList<T>& get() const
+            {
+                return mTypeMap.get<T>();
+            }
 
         public:
 
@@ -362,11 +395,11 @@ namespace MWWorld
             // Should be phased out when we have const version of forEach
             inline const CellRefList<ESM::Door>& getReadOnlyDoors() const
             {
-                return mDoors;
+                return mTypeMap.get<ESM::Door>();
             }
             inline const CellRefList<ESM::Static>& getReadOnlyStatics() const
             {
-                return mStatics;
+                return mTypeMap.get<ESM::Static>();
             }
 
             bool isExterior() const;
@@ -413,153 +446,6 @@ namespace MWWorld
             ///
             /// Invalid \a ref objects are silently dropped.
     };
-
-    template<>
-    inline CellRefList<ESM::Activator>& CellStore::get<ESM::Activator>()
-    {
-        mHasState = true;
-        return mActivators;
-    }
-
-    template<>
-    inline CellRefList<ESM::Potion>& CellStore::get<ESM::Potion>()
-    {
-        mHasState = true;
-        return mPotions;
-    }
-
-    template<>
-    inline CellRefList<ESM::Apparatus>& CellStore::get<ESM::Apparatus>()
-    {
-        mHasState = true;
-        return mAppas;
-    }
-
-    template<>
-    inline CellRefList<ESM::Armor>& CellStore::get<ESM::Armor>()
-    {
-        mHasState = true;
-        return mArmors;
-    }
-
-    template<>
-    inline CellRefList<ESM::Book>& CellStore::get<ESM::Book>()
-    {
-        mHasState = true;
-        return mBooks;
-    }
-
-    template<>
-    inline CellRefList<ESM::Clothing>& CellStore::get<ESM::Clothing>()
-    {
-        mHasState = true;
-        return mClothes;
-    }
-
-    template<>
-    inline CellRefList<ESM::Container>& CellStore::get<ESM::Container>()
-    {
-        mHasState = true;
-        return mContainers;
-    }
-
-    template<>
-    inline CellRefList<ESM::Creature>& CellStore::get<ESM::Creature>()
-    {
-        mHasState = true;
-        return mCreatures;
-    }
-
-    template<>
-    inline CellRefList<ESM::Door>& CellStore::get<ESM::Door>()
-    {
-        mHasState = true;
-        return mDoors;
-    }
-
-    template<>
-    inline CellRefList<ESM::Ingredient>& CellStore::get<ESM::Ingredient>()
-    {
-        mHasState = true;
-        return mIngreds;
-    }
-
-    template<>
-    inline CellRefList<ESM::CreatureLevList>& CellStore::get<ESM::CreatureLevList>()
-    {
-        mHasState = true;
-        return mCreatureLists;
-    }
-
-    template<>
-    inline CellRefList<ESM::ItemLevList>& CellStore::get<ESM::ItemLevList>()
-    {
-        mHasState = true;
-        return mItemLists;
-    }
-
-    template<>
-    inline CellRefList<ESM::Light>& CellStore::get<ESM::Light>()
-    {
-        mHasState = true;
-        return mLights;
-    }
-
-    template<>
-    inline CellRefList<ESM::Lockpick>& CellStore::get<ESM::Lockpick>()
-    {
-        mHasState = true;
-        return mLockpicks;
-    }
-
-    template<>
-    inline CellRefList<ESM::Miscellaneous>& CellStore::get<ESM::Miscellaneous>()
-    {
-        mHasState = true;
-        return mMiscItems;
-    }
-
-    template<>
-    inline CellRefList<ESM::NPC>& CellStore::get<ESM::NPC>()
-    {
-        mHasState = true;
-        return mNpcs;
-    }
-
-    template<>
-    inline CellRefList<ESM::Probe>& CellStore::get<ESM::Probe>()
-    {
-        mHasState = true;
-        return mProbes;
-    }
-
-    template<>
-    inline CellRefList<ESM::Repair>& CellStore::get<ESM::Repair>()
-    {
-        mHasState = true;
-        return mRepairs;
-    }
-
-    template<>
-    inline CellRefList<ESM::Static>& CellStore::get<ESM::Static>()
-    {
-        mHasState = true;
-        return mStatics;
-    }
-
-    template<>
-    inline CellRefList<ESM::Weapon>& CellStore::get<ESM::Weapon>()
-    {
-        mHasState = true;
-        return mWeapons;
-    }
-
-    template<>
-    inline CellRefList<ESM::BodyPart>& CellStore::get<ESM::BodyPart>()
-    {
-        mHasState = true;
-        return mBodyParts;
-    }
 
     bool operator== (const CellStore& left, const CellStore& right);
     bool operator!= (const CellStore& left, const CellStore& right);

@@ -7,9 +7,12 @@
 
 namespace MWWorld
 {
+    struct CellRefListBase
+    {
+    };
     /// \brief Collection of references of one type
     template <typename X>
-    struct CellRefList
+    struct CellRefList : CellRefListBase
     {
         typedef LiveCellRef<X> LiveRef;
         typedef std::list<LiveRef> List;

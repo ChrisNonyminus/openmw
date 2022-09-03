@@ -30,8 +30,6 @@
 #include <cstdint>
 #include <string>
 
-#include <components/esm/defs.hpp>
-
 #include "formid.hpp"
 
 namespace ESM
