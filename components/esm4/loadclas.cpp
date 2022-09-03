@@ -51,6 +51,11 @@ void ESM4::Class::load(ESM4::Reader& reader)
             case ESM4::SUB_FULL: reader.getLocalizedString(mFullName); break;
             case ESM4::SUB_DESC: reader.getLocalizedString(mDesc); break;
             case ESM4::SUB_ICON: reader.getZString(mIcon);     break;
+            case ESM4::SUB_ATTR:
+            {
+                reader.get(mSpecial);
+                break;
+            }
             case ESM4::SUB_DATA:
             {
                 //std::cout << "CLAS " << ESM::printName(subHdr.typeId) << " skipping..." << std::endl;

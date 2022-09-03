@@ -44,6 +44,17 @@ namespace ESM4
             std::uint32_t attr;
         };
 
+        struct FOAttributes
+        {
+            uint8_t strength;
+            uint8_t perception;
+            uint8_t endurance;
+            uint8_t charisma;
+            uint8_t intelligence;
+            uint8_t agility;
+            uint8_t luck;
+        };
+
         FormId mFormId;       // from the header
         std::uint32_t mFlags; // from the header, see enum type RecordFlag for details
 
@@ -52,6 +63,7 @@ namespace ESM4
         std::string mDesc;
         std::string mIcon;
         Data mData;
+        FOAttributes mSpecial;
 
         void load(ESM4::Reader& reader);
         //void save(ESM4::Writer& reader) const;

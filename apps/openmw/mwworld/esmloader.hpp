@@ -16,6 +16,11 @@ namespace ESM
     struct Dialogue;
 }
 
+namespace ESM4
+{
+    struct Dialogue;
+}
+
 namespace MWWorld
 {
 
@@ -34,6 +39,7 @@ struct EsmLoader : public ContentLoader
         MWWorld::ESMStore& mStore;
         ToUTF8::Utf8Encoder* mEncoder;
         ESM::Dialogue* mDialogue;
+        ESM4::Dialogue* mDialogue4;
         std::optional<int> mMasterFileFormat;
         std::vector<int>& mESMVersions;
 };

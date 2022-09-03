@@ -7,6 +7,9 @@
 
 #include <components/esm/luascripts.hpp>
 #include <components/esm/records.hpp>
+
+#include <components/esm4/reader.hpp>
+
 #include "store.hpp"
 
 namespace Loading
@@ -27,6 +30,7 @@ namespace ESM
 namespace MWWorld
 {
     struct ESMStoreImpl;
+    struct ESM4Reading;
 
     class ESMStore
     {
@@ -118,6 +122,7 @@ namespace MWWorld
         int findStatic(std::string_view id) const;
 
         friend struct ESMStoreImpl;
+        friend struct ESM4Reading;
 
         ESMStore();
         ~ESMStore();
@@ -140,6 +145,8 @@ namespace MWWorld
         void validateDynamic();
 
         void load(ESM::ESMReader &esm, Loading::Listener* listener, ESM::Dialogue*& dialogue);
+
+        void load(ESM4::Reader &esm, Loading::Listener* listener, ESM4::Dialogue*& dialogue);
 
         template <class T>
         const Store<T> &get() const {
@@ -173,6 +180,8 @@ namespace MWWorld
         void write (ESM::ESMWriter& writer, Loading::Listener& progress) const;
 
         bool readRecord (ESM::ESMReader& reader, uint32_t type);
+
+        bool readRecord (ESM4::Reader& reader, uint32_t type);
         ///< \return Known type?
 
         // To be called when we are done with dynamic record loading
