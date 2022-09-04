@@ -324,59 +324,119 @@ namespace MWWorld
     {
         if (mActiveCells.find(cell) == mActiveCells.end())
             return;
-
-        Log(Debug::Info) << "Unloading cell " << cell->getCell()->getDescription();
-
-        ListAndResetObjectsVisitor visitor;
-
-        cell->forEach(visitor);
-        for (const auto& ptr : visitor.mObjects)
+        if (cell->isTes4())
         {
-            if (const auto object = mPhysics->getObject(ptr))
+
+            Log(Debug::Info) << "Unloading cell " << cell->getCell4()->mEditorId;
+
+            ListAndResetObjectsVisitor visitor;
+
+            cell->forEach(visitor);
+            for (const auto& ptr : visitor.mObjects)
             {
-                if (object->getShapeInstance()->mVisualCollisionType == Resource::VisualCollisionType::None)
-                    mNavigator.removeObject(DetourNavigator::ObjectId(object));
-                mPhysics->remove(ptr);
-                ptr.mRef->mData.mPhysicsPostponed = false;
+                if (const auto object = mPhysics->getObject(ptr))
+                {
+                    if (object->getShapeInstance()->mVisualCollisionType == Resource::VisualCollisionType::None)
+                        mNavigator.removeObject(DetourNavigator::ObjectId(object));
+                    mPhysics->remove(ptr);
+                    ptr.mRef->mData.mPhysicsPostponed = false;
+                }
+                else if (mPhysics->getActor(ptr))
+                {
+                    mNavigator.removeAgent(mWorld.getPathfindingAgentBounds(ptr));
+                    mRendering.removeActorPath(ptr);
+                    mPhysics->remove(ptr);
+                }
+                MWBase::Environment::get().getLuaManager()->objectRemovedFromScene(ptr);
             }
-            else if (mPhysics->getActor(ptr))
+
+            const auto cellX = cell->getCell4()->mX;
+            const auto cellY = cell->getCell4()->mY;
+
+            if (cell->getCell4()->isExterior())
             {
-                mNavigator.removeAgent(mWorld.getPathfindingAgentBounds(ptr));
-                mRendering.removeActorPath(ptr);
-                mPhysics->remove(ptr);
+                if (mPhysics->getHeightField(cellX, cellY) != nullptr)
+                    mNavigator.removeHeightfield(osg::Vec2i(cellX, cellY));
+
+                mPhysics->removeHeightField(cellX, cellY);
             }
-            MWBase::Environment::get().getLuaManager()->objectRemovedFromScene(ptr);
+
+            if ((cell->getCell4()->mCellFlags & ESM4::CELL_HasWater) != 0)
+                mNavigator.removeWater(osg::Vec2i(cellX, cellY));
+
+            // todo
+            /*if (const auto pathgrid = mWorld.getStore().get<ESM::Pathgrid>().search(*cell->getCell4()))
+                mNavigator.removePathgrid(*pathgrid);*/
+
+            MWBase::Environment::get().getMechanicsManager()->drop(cell);
+
+            mRendering.removeCell(cell);
+            MWBase::Environment::get().getWindowManager()->removeCell(cell);
+
+            mWorld.getLocalScripts().clearCell(cell);
+
+            MWBase::Environment::get().getSoundManager()->stopSound(cell);
+            mActiveCells.erase(cell);
+            // Clean up any effects that may have been spawned while unloading all cells
+            if (mActiveCells.empty())
+                mRendering.notifyWorldSpaceChanged();
         }
-
-        const auto cellX = cell->getCell()->getGridX();
-        const auto cellY = cell->getCell()->getGridY();
-
-        if (cell->getCell()->isExterior())
+        else
         {
-            if (mPhysics->getHeightField(cellX, cellY) != nullptr)
-                mNavigator.removeHeightfield(osg::Vec2i(cellX, cellY));
 
-            mPhysics->removeHeightField(cellX, cellY);
+            Log(Debug::Info) << "Unloading cell " << cell->getCell()->getDescription();
+
+            ListAndResetObjectsVisitor visitor;
+
+            cell->forEach(visitor);
+            for (const auto& ptr : visitor.mObjects)
+            {
+                if (const auto object = mPhysics->getObject(ptr))
+                {
+                    if (object->getShapeInstance()->mVisualCollisionType == Resource::VisualCollisionType::None)
+                        mNavigator.removeObject(DetourNavigator::ObjectId(object));
+                    mPhysics->remove(ptr);
+                    ptr.mRef->mData.mPhysicsPostponed = false;
+                }
+                else if (mPhysics->getActor(ptr))
+                {
+                    mNavigator.removeAgent(mWorld.getPathfindingAgentBounds(ptr));
+                    mRendering.removeActorPath(ptr);
+                    mPhysics->remove(ptr);
+                }
+                MWBase::Environment::get().getLuaManager()->objectRemovedFromScene(ptr);
+            }
+
+            const auto cellX = cell->getCell()->getGridX();
+            const auto cellY = cell->getCell()->getGridY();
+
+            if (cell->getCell()->isExterior())
+            {
+                if (mPhysics->getHeightField(cellX, cellY) != nullptr)
+                    mNavigator.removeHeightfield(osg::Vec2i(cellX, cellY));
+
+                mPhysics->removeHeightField(cellX, cellY);
+            }
+
+            if (cell->getCell()->hasWater())
+                mNavigator.removeWater(osg::Vec2i(cellX, cellY));
+
+            if (const auto pathgrid = mWorld.getStore().get<ESM::Pathgrid>().search(*cell->getCell()))
+                mNavigator.removePathgrid(*pathgrid);
+
+            MWBase::Environment::get().getMechanicsManager()->drop(cell);
+
+            mRendering.removeCell(cell);
+            MWBase::Environment::get().getWindowManager()->removeCell(cell);
+
+            mWorld.getLocalScripts().clearCell(cell);
+
+            MWBase::Environment::get().getSoundManager()->stopSound(cell);
+            mActiveCells.erase(cell);
+            // Clean up any effects that may have been spawned while unloading all cells
+            if (mActiveCells.empty())
+                mRendering.notifyWorldSpaceChanged();
         }
-
-        if (cell->getCell()->hasWater())
-            mNavigator.removeWater(osg::Vec2i(cellX, cellY));
-
-        if (const auto pathgrid = mWorld.getStore().get<ESM::Pathgrid>().search(*cell->getCell()))
-            mNavigator.removePathgrid(*pathgrid);
-
-        MWBase::Environment::get().getMechanicsManager()->drop (cell);
-
-        mRendering.removeCell(cell);
-        MWBase::Environment::get().getWindowManager()->removeCell(cell);
-
-        mWorld.getLocalScripts().clearCell (cell);
-
-        MWBase::Environment::get().getSoundManager()->stopSound (cell);
-        mActiveCells.erase(cell);
-        // Clean up any effects that may have been spawned while unloading all cells
-        if(mActiveCells.empty())
-            mRendering.notifyWorldSpaceChanged();
     }
 
     void Scene::loadCell(CellStore *cell, Loading::Listener* loadingListener, bool respawn, const osg::Vec3f& position)

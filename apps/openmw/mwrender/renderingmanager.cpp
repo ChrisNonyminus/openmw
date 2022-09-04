@@ -852,9 +852,19 @@ namespace MWRender
         mActorsPaths->removeCell(store);
         mObjects->removeCell(store);
 
-        if (store->getCell()->isExterior())
+        if (!store->isTes4())
         {
-            mTerrain->unloadCell(store->getCell()->getGridX(), store->getCell()->getGridY());
+            if (store->getCell()->isExterior())
+            {
+                mTerrain->unloadCell(store->getCell()->getGridX(), store->getCell()->getGridY());
+            }
+        }
+        else
+        {
+            if (store->getCell4()->isExterior())
+            {
+                // todo
+            }
         }
 
         mWater->removeCell(store);
