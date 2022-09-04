@@ -381,101 +381,170 @@ namespace MWWorld
 
     void Scene::loadCell(CellStore *cell, Loading::Listener* loadingListener, bool respawn, const osg::Vec3f& position)
     {
-        using DetourNavigator::HeightfieldShape;
-
-        assert(mActiveCells.find(cell) == mActiveCells.end());
-        mActiveCells.insert(cell);
-
-        Log(Debug::Info) << "Loading cell " << cell->getCell()->getDescription();
-
-        const int cellX = cell->getCell()->getGridX();
-        const int cellY = cell->getCell()->getGridY();
-
-        mNavigator.setWorldspace(cell->getCell()->mCellId.mWorldspace);
-
-        if (cell->getCell()->isExterior())
+        if (cell->isTes4())
         {
-            osg::ref_ptr<const ESMTerrain::LandObject> land = mRendering.getLandManager()->getLand(cellX, cellY);
-            const ESM::Land::LandData* data = land ? land->getData(ESM::Land::DATA_VHGT) : nullptr;
-            const int verts = ESM::Land::LAND_SIZE;
-            const int worldsize = ESM::Land::REAL_SIZE;
-            if (data)
+            using DetourNavigator::HeightfieldShape;
+
+            assert(mActiveCells.find(cell) == mActiveCells.end());
+
+            mActiveCells.insert(cell);
+
+            Log(Debug::Info) << "Loading cell " << cell->getCell4()->mFullName;
+
+            const int cellX = cell->getCell4()->mX;
+            const int cellY = cell->getCell4()->mY;
+
+            // TODO
+            //mNavigator.setWorldspace(MWBase::Environment::get().getWorld()->getStore().getFormName(cell->getCell4()->mParent));
+
+            if (cell->getCell4()->isExterior())
             {
-                mPhysics->addHeightField(data->mHeights, cellX, cellY, worldsize, verts, data->mMinHeight, data->mMaxHeight, land.get());
+                osg::ref_ptr<const ESMTerrain::LandObject> land = mRendering.getLandManager()->getLand(cellX, cellY);
+                // TODO
+            }
+            
+            // TODO
+            /*if (const auto pathgrid = mWorld.getStore().get<ESM::Pathgrid>().search(*cell->getCell()))
+                mNavigator.addPathgrid(*cell->getCell(), *pathgrid);*/
+
+            // register local scripts
+            // do this before insertCell, to make sure we don't add scripts from levelled creature spawning twice
+            mWorld.getLocalScripts().addCell(cell);
+
+            if (respawn)
+                cell->respawn();
+
+            insertCell(*cell, loadingListener);
+
+            mRendering.addCell(cell);
+
+            MWBase::Environment::get().getWindowManager()->addCell(cell);
+            bool waterEnabled = (cell->getCell4()->mCellFlags & ESM4::CELL_HasWater) != 0 || cell->getCell4()->isExterior();
+            float waterLevel = cell->getWaterLevel();
+            mRendering.setWaterEnabled(waterEnabled);
+            if (waterEnabled)
+            {
+                mPhysics->enableWater(waterLevel);
+                mRendering.setWaterHeight(waterLevel);
+
+                if (cell->getCell4()->isExterior())
+                {
+                    if (const auto heightField = mPhysics->getHeightField(cellX, cellY))
+                        mNavigator.addWater(osg::Vec2i(cellX, cellY), ESM::Land::REAL_SIZE, waterLevel);
+                }
+                else
+                {
+                    mNavigator.addWater(osg::Vec2i(cellX, cellY), std::numeric_limits<int>::max(), waterLevel);
+                }
             }
             else
-            {
-                static std::vector<float> defaultHeight;
-                defaultHeight.resize(verts*verts, ESM::Land::DEFAULT_HEIGHT);
-                mPhysics->addHeightField(defaultHeight.data(), cellX, cellY, worldsize, verts, ESM::Land::DEFAULT_HEIGHT, ESM::Land::DEFAULT_HEIGHT, land.get());
-            }
-            if (const auto heightField = mPhysics->getHeightField(cellX, cellY))
-            {
-                const osg::Vec2i cellPosition(cellX, cellY);
-                const btVector3& origin = heightField->getCollisionObject()->getWorldTransform().getOrigin();
-                const osg::Vec3f shift(origin.x(), origin.y(), origin.z());
-                const HeightfieldShape shape = [&] () -> HeightfieldShape
-                {
-                    if (data == nullptr)
-                    {
-                        return DetourNavigator::HeightfieldPlane {static_cast<float>(ESM::Land::DEFAULT_HEIGHT)};
-                    }
-                    else
-                    {
-                        DetourNavigator::HeightfieldSurface heights;
-                        heights.mHeights = data->mHeights;
-                        heights.mSize = static_cast<std::size_t>(ESM::Land::LAND_SIZE);
-                        heights.mMinHeight = data->mMinHeight;
-                        heights.mMaxHeight = data->mMaxHeight;
-                        return heights;
-                    }
-                } ();
-                mNavigator.addHeightfield(cellPosition, ESM::Land::REAL_SIZE, shape);
-            }
+                mPhysics->disableWater();
+
+            mNavigator.update(position);
+
+            /*if (!cell->isExterior())
+                mRendering.configureAmbient(cell->getCell4());*/
+
+            mPreloader->notifyLoaded(cell);
         }
-
-        if (const auto pathgrid = mWorld.getStore().get<ESM::Pathgrid>().search(*cell->getCell()))
-            mNavigator.addPathgrid(*cell->getCell(), *pathgrid);
-
-        // register local scripts
-        // do this before insertCell, to make sure we don't add scripts from levelled creature spawning twice
-        mWorld.getLocalScripts().addCell (cell);
-
-        if (respawn)
-            cell->respawn();
-
-        insertCell(*cell, loadingListener);
-
-        mRendering.addCell(cell);
-
-        MWBase::Environment::get().getWindowManager()->addCell(cell);
-        bool waterEnabled = cell->getCell()->hasWater() || cell->isExterior();
-        float waterLevel = cell->getWaterLevel();
-        mRendering.setWaterEnabled(waterEnabled);
-        if (waterEnabled)
+        else
         {
-            mPhysics->enableWater(waterLevel);
-            mRendering.setWaterHeight(waterLevel);
+            using DetourNavigator::HeightfieldShape;
+
+            assert(mActiveCells.find(cell) == mActiveCells.end());
+            mActiveCells.insert(cell);
+
+            Log(Debug::Info) << "Loading cell " << cell->getCell()->getDescription();
+
+            const int cellX = cell->getCell()->getGridX();
+            const int cellY = cell->getCell()->getGridY();
+
+            mNavigator.setWorldspace(cell->getCell()->mCellId.mWorldspace);
 
             if (cell->getCell()->isExterior())
             {
+                osg::ref_ptr<const ESMTerrain::LandObject> land = mRendering.getLandManager()->getLand(cellX, cellY);
+                const ESM::Land::LandData* data = land ? land->getData(ESM::Land::DATA_VHGT) : nullptr;
+                const int verts = ESM::Land::LAND_SIZE;
+                const int worldsize = ESM::Land::REAL_SIZE;
+                if (data)
+                {
+                    mPhysics->addHeightField(data->mHeights, cellX, cellY, worldsize, verts, data->mMinHeight, data->mMaxHeight, land.get());
+                }
+                else
+                {
+                    static std::vector<float> defaultHeight;
+                    defaultHeight.resize(verts * verts, ESM::Land::DEFAULT_HEIGHT);
+                    mPhysics->addHeightField(defaultHeight.data(), cellX, cellY, worldsize, verts, ESM::Land::DEFAULT_HEIGHT, ESM::Land::DEFAULT_HEIGHT, land.get());
+                }
                 if (const auto heightField = mPhysics->getHeightField(cellX, cellY))
-                    mNavigator.addWater(osg::Vec2i(cellX, cellY), ESM::Land::REAL_SIZE, waterLevel);
+                {
+                    const osg::Vec2i cellPosition(cellX, cellY);
+                    const btVector3& origin = heightField->getCollisionObject()->getWorldTransform().getOrigin();
+                    const osg::Vec3f shift(origin.x(), origin.y(), origin.z());
+                    const HeightfieldShape shape = [&]() -> HeightfieldShape
+                    {
+                        if (data == nullptr)
+                        {
+                            return DetourNavigator::HeightfieldPlane{ static_cast<float>(ESM::Land::DEFAULT_HEIGHT) };
+                        }
+                        else
+                        {
+                            DetourNavigator::HeightfieldSurface heights;
+                            heights.mHeights = data->mHeights;
+                            heights.mSize = static_cast<std::size_t>(ESM::Land::LAND_SIZE);
+                            heights.mMinHeight = data->mMinHeight;
+                            heights.mMaxHeight = data->mMaxHeight;
+                            return heights;
+                        }
+                    }();
+                    mNavigator.addHeightfield(cellPosition, ESM::Land::REAL_SIZE, shape);
+                }
+            }
+
+            if (const auto pathgrid = mWorld.getStore().get<ESM::Pathgrid>().search(*cell->getCell()))
+                mNavigator.addPathgrid(*cell->getCell(), *pathgrid);
+
+            // register local scripts
+            // do this before insertCell, to make sure we don't add scripts from levelled creature spawning twice
+            mWorld.getLocalScripts().addCell(cell);
+
+            if (respawn)
+                cell->respawn();
+
+            insertCell(*cell, loadingListener);
+
+            mRendering.addCell(cell);
+
+            MWBase::Environment::get().getWindowManager()->addCell(cell);
+            bool waterEnabled = cell->getCell()->hasWater() || cell->isExterior();
+            float waterLevel = cell->getWaterLevel();
+            mRendering.setWaterEnabled(waterEnabled);
+            if (waterEnabled)
+            {
+                mPhysics->enableWater(waterLevel);
+                mRendering.setWaterHeight(waterLevel);
+
+                if (cell->getCell()->isExterior())
+                {
+                    if (const auto heightField = mPhysics->getHeightField(cellX, cellY))
+                        mNavigator.addWater(osg::Vec2i(cellX, cellY), ESM::Land::REAL_SIZE, waterLevel);
+                }
+                else
+                {
+                    mNavigator.addWater(osg::Vec2i(cellX, cellY), std::numeric_limits<int>::max(), waterLevel);
+                }
             }
             else
-            {
-                mNavigator.addWater(osg::Vec2i(cellX, cellY), std::numeric_limits<int>::max(), waterLevel);
-            }
+                mPhysics->disableWater();
+
+            mNavigator.update(position);
+
+            if (!cell->isExterior() && !(cell->getCell()->mData.mFlags & ESM::Cell::QuasiEx))
+                mRendering.configureAmbient(cell->getCell());
+
+            mPreloader->notifyLoaded(cell);
         }
-        else
-            mPhysics->disableWater();
-
-        mNavigator.update(position);
-
-        if (!cell->isExterior() && !(cell->getCell()->mData.mFlags & ESM::Cell::QuasiEx))
-            mRendering.configureAmbient(cell->getCell());
-
-        mPreloader->notifyLoaded(cell);
     }
 
     void Scene::clear()
@@ -868,7 +937,7 @@ namespace MWWorld
 
         MWBase::Environment::get().getWindowManager()->changeCell(mCurrentCell);
 
-        MWBase::Environment::get().getWorld()->getPostProcessor()->setExteriorFlag(cell->getCell()->mData.mFlags & ESM::Cell::QuasiEx);
+        MWBase::Environment::get().getWorld()->getPostProcessor()->setExteriorFlag(cell->isQuasiExterior());
     }
 
     void Scene::changeToExteriorCell (const ESM::Position& position, bool adjustPlayerPos, bool changeEvent)

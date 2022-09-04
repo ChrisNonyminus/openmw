@@ -85,6 +85,31 @@ MWWorld::CellStore *MWWorld::Cells::getCellStore (const ESM::Cell *cell)
     }
 }
 
+MWWorld::CellStore* MWWorld::Cells::getCellStore(const ESM4::Cell* cell)
+{
+    if (!cell->isExterior())
+    {
+        std::string lowerName(Misc::StringUtils::lowerCase(cell->mFullName));
+        std::map<std::string, CellStore>::iterator result = mInteriors.find(lowerName);
+
+        if (result == mInteriors.end())
+            result = mInteriors.emplace(std::move(lowerName), CellStore(cell, mStore, mReaders)).first;
+
+        return &result->second;
+    }
+    else
+    {
+        std::map<std::pair<int, int>, CellStore>::iterator result = mExteriors.find(std::make_pair(cell->mX, cell->mY));
+
+        if (result == mExteriors.end())
+            result = mExteriors.emplace(std::make_pair(cell->mX, cell->mY),
+                                   CellStore(cell, mStore, mReaders))
+                         .first;
+
+        return &result->second;
+    }
+}
+
 void MWWorld::Cells::clear()
 {
     mInteriors.clear();
@@ -179,9 +204,10 @@ MWWorld::CellStore* MWWorld::Cells::getInterior(std::string_view name)
 
     if (result==mInteriors.end())
     {
-        const ESM::Cell *cell = mStore.get<ESM::Cell>().find(lowerName);
-
-        result = mInteriors.emplace(std::move(lowerName), CellStore(cell, mStore, mReaders)).first;
+        if (const ESM::Cell* cell = mStore.get<ESM::Cell>().search(lowerName))
+            result = mInteriors.emplace(std::move(lowerName), CellStore(cell, mStore, mReaders)).first;
+        else if (const ESM4::Cell* cell4 = mStore.get<ESM4::Cell>().search(lowerName))
+            result = mInteriors.emplace(std::move(lowerName), CellStore(cell4, mStore, mReaders)).first;
     }
 
     if (result->second.getState()!=CellStore::State_Loaded)
@@ -224,6 +250,11 @@ MWWorld::CellStore *MWWorld::Cells::getCell (const ESM::CellId& id)
         return getExterior (id.mIndex.mX, id.mIndex.mY);
 
     return getInterior (id.mWorldspace);
+}
+
+MWWorld::CellStore* MWWorld::Cells::getCell(const std::string& id)
+{
+    return getInterior(id);
 }
 
 MWWorld::Ptr MWWorld::Cells::getPtr(std::string_view name, CellStore& cell,
@@ -307,6 +338,28 @@ MWWorld::Ptr MWWorld::Cells::getPtr (const std::string& name)
             return ptr;
     }
 
+    // try the ESM4 cells
+    const MWWorld::Store<ESM4::Cell>& cells4 = mStore.get<ESM4::Cell>();
+    MWWorld::Store<ESM4::Cell>::iterator iter4;
+
+    for (iter4 = cells4.extBegin(); iter4 != cells4.extEnd(); ++iter4)
+    {
+        CellStore* cellStore = getCellStore(&(*iter4));
+        Ptr ptr = getPtrAndCache(name, *cellStore);
+
+        if (!ptr.isEmpty())
+            return ptr;
+    }
+
+    for (iter4 = cells4.intBegin(); iter4 != cells4.intEnd(); ++iter4)
+    {
+        CellStore* cellStore = getCellStore(&(*iter4));
+        Ptr ptr = getPtrAndCache(name, *cellStore);
+
+        if (!ptr.isEmpty())
+            return ptr;
+    }
+
     // giving up
     return Ptr();
 }
@@ -358,12 +411,22 @@ void MWWorld::Cells::getExteriorPtrs(std::string_view name, std::vector<MWWorld:
 
 void MWWorld::Cells::getInteriorPtrs(const std::string &name, std::vector<MWWorld::Ptr> &out)
 {
-    const MWWorld::Store<ESM::Cell> &cells = mStore.get<ESM::Cell>();
+    const MWWorld::Store<ESM::Cell>& cells = mStore.get<ESM::Cell>();
     for (MWWorld::Store<ESM::Cell>::iterator iter = cells.intBegin(); iter != cells.intEnd(); ++iter)
     {
-        CellStore *cellStore = getCellStore (&(*iter));
+        CellStore* cellStore = getCellStore(&(*iter));
 
-        Ptr ptr = getPtrAndCache (name, *cellStore);
+        Ptr ptr = getPtrAndCache(name, *cellStore);
+
+        if (!ptr.isEmpty())
+            out.push_back(ptr);
+    }
+    const MWWorld::Store<ESM4::Cell>& cells4 = mStore.get<ESM4::Cell>();
+    for (MWWorld::Store<ESM4::Cell>::iterator iter = cells4.intBegin(); iter != cells4.intEnd(); ++iter)
+    {
+        CellStore* cellStore = getCellStore(&(*iter));
+
+        Ptr ptr = getPtrAndCache(name, *cellStore);
 
         if (!ptr.isEmpty())
             out.push_back(ptr);
@@ -475,5 +538,10 @@ bool MWWorld::Cells::readRecord (ESM::ESMReader& reader, uint32_t type,
         return true;
     }
 
+    return false;
+}
+
+bool MWWorld::Cells::readRecord(ESM4::Reader& reader, uint32_t type, const std::map<int, int>& contentFileMap)
+{
     return false;
 }

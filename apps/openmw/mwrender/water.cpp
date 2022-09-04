@@ -751,7 +751,15 @@ void Water::setEnabled(bool enabled)
 
 void Water::changeCell(const MWWorld::CellStore* store)
 {
-    bool isInterior = !store->getCell()->isExterior();
+    bool isInterior = false;
+    if (store->isTes4())
+    {
+        isInterior = !store->getCell4()->isExterior();
+    }
+    else
+    {
+        isInterior = !store->getCell()->isExterior();
+    }
     bool wasInterior = mInterior;
     if (!isInterior)
     {

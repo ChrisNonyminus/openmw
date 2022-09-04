@@ -1356,6 +1356,266 @@ namespace MWWorld
 
         return mKeywordSearch;
     }
+    const ESM4::Cell* Store<ESM4::Cell>::search(const ESM4::Cell& cell) const
+    {
+        if (cell.isExterior())
+        {
+            return search(cell.mFormId);
+        }
+        return search(cell.mEditorId);
+    }
+    void Store<ESM4::Cell>::handleMovedCellRefs(ESM4::Reader& esm, ESM4::Cell* cell)
+    {
+        // TODO
+    }
+    const ESM4::Cell* Store<ESM4::Cell>::search(std::string_view id) const
+    {
+        DynamicInt::const_iterator it = mInt.find(id);
+        if (it != mInt.end())
+        {
+            return &(it->second);
+        }
+
+        DynamicInt::const_iterator dit = mDynamicInt.find(id);
+        if (dit != mDynamicInt.end())
+        {
+            return &dit->second;
+        }
+
+        return nullptr;
+    }
+    const ESM4::Cell* Store<ESM4::Cell>::search(ESM4::FormId id) const
+    {
+        DynamicExt::const_iterator it = mExt.find(id);
+        if (it != mExt.end())
+            return &(it->second);
+
+        DynamicExt::const_iterator dit = mDynamicExt.find(id);
+        if (dit != mDynamicExt.end())
+            return &dit->second;
+
+        return nullptr;
+    }
+    const ESM4::Cell* Store<ESM4::Cell>::searchStatic(ESM4::FormId id) const
+    {
+        DynamicExt::const_iterator it = mExt.find(id);
+        if (it != mExt.end())
+            return &(it->second);
+
+        return nullptr;
+    }
+    const ESM4::Cell* Store<ESM4::Cell>::searchOrCreate(ESM4::FormId id, int x, int y)
+    {
+        DynamicExt::const_iterator it = mExt.find(id);
+        if (it != mExt.end())
+            return &(it->second);
+
+        DynamicExt::const_iterator dit = mDynamicExt.find(id);
+        if (dit != mDynamicExt.end())
+            return &dit->second;
+
+        ESM4::Cell newCell;
+        newCell.mX = x;
+        newCell.mY = y;
+        newCell.mCellFlags = ESM4::CELL_HasWater;
+        newCell.mFormId = id;
+        
+        return &mExt.insert(std::make_pair(id, newCell)).first->second;
+    }
+    const ESM4::Cell* Store<ESM4::Cell>::find(std::string_view id) const
+    {
+        const ESM4::Cell* ptr = search(id);
+        if (ptr == nullptr)
+        {
+            const std::string msg = "Cell '" + std::string(id) + "' not found";
+            throw std::runtime_error(msg);
+        }
+        return ptr;
+    }
+    const ESM4::Cell* Store<ESM4::Cell>::find(ESM4::FormId id) const
+    {
+        const ESM4::Cell* ptr = search(id);
+        if (ptr == nullptr)
+        {
+            std::stringstream msg;
+            msg << "Cell '" << std::hex << id << "' not found";
+            throw std::runtime_error(msg.str());
+        }
+        return ptr;
+    }
+    void Store<ESM4::Cell>::clearDynamic()
+    {
+        setUp();
+    }
+
+    void Store<ESM4::Cell>::setUp()
+    {
+        mSharedInt.clear();
+        mSharedInt.reserve(mInt.size());
+        for (auto& [_, cell] : mInt)
+            mSharedInt.push_back(&cell);
+
+        mSharedExt.clear();
+        mSharedExt.reserve(mExt.size());
+        for (auto& [_, cell] : mExt)
+            mSharedExt.push_back(&cell);
+    }
+    RecordId Store<ESM4::Cell>::load(ESM4::Reader& esm)
+    {
+        ESM4::Cell cell;
+        bool isDeleted = false;
+        cell.load(esm);
+        isDeleted = (cell.mFlags & ESM4::Rec_Deleted) != 0;
+
+        if (!cell.isExterior())
+        {
+            mInt[cell.mEditorId] = cell;
+        }
+        else
+        {
+            mExt[cell.mFormId] = cell;
+        }
+        return RecordId(cell.mEditorId, isDeleted);
+    }
+    Store<ESM4::Cell>::iterator Store<ESM4::Cell>::intBegin() const
+    {
+        return iterator(mSharedInt.begin());
+    }
+    Store<ESM4::Cell>::iterator Store<ESM4::Cell>::intEnd() const
+    {
+        return iterator(mSharedInt.end());
+    }
+    Store<ESM4::Cell>::iterator Store<ESM4::Cell>::extBegin() const
+    {
+        return iterator(mSharedExt.begin());
+    }
+    Store<ESM4::Cell>::iterator Store<ESM4::Cell>::extEnd() const
+    {
+        return iterator(mSharedExt.end());
+    }
+    const ESM4::Cell* Store<ESM4::Cell>::searchExtByName(std::string_view id) const
+    {
+        const ESM4::Cell* cell = nullptr;
+        for (const ESM4::Cell* sharedCell : mSharedExt)
+        {
+            if (Misc::StringUtils::ciEqual(sharedCell->mEditorId, id))
+            {
+                if (cell == nullptr || (sharedCell->mX > cell->mX) || (sharedCell->mX == cell->mX && sharedCell->mY > cell->mY))
+                {
+                    cell = sharedCell;
+                }
+            }
+        }
+        return cell;
+    }
+    const ESM4::Cell* Store<ESM4::Cell>::searchExtByRegion(std::string_view id) const
+    {
+        const ESM4::Cell* cell = nullptr;
+        //for (const ESM4::Cell* sharedCell : mSharedExt)
+        //{
+        //    // TODO
+        //    /*if (Misc::StringUtils::ciEqual(sharedCell->mre, id))
+        //    {
+        //        if (cell == nullptr || (sharedCell->mData.mX > cell->mData.mX) || (sharedCell->mData.mX == cell->mData.mX && sharedCell->mData.mY > cell->mData.mY))
+        //        {
+        //            cell = sharedCell;
+        //        }
+        //    }*/
+        //}
+        return cell;
+    }
+    size_t Store<ESM4::Cell>::getSize() const
+    {
+        return mSharedInt.size() + mSharedExt.size();
+    }
+    size_t Store<ESM4::Cell>::getExtSize() const
+    {
+        return mSharedExt.size();
+    }
+    size_t Store<ESM4::Cell>::getIntSize() const
+    {
+        return mSharedInt.size();
+    }
+    void Store<ESM4::Cell>::listIdentifier(std::vector<std::string>& list) const
+    {
+        list.reserve(list.size() + mSharedInt.size());
+
+        for (const ESM4::Cell* sharedCell : mSharedInt)
+        {
+            list.push_back(sharedCell->mEditorId);
+        }
+    }
+    ESM4::Cell* Store<ESM4::Cell>::insert(const ESM4::Cell& cell)
+    {
+        if (search(cell) != nullptr)
+        {
+            const std::string cellType = (cell.isExterior()) ? "exterior" : "interior";
+            throw std::runtime_error("Failed to create " + cellType + " cell");
+        }
+        if (cell.isExterior())
+        {
+
+            // duplicate insertions are avoided by search(ESM::Cell &)
+            DynamicExt::iterator result = mDynamicExt.emplace(cell.mFormId, cell).first;
+            mSharedExt.push_back(&result->second);
+            return &result->second;
+        }
+        else
+        {
+            // duplicate insertions are avoided by search(ESM::Cell &)
+            DynamicInt::iterator result = mDynamicInt.emplace(cell.mEditorId, cell).first;
+            mSharedInt.push_back(&result->second);
+            return &result->second;
+        }
+    }
+    bool Store<ESM4::Cell>::erase(const ESM4::Cell& cell)
+    {
+        if (cell.isExterior())
+        {
+            return erase(cell.mFormId);
+        }
+        return erase(cell.mEditorId);
+    }
+    bool Store<ESM4::Cell>::erase(std::string_view id)
+    {
+        DynamicInt::iterator it = mDynamicInt.find(id);
+
+        if (it == mDynamicInt.end())
+        {
+            return false;
+        }
+        mDynamicInt.erase(it);
+        mSharedInt.erase(
+            mSharedInt.begin() + mSharedInt.size(),
+            mSharedInt.end());
+
+        for (it = mDynamicInt.begin(); it != mDynamicInt.end(); ++it)
+        {
+            mSharedInt.push_back(&it->second);
+        }
+
+        return true;
+    }
+    bool Store<ESM4::Cell>::erase(ESM4::FormId id)
+    {
+        DynamicExt::iterator it = mDynamicExt.find(id);
+
+        if (it == mDynamicExt.end())
+        {
+            return false;
+        }
+        mDynamicExt.erase(it);
+        mSharedExt.erase(
+            mSharedExt.begin() + mSharedExt.size(),
+            mSharedExt.end());
+
+        for (it = mDynamicExt.begin(); it != mDynamicExt.end(); ++it)
+        {
+            mSharedExt.push_back(&it->second);
+        }
+
+        return true;
+    }
 }
 
 template class MWWorld::Store<ESM::Activator>;
@@ -1401,3 +1661,5 @@ template class MWWorld::Store<ESM::StartScript>;
 template class MWWorld::Store<ESM::Static>;
 template class MWWorld::Store<ESM::Weapon>;
 template class MWWorld::Store<ESM4::Activator>;
+template class MWWorld::Store<ESM4::Reference>;
+template class MWWorld::Store<ESM4::Static>;

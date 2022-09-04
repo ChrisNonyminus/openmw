@@ -50,6 +50,7 @@ MWWorld::ManualRef::ManualRef(const MWWorld::ESMStore& store, std::string_view n
     case ESM::REC_WEAP: create(store.get<ESM::Weapon>(), lowerName, mRef, mPtr); break;
     case ESM::REC_BODY: create(store.get<ESM::BodyPart>(), lowerName, mRef, mPtr); break;
     case ESM::REC_ACTI4: create(store.get<ESM4::Activator>(), lowerName, mRef, mPtr); break;
+    case ESM::REC_STAT4: create(store.get<ESM4::Static>(), lowerName, mRef, mPtr); break;
 
     case 0:
         throw std::logic_error("failed to create manual cell ref for " + lowerName + " (unknown ID)");

@@ -31,8 +31,11 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 #include "lighting.hpp"
+#include "loadrefr.hpp"
 
 namespace ESM4
 {
@@ -59,6 +62,7 @@ namespace ESM4
     // The cells need to be organised under world spaces.
     struct Cell
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_CELL4;
         FormId mParent;       // world formId (for grouping cells), from the loading sequence
 
         FormId mFormId;       // from the header
@@ -89,12 +93,21 @@ namespace ESM4
         // FO3/FONV have more types (not sure how they are used, however)
         std::uint8_t mMusicType;
 
-        CellGroup *mCellGroup;
+        CellGroup* mCellGroup;
+
+        std::vector<ESM4::Reference*> mCellRefs;
+
+        bool isExterior() const
+        {
+            return (mCellFlags & CELL_Interior) == 0;
+        }
 
         void load(ESM4::Reader& reader);
         //void save(ESM4::Writer& writer) const;
 
         void blank();
+
+        static std::string getRecordType() { return "Cell (TES4)"; }
     };
 }
 

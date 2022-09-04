@@ -17,6 +17,13 @@ namespace ESM
     struct RefNum;
 }
 
+namespace ESM4
+{
+    struct Cell;
+    struct Reference;
+    class Reader;
+}
+
 namespace Loading
 {
     class Listener;
@@ -42,6 +49,8 @@ namespace MWWorld
 
             CellStore *getCellStore (const ESM::Cell *cell);
 
+            CellStore *getCellStore (const ESM4::Cell *cell);
+
             Ptr getPtrAndCache(std::string_view name, CellStore& cellStore);
 
             Ptr getPtr(CellStore& cellStore, const std::string& id, const ESM::RefNum& refNum);
@@ -59,6 +68,8 @@ namespace MWWorld
             CellStore* getInterior(std::string_view name);
 
             CellStore *getCell (const ESM::CellId& id);
+
+            CellStore *getCell (const std::string& id);
 
             Ptr getPtr(std::string_view name, CellStore& cellStore, bool searchInContainers = false);
             ///< \param searchInContainers Only affect loaded cells.
@@ -89,6 +100,9 @@ namespace MWWorld
             void write (ESM::ESMWriter& writer, Loading::Listener& progress) const;
 
             bool readRecord (ESM::ESMReader& reader, uint32_t type,
+                const std::map<int, int>& contentFileMap);
+
+            bool readRecord(ESM4::Reader& reader, uint32_t type,
                 const std::map<int, int>& contentFileMap);
     };
 }

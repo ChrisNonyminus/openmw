@@ -148,7 +148,7 @@ namespace MWScript
                     }
 
                     bool interior =
-                        !MWMechanics::getPlayer().getCell()->getCell()->isExterior();
+                        !MWMechanics::getPlayer().getCell()->isExterior();
 
                     runtime.push (interior ? 1 : 0);
                 }

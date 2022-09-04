@@ -197,8 +197,15 @@ void LocalMap::requestMap(const MWWorld::CellStore* cell)
 
 void LocalMap::addCell(MWWorld::CellStore *cell)
 {
-    if (cell->isExterior())
-        mExteriorSegments[std::make_pair(cell->getCell()->getGridX(), cell->getCell()->getGridY())].needUpdate = true;
+    if (cell->isTes4() == false)
+    {
+        if (cell->isExterior())
+            mExteriorSegments[std::make_pair(cell->getCell()->getGridX(), cell->getCell()->getGridY())].needUpdate = true;
+    }
+    else
+    {
+        // TODO: tes4
+    }
 }
 
 void LocalMap::removeExteriorCell(int x, int y)

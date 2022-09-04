@@ -34,6 +34,8 @@
 #include <components/esm3/loadbody.hpp>
 #include <components/esm3/fogstate.hpp>
 
+#include <components/esm4/records.hpp>
+
 #include "timestamp.hpp"
 #include "ptr.hpp"
 
@@ -117,6 +119,8 @@ namespace MWWorld
             std::unique_ptr<ESM::FogState> mFogState;
 
             const ESM::Cell *mCell;
+            const ESM4::Cell* mCell4;
+            bool mIsTes4;
             State mState;
             bool mHasState;
             std::vector<std::string> mIds;
@@ -247,8 +251,10 @@ namespace MWWorld
 
             /// @param readerList The readers to use for loading of the cell on-demand.
             CellStore(const ESM::Cell* cell, const MWWorld::ESMStore& store, ESM::ReadersCache& readers);
+            CellStore(const ESM4::Cell* cell, const MWWorld::ESMStore& store, ESM::ReadersCache& readers);
 
-            const ESM::Cell *getCell() const;
+            const ESM::Cell* getCell() const;
+            const ESM4::Cell* getCell4() const;
 
             State getState() const;
 
@@ -401,6 +407,10 @@ namespace MWWorld
             {
                 return mTypeMap.get<ESM::Static>();
             }
+            inline const CellRefList<ESM4::Static>& getReadOnlyTes4Statics() const
+            {
+                return mTypeMap.get<ESM4::Static>();
+            }
 
             bool isExterior() const;
 
@@ -434,6 +444,10 @@ namespace MWWorld
 
             Ptr getMovedActor(int actorId) const;
 
+            bool isTes4();
+
+            bool isTes4() const;
+
         private:
 
             /// Run through references and store IDs
@@ -442,6 +456,8 @@ namespace MWWorld
             void loadRefs();
 
             void loadRef (ESM::CellRef& ref, bool deleted, std::map<ESM::RefNum, std::string>& refNumToID);
+
+            void loadRef (const ESM4::Reference& ref, bool deleted, std::map<ESM::RefNum, std::string>& refNumToID);
             ///< Make case-adjustments to \a ref and insert it into the respective container.
             ///
             /// Invalid \a ref objects are silently dropped.

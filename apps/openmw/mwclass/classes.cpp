@@ -49,5 +49,6 @@ namespace MWClass
         BodyPart::registerSelf();
 
         TES4Activator::registerSelf();
+        TES4Static::registerSelf();
     }
 }

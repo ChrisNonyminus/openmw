@@ -309,6 +309,81 @@ namespace MWWorld
     };
 
     template <>
+    class Store<ESM4::Cell> : public StoreBase
+    {
+        struct DynamicExtCmp
+        {
+            bool operator()(const ESM4::FormId& left, const ESM4::FormId& right) const
+            {
+                if (left == right)
+                    return false;
+                return true;
+            }
+        };
+
+        typedef std::unordered_map<std::string, ESM4::Cell, Misc::StringUtils::CiHash, Misc::StringUtils::CiEqual> DynamicInt;
+        typedef std::map<ESM4::FormId, ESM4::Cell, DynamicExtCmp> DynamicExt;
+
+        DynamicInt mInt;
+        DynamicExt mExt;
+
+        std::vector<ESM4::Cell*> mSharedInt;
+        std::vector<ESM4::Cell*> mSharedExt;
+
+        DynamicInt mDynamicInt;
+        DynamicExt mDynamicExt;
+
+        const ESM4::Cell* search(const ESM4::Cell& cell) const;
+        void handleMovedCellRefs(ESM4::Reader& esm, ESM4::Cell* cell);
+
+    public:
+        typedef SharedIterator<ESM4::Cell> iterator;
+
+        const ESM4::Cell* search(std::string_view id) const;
+        const ESM4::Cell* search(ESM4::FormId id) const;
+        const ESM4::Cell* searchStatic(ESM4::FormId id) const;
+        const ESM4::Cell* searchOrCreate(ESM4::FormId id, int x, int y);
+
+        const ESM4::Cell* find(std::string_view id) const;
+        const ESM4::Cell* find(ESM4::FormId id) const;
+
+        void clearDynamic() override;
+        void setUp() override;
+
+        RecordId load(ESM4::Reader& esm) override;
+        RecordId load(ESM::ESMReader& esm) override
+        {
+            return RecordId();
+        }
+
+        iterator intBegin() const;
+        iterator intEnd() const;
+        iterator extBegin() const;
+        iterator extEnd() const;
+
+        // Return the northernmost cell in the easternmost column.
+        const ESM4::Cell* searchExtByName(std::string_view id) const;
+
+        // Return the northernmost cell in the easternmost column.
+        const ESM4::Cell* searchExtByRegion(std::string_view id) const;
+
+        size_t getSize() const override;
+        size_t getExtSize() const;
+        size_t getIntSize() const;
+
+        void listIdentifier(std::vector<std::string>& list) const override;
+
+        ESM4::Cell* insert(const ESM4::Cell& cell);
+
+        bool erase(const ESM4::Cell& cell);
+        bool erase(std::string_view id);
+
+        bool erase(ESM4::FormId id);
+
+        ESM::RecNameInts getRecName() override { return ESM4::Cell::sRecordId; }
+    };
+
+    template <>
     class Store<ESM::Cell> : public StoreBase
     {
         struct DynamicExtCmp

@@ -723,31 +723,38 @@ namespace MWPhysics
                 continue;
             float waterlevel = -std::numeric_limits<float>::max();
             const MWWorld::CellStore *cell = ptr.getCell();
-            if(cell->getCell()->hasWater())
-                waterlevel = cell->getWaterLevel();
-
-            const auto& stats = ptr.getClass().getCreatureStats(ptr);
-            const MWMechanics::MagicEffects& effects = stats.getMagicEffects();
-
-            bool waterCollision = false;
-            if (cell->getCell()->hasWater() && effects.get(ESM::MagicEffect::WaterWalking).getMagnitude())
+            if (cell->isTes4())
             {
-                if (physicActor->getCollisionMode() || !world->isUnderwater(ptr.getCell(), ptr.getRefData().getPosition().asVec3()))
-                    waterCollision = true;
+                // TODO
             }
+            else
+            {
+                if (cell->getCell()->hasWater())
+                    waterlevel = cell->getWaterLevel();
 
-            physicActor->setCanWaterWalk(waterCollision);
+                const auto& stats = ptr.getClass().getCreatureStats(ptr);
+                const MWMechanics::MagicEffects& effects = stats.getMagicEffects();
 
-            // Slow fall reduces fall speed by a factor of (effect magnitude / 200)
-            const float slowFall = 1.f - std::clamp(effects.get(ESM::MagicEffect::SlowFall).getMagnitude() * 0.005f, 0.f, 1.f);
-            const bool godmode = ptr == world->getPlayerConstPtr() && world->getGodModeState();
-            const bool inert = stats.isDead() || (!godmode && stats.getMagicEffects().get(ESM::MagicEffect::Paralyze).getModifier() > 0);
+                bool waterCollision = false;
+                if (cell->getCell()->hasWater() && effects.get(ESM::MagicEffect::WaterWalking).getMagnitude())
+                {
+                    if (physicActor->getCollisionMode() || !world->isUnderwater(ptr.getCell(), ptr.getRefData().getPosition().asVec3()))
+                        waterCollision = true;
+                }
 
-            simulations.emplace_back(ActorSimulation{physicActor, ActorFrameData{*physicActor, inert, waterCollision, slowFall, waterlevel}});
+                physicActor->setCanWaterWalk(waterCollision);
 
-            // if the simulation will run, a jump request will be fulfilled. Update mechanics accordingly.
-            if (willSimulate)
-                handleJump(ptr);
+                // Slow fall reduces fall speed by a factor of (effect magnitude / 200)
+                const float slowFall = 1.f - std::clamp(effects.get(ESM::MagicEffect::SlowFall).getMagnitude() * 0.005f, 0.f, 1.f);
+                const bool godmode = ptr == world->getPlayerConstPtr() && world->getGodModeState();
+                const bool inert = stats.isDead() || (!godmode && stats.getMagicEffects().get(ESM::MagicEffect::Paralyze).getModifier() > 0);
+
+                simulations.emplace_back(ActorSimulation{ physicActor, ActorFrameData{ *physicActor, inert, waterCollision, slowFall, waterlevel } });
+
+                // if the simulation will run, a jump request will be fulfilled. Update mechanics accordingly.
+                if (willSimulate)
+                    handleJump(ptr);
+            }
         }
 
         for (const auto& [id, projectile] : mProjectiles)

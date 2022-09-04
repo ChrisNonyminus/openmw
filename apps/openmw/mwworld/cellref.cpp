@@ -5,6 +5,10 @@
 #include <components/debug/debuglog.hpp>
 #include <components/esm3/objectstate.hpp>
 
+#include "../mwbase/world.hpp"
+#include "../mwbase/environment.hpp"
+#include "esmstore.hpp"
+
 namespace MWWorld
 {
 
@@ -33,12 +37,20 @@ namespace MWWorld
         mCellRef.mRefNum.unset();
     }
 
+    const std::string& CellRef::getRefId() const
+    {
+        if (mIsTes4)
+            return MWBase::Environment::get().getWorld()->getStore().getFormName(mRefr.mBaseObj);
+        else return mCellRef.mRefID;
+    }
+
     void CellRef::setScale(float scale)
     {
         if (scale != mCellRef.mScale)
         {
             mChanged = true;
             mCellRef.mScale = scale;
+            mRefr.mScale = scale;
         }
     }
 
@@ -46,6 +58,8 @@ namespace MWWorld
     {
         mChanged = true;
         mCellRef.mPos = position;
+        mRefr.mPlacement.pos = { position.pos[0], position.pos[1], position.pos[2] };
+        mRefr.mPlacement.rot = { position.rot[0], position.rot[1], position.rot[2] };
     }
 
     float CellRef::getNormalizedEnchantmentCharge(int maxCharge) const
@@ -124,15 +138,25 @@ namespace MWWorld
         {
             mChanged = true;
             mCellRef.mFactionRank = factionRank;
+            mRefr.mFactionRank = factionRank;
         }
     }
 
-    void CellRef::setOwner(const std::string &owner)
+    const std::string& CellRef::getOwner() const
+    {
+        if (mIsTes4)
+            return MWBase::Environment::get().getWorld()->getStore().getFormName(mRefr.mOwner);
+        else
+            return mCellRef.mOwner;
+    }
+
+    void CellRef::setOwner(const std::string& owner)
     {
         if (owner != mCellRef.mOwner)
         {
             mChanged = true;
             mCellRef.mOwner = owner;
+            //mRefr.mOwner = owner;
         }
     }
 
@@ -160,6 +184,7 @@ namespace MWWorld
         {
             mChanged = true;
             mCellRef.mLockLevel = lockLevel;
+            mRefr.mLockLevel = lockLevel;
         }
     }
 

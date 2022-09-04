@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include <components/esm3/cellref.hpp>
+#include <components/esm4/loadrefr.hpp>
 
 namespace ESM
 {
@@ -17,10 +18,17 @@ namespace MWWorld
     class CellRef
     {
     public:
-
+        
         CellRef (const ESM::CellRef& ref)
-            : mCellRef(ref)
+            : mCellRef(ref), mIsTes4(false)
         {
+            mChanged = false;
+        }
+        CellRef (const ESM4::Reference& ref)
+            : mRefr(ref), mIsTes4(true)
+        {
+            mRefrPos = { { mRefr.mPlacement.pos.x, mRefr.mPlacement.pos.y, mRefr.mPlacement.pos.z },
+                { mRefr.mPlacement.rot.x, mRefr.mPlacement.rot.y, mRefr.mPlacement.rot.z } };
             mChanged = false;
         }
 
@@ -35,10 +43,20 @@ namespace MWWorld
         void unsetRefNum();
 
         /// Does the RefNum have a content file?
-        bool hasContentFile() const { return mCellRef.mRefNum.hasContentFile(); }
+        bool hasContentFile() const
+        {
+            if (mIsTes4)
+            {
+                return false; // TODO
+            }
+            else
+            {
+                return mCellRef.mRefNum.hasContentFile();
+            }
+        }
 
         // Id of object being referenced
-        const std::string& getRefId() const { return mCellRef.mRefID; }
+        const std::string& getRefId() const;
 
         // For doors - true if this door teleports to somewhere else, false
         // if it should open through animation.
@@ -51,12 +69,22 @@ namespace MWWorld
         const std::string& getDestCell() const { return mCellRef.mDestCell; }
 
         // Scale applied to mesh
-        float getScale() const { return mCellRef.mScale; }
+        float getScale() const 
+        {
+            if (mIsTes4)
+                return mRefr.mScale;
+            else return mCellRef.mScale;
+        }
         void setScale(float scale);
 
         // The *original* position and rotation as it was given in the Construction Set.
         // Current position and rotation of the object is stored in RefData.
-        const ESM::Position& getPosition() const { return mCellRef.mPos; }
+        const ESM::Position& getPosition() const 
+        {
+            if (mIsTes4)
+                return mRefrPos;
+            else return mCellRef.mPos;
+        }
         void setPosition (const ESM::Position& position);
 
         // Remaining enchantment charge. This could be -1 if the charge was not touched yet (i.e. full).
@@ -77,7 +105,7 @@ namespace MWWorld
         void applyChargeRemainderToBeSubtracted(float chargeRemainder); // Stores remainders and applies if > 1
 
         // The NPC that owns this object (and will get angry if you steal it)
-        const std::string& getOwner() const { return mCellRef.mOwner; }
+        const std::string& getOwner() const;
         void setOwner(const std::string& owner);
 
         // Name of a global variable. If the global variable is set to '1', using the object is temporarily allowed
@@ -98,12 +126,22 @@ namespace MWWorld
 
         // PC faction rank required to use the item. Sometimes is -1, which means "any rank".
         void setFactionRank(int factionRank);
-        int getFactionRank() const { return mCellRef.mFactionRank; }
+        int getFactionRank() const
+        {
+            if (mIsTes4)
+                return mRefr.mFactionRank;
+            else return mCellRef.mFactionRank;
+        }
 
         // Lock level for doors and containers
         // Positive for a locked door. 0 for a door that was never locked.
         // For an unlocked door, it is set to -(previous locklevel)
-        int getLockLevel() const { return mCellRef.mLockLevel; }
+        int getLockLevel() const
+        {
+            if (mIsTes4)
+                return mRefr.mLockLevel;
+            else return mCellRef.mLockLevel;
+        }
         void setLockLevel(int lockLevel);
         void lock(int lockLevel);
         void unlock();
@@ -113,7 +151,10 @@ namespace MWWorld
         void setTrap(const std::string& trap);
 
         // This is 5 for Gold_005 references, 100 for Gold_100 and so on.
-        int getGoldValue() const { return mCellRef.mGoldValue; }
+        int getGoldValue() const 
+        {
+            return mCellRef.mGoldValue;
+        }
         void setGoldValue(int value);
 
         // Write the content of this CellRef into the given ObjectState
@@ -125,6 +166,9 @@ namespace MWWorld
     private:
         bool mChanged;
         ESM::CellRef mCellRef;
+        ESM4::Reference mRefr;
+        ESM::Position mRefrPos;
+        bool mIsTes4;
     };
 
 }

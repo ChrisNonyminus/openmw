@@ -767,15 +767,22 @@ namespace MWSound
     {
         MWBase::World *world = MWBase::Environment::get().getWorld();
         const MWWorld::ConstPtr player = world->getPlayerPtr();
-        const ESM::Cell *cell = player.getCell()->getCell();
+        const auto *cell = player.getCell();
 
         if (!cell->isExterior())
             return;
         if (mCurrentRegionSound && mOutput->isSoundPlaying(mCurrentRegionSound))
             return;
 
-        if (const auto next = mRegionSoundSelector.getNextRandom(duration, cell->mRegion, *world))
-            mCurrentRegionSound = playSound(*next, 1.0f, 1.0f);
+        if (cell->isTes4())
+        {
+            // TODO
+        }
+        else
+        {
+            if (const auto next = mRegionSoundSelector.getNextRandom(duration, cell->getCell()->mRegion, *world))
+                mCurrentRegionSound = playSound(*next, 1.0f, 1.0f);
+        }
     }
 
     void SoundManager::updateWaterSound()

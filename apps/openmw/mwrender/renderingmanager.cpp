@@ -799,9 +799,16 @@ namespace MWRender
 
         mWater->changeCell(store);
 
-        if (store->getCell()->isExterior())
+        if (!store->isTes4())
         {
-            mTerrain->loadCell(store->getCell()->getGridX(), store->getCell()->getGridY());
+            if (store->getCell()->isExterior())
+            {
+                mTerrain->loadCell(store->getCell()->getGridX(), store->getCell()->getGridY());
+            }
+        }
+        else
+        {
+            // TODO: terrain
         }
     }
     void RenderingManager::removeCell(const MWWorld::CellStore *store)

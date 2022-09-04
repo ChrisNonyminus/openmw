@@ -123,6 +123,15 @@ namespace MWGui
                     mNames.push_back(it->mName);
             }
 
+            // exterior cell names aren't technically identifiers, but since the COC function accepts them,
+            // we should list them too
+            for (MWWorld::Store<ESM4::Cell>::iterator it = store.get<ESM4::Cell>().extBegin();
+                 it != store.get<ESM4::Cell>().extEnd(); ++it)
+            {
+                if (!it->mFullName.empty())
+                    mNames.push_back(it->mFullName);
+            }
+
             // sort
             std::sort (mNames.begin(), mNames.end());
 

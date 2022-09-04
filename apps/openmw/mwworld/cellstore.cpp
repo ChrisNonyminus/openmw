@@ -284,7 +284,9 @@ namespace MWWorld
         TypeGetter<ESM::Static>,
         TypeGetter<ESM::Weapon>,
         TypeGetter<ESM::BodyPart>,
-        TypeGetter<ESM4::Activator>
+
+        TypeGetter<ESM4::Activator>,
+        TypeGetter<ESM4::Static>
         >;
 
     template <>
@@ -310,7 +312,8 @@ namespace MWWorld
         TypeGetter<ESM::Static>,
         TypeGetter<ESM::Weapon>,
         TypeGetter<ESM::BodyPart>,
-        TypeGetter<ESM4::Activator>>
+        TypeGetter<ESM4::Activator>,
+        TypeGetter<ESM4::Static>>
         CellStoreTypes::sAll = std::make_tuple(
             
         TypeGetter<ESM::Activator>(),
@@ -334,7 +337,8 @@ namespace MWWorld
         TypeGetter<ESM::Static>(),
         TypeGetter<ESM::Weapon>(),
         TypeGetter<ESM::BodyPart>(),
-        TypeGetter<ESM4::Activator>());
+        TypeGetter<ESM4::Activator>(),
+        TypeGetter<ESM4::Static>());
     template <typename X>
     void CellRefList<X>::load(ESM::CellRef &ref, bool deleted, const MWWorld::ESMStore &esmStore)
     {
@@ -359,6 +363,33 @@ namespace MWWorld
         {
             Log(Debug::Warning)
                 << "Warning: could not resolve cell reference '" << ref.mRefID << "'"
+                << " (dropping reference)";
+        }
+    }
+
+    template <typename X>
+    void CellRefList<X>::load(const ESM4::Reference& ref, bool deleted, const MWWorld::ESMStore& esmStore)
+    {
+        const MWWorld::Store<X>& store = esmStore.get<X>();
+
+        if (const X* ptr = store.search(esmStore.getFormName(ref.mBaseObj)))
+        {
+            //typename std::list<LiveRef>::iterator iter = std::find(mList.begin(), mList.end(), ref.);
+
+            LiveRef liveCellRef(ref, ptr);
+
+            if (deleted)
+                liveCellRef.mData.setDeletedByContentFile(true);
+
+            /*if (iter != mList.end())
+                *iter = liveCellRef;
+            else
+                */mList.push_back(liveCellRef);
+        }
+        else
+        {
+            Log(Debug::Warning)
+                << "Warning: could not resolve cell reference '" << esmStore.getFormName(ref.mBaseObj) << "'"
                 << " (dropping reference)";
         }
     }
@@ -493,10 +524,10 @@ namespace MWWorld
     CellStore::CellStore(const ESM::Cell* cell, const MWWorld::ESMStore& esmStore, ESM::ReadersCache& readers)
         : mStore(esmStore)
         , mReaders(readers)
-        , mCell(cell)
+        , mCell(cell), mCell4(nullptr)
         , mState(State_Unloaded)
         , mHasState(false)
-        , mLastRespawn(0, 0)
+        , mLastRespawn(0, 0), mIsTes4(false)
         , mRechargingItemsUpToDate(false)
     {
         mWaterLevel = cell->mWater;
@@ -507,9 +538,31 @@ namespace MWWorld
         });
     }
 
+    CellStore::CellStore(const ESM4::Cell* cell, const MWWorld::ESMStore& store, ESM::ReadersCache& readers)
+        : mStore(store),
+          mCell4(cell), mCell(nullptr),
+        mState(State_Unloaded),
+        mHasState(false),
+          mLastRespawn(0, 0), mIsTes4(true),
+        mRechargingItemsUpToDate(false),
+        mReaders(readers)
+    {
+        mWaterLevel = cell->mWaterHeight;
+        iterateTuple(CellStoreTypes::sAll, [&](auto typeGetter)
+            {
+                using type = typename decltype(typeGetter)::type;
+                mTypeMap.put<type>(new CellRefList<type>());
+            });
+    }
+
     const ESM::Cell *CellStore::getCell() const
     {
         return mCell;
+    }
+
+    const ESM4::Cell* CellStore::getCell4() const
+    {
+        return mCell4;
     }
 
     CellStore::State CellStore::getState() const
@@ -715,71 +768,97 @@ namespace MWWorld
 
     void CellStore::loadRefs()
     {
-        assert (mCell);
-
-        if (mCell->mContextList.empty())
-            return; // this is a dynamically generated cell -> skipping.
-
-        std::map<ESM::RefNum, std::string> refNumToID; // used to detect refID modifications
-
-        // Load references from all plugins that do something with this cell.
-        for (size_t i = 0; i < mCell->mContextList.size(); i++)
+        if (mIsTes4)
         {
-            try
+            assert(mCell4);
+            auto& refs = MWBase::Environment::get().getWorld()->getStore().get<ESM4::Reference>();
+            auto it = refs.begin();
+
+            std::map<ESM::RefNum, std::string> refNumToID; // used to detect refID modifications
+            while (it != refs.end())
             {
-                // Reopen the ESM reader and seek to the right position.
-                const std::size_t index = static_cast<std::size_t>(mCell->mContextList[i].index);
-                const ESM::ReadersCache::BusyItem reader = mReaders.get(index);
-                mCell->restore(*reader, i);
-
-                ESM::CellRef ref;
-                ref.mRefNum.unset();
-
-                // Get each reference in turn
-                ESM::MovedCellRef cMRef;
-                cMRef.mRefNum.mIndex = 0;
-                bool deleted = false;
-                bool moved = false;
-                while (ESM::Cell::getNextRef(*reader, ref, deleted, cMRef, moved, ESM::Cell::GetNextRefMode::LoadOnlyNotMoved))
+                if (it->mParent == mCell4->mFormId)
                 {
-                    if (moved)
-                        continue;
-
-                    // Don't load reference if it was moved to a different cell.
-                    ESM::MovedCellRefTracker::const_iterator iter =
-                        std::find(mCell->mMovedRefs.begin(), mCell->mMovedRefs.end(), ref.mRefNum);
-                    if (iter != mCell->mMovedRefs.end()) {
-                        continue;
+                    if ((it->mFlags & ESM4::Rec_Deleted) == 0)
+                    {
+                        loadRef(*it, false, refNumToID);
                     }
+                }
+                ++it;
+            }
+        }
+        else
+        {
+            assert(mCell);
 
-                    loadRef (ref, deleted, refNumToID);
+            if (mCell->mContextList.empty())
+                return; // this is a dynamically generated cell -> skipping.
+
+            std::map<ESM::RefNum, std::string> refNumToID; // used to detect refID modifications
+
+            // Load references from all plugins that do something with this cell.
+            for (size_t i = 0; i < mCell->mContextList.size(); i++)
+            {
+                try
+                {
+                    // Reopen the ESM reader and seek to the right position.
+                    const std::size_t index = static_cast<std::size_t>(mCell->mContextList[i].index);
+                    const ESM::ReadersCache::BusyItem reader = mReaders.get(index);
+                    mCell->restore(*reader, i);
+
+                    ESM::CellRef ref;
+                    ref.mRefNum.unset();
+
+                    // Get each reference in turn
+                    ESM::MovedCellRef cMRef;
+                    cMRef.mRefNum.mIndex = 0;
+                    bool deleted = false;
+                    bool moved = false;
+                    while (ESM::Cell::getNextRef(*reader, ref, deleted, cMRef, moved, ESM::Cell::GetNextRefMode::LoadOnlyNotMoved))
+                    {
+                        if (moved)
+                            continue;
+
+                        // Don't load reference if it was moved to a different cell.
+                        ESM::MovedCellRefTracker::const_iterator iter = std::find(mCell->mMovedRefs.begin(), mCell->mMovedRefs.end(), ref.mRefNum);
+                        if (iter != mCell->mMovedRefs.end())
+                        {
+                            continue;
+                        }
+
+                        loadRef(ref, deleted, refNumToID);
+                    }
+                }
+                catch (std::exception& e)
+                {
+                    Log(Debug::Error) << "An error occurred loading references for cell " << getCell()->getDescription() << ": " << e.what();
                 }
             }
-            catch (std::exception& e)
+
+            // Load moved references, from separately tracked list.
+            for (const auto& leasedRef : mCell->mLeasedRefs)
             {
-                Log(Debug::Error) << "An error occurred loading references for cell " << getCell()->getDescription() << ": " << e.what();
+                ESM::CellRef& ref = const_cast<ESM::CellRef&>(leasedRef.first);
+                bool deleted = leasedRef.second;
+
+                loadRef(ref, deleted, refNumToID);
             }
+
+            updateMergedRefs();
         }
-
-        // Load moved references, from separately tracked list.
-        for (const auto& leasedRef : mCell->mLeasedRefs)
-        {
-            ESM::CellRef &ref = const_cast<ESM::CellRef&>(leasedRef.first);
-            bool deleted = leasedRef.second;
-
-            loadRef (ref, deleted, refNumToID);
-        }
-
-        updateMergedRefs();
     }
 
     bool CellStore::isExterior() const
     {
+        if (isTes4())
+            return mCell4->isExterior();
         return mCell->isExterior();
     }
 
     bool CellStore::isQuasiExterior() const
     {
+        if (isTes4())
+            return false;
         return (mCell->mData.mFlags & ESM::Cell::QuasiEx) != 0;
     }
 
@@ -876,6 +955,71 @@ namespace MWWorld
         }
 
         refNumToID[ref.mRefNum] = ref.mRefID;
+    }
+
+    void CellStore::loadRef(const ESM4::Reference& ref, bool deleted, std::map<ESM::RefNum, std::string>& refNumToID)
+    {
+        std::string id = MWBase::Environment::get().getWorld()->getStore().getFormName(ref.mBaseObj);
+        Misc::StringUtils::lowerCaseInPlace(id);
+
+        const MWWorld::ESMStore& store = mStore;
+
+        //std::map<ESM::RefNum, std::string>::iterator it = refNumToID.find(ref);
+        //if (it != refNumToID.end())
+        //{
+        //    if (it->second != ref.mRefID)
+        //    {
+        //        // refID was modified, make sure we don't end up with duplicated refs
+        //        switch (store.find(it->second))
+        //        {
+        //            case ESM::REC_ACTI: get<ESM::Activator>().remove(ref.mRefNum); break;
+        //            case ESM::REC_ALCH: get<ESM::Potion>().remove(ref.mRefNum); break;
+        //            case ESM::REC_APPA: get<ESM::Apparatus>().remove(ref.mRefNum); break;
+        //            case ESM::REC_ARMO: get<ESM::Armor>().remove(ref.mRefNum); break;
+        //            case ESM::REC_BOOK: get<ESM::Book>().remove(ref.mRefNum); break;
+        //            case ESM::REC_CLOT: get<ESM::Clothing>().remove(ref.mRefNum); break;
+        //            case ESM::REC_CONT: get<ESM::Container>().remove(ref.mRefNum); break;
+        //            case ESM::REC_CREA: get<ESM::Creature>().remove(ref.mRefNum); break;
+        //            case ESM::REC_DOOR: get<ESM::Door>().remove(ref.mRefNum); break;
+        //            case ESM::REC_INGR: get<ESM::Ingredient>().remove(ref.mRefNum); break;
+        //            case ESM::REC_LEVC: get<ESM::CreatureLevList>().remove(ref.mRefNum); break;
+        //            case ESM::REC_LEVI: get<ESM::ItemLevList>().remove(ref.mRefNum); break;
+        //            case ESM::REC_LIGH: get<ESM::Light>().remove(ref.mRefNum); break;
+        //            case ESM::REC_LOCK: get<ESM::Lockpick>().remove(ref.mRefNum); break;
+        //            case ESM::REC_MISC: get<ESM::Miscellaneous>().remove(ref.mRefNum); break;
+        //            case ESM::REC_NPC_: get<ESM::NPC>().remove(ref.mRefNum); break;
+        //            case ESM::REC_PROB: get<ESM::Probe>().remove(ref.mRefNum); break;
+        //            case ESM::REC_REPA: get<ESM::Repair>().remove(ref.mRefNum); break;
+        //            case ESM::REC_STAT: get<ESM::Static>().remove(ref.mRefNum); break;
+        //            case ESM::REC_WEAP: get<ESM::Weapon>().remove(ref.mRefNum); break;
+        //            case ESM::REC_BODY: get<ESM::BodyPart>().remove(ref.mRefNum); break;
+        //            default:
+        //                break;
+        //        }
+        //    }
+        //}
+
+        switch (store.find(id))
+        {
+            case ESM::REC_ACTI4: get<ESM4::Activator>().load(ref, deleted, store); break;
+            case ESM::REC_STAT4: get<ESM4::Static>().load(ref, deleted, store); break;
+
+            case 0: Log(Debug::Error) << "Cell reference '" + id + "' not found!"; return;
+
+            default:
+                Log(Debug::Error) << "Error: Ignoring reference '" << id << "' of unhandled type";
+                return;
+        }
+    }
+
+    bool CellStore::isTes4()
+    {
+        return mIsTes4;
+    }
+
+    bool CellStore::isTes4() const
+    {
+        return mIsTes4;
     }
 
     void CellStore::loadState (const ESM::CellState& state)
@@ -1138,7 +1282,13 @@ namespace MWWorld
 
     bool operator== (const CellStore& left, const CellStore& right)
     {
-        return left.getCell()->getCellId()==right.getCell()->getCellId();
+        if (left.isTes4() != right.isTes4())
+            return false;
+        if (left.isTes4())
+        {
+            return (left.getCell4()->mFormId == right.getCell4()->mFormId);
+        }
+        return  (left.getCell()->getCellId() == right.getCell()->getCellId());
     }
 
     bool operator!= (const CellStore& left, const CellStore& right)

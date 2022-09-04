@@ -16,6 +16,10 @@
 
 namespace
 {
+    struct TES4Ref
+    {
+        ESM4::Reference mRecord;
+    };
     struct Ref
     {
         ESM::RefNum mRefNum;
@@ -58,6 +62,54 @@ namespace
                 refIDs.push_back(value.mRefID);
             }
         }
+    }
+
+    void readRefs(const ESM4::Cell& cell, std::vector<TES4Ref>& refs, std::vector<std::string>& refIDs,
+        MWWorld::ESMStore* store)
+    {
+        auto it = store->get<ESM4::Reference>().begin();
+        while (it != store->get<ESM4::Reference>().end())
+        {
+            if (it->mParent == cell.mFormId)
+            {
+                if ((it->mFlags & ESM4::Rec_Deleted) == 0)
+                {
+                    refs.push_back({ *it });
+                    refIDs.push_back(store->getFormName(it->mBaseObj));
+                }
+            }
+            ++it;
+        }
+        // TODO: we have many similar copies of this code.
+        /*for (size_t i = 0; i < cell.mContextList.size(); i++)
+        {
+            const std::size_t index = static_cast<std::size_t>(cell.mContextList[i].index);
+            const ESM::ReadersCache::BusyItem reader = readers.get(index);
+            cell.restore(*reader, i);
+            ESM::CellRef ref;
+            ref.mRefNum.unset();
+            bool deleted = false;
+            while (cell.getNextRef(*reader, ref, deleted))
+            {
+                if(deleted)
+                    refs.emplace_back(ref.mRefNum, deletedRefID);
+                else if (std::find(cell.mMovedRefs.begin(), cell.mMovedRefs.end(), ref.mRefNum) == cell.mMovedRefs.end())
+                {
+                    refs.emplace_back(ref.mRefNum, refIDs.size());
+                    refIDs.push_back(std::move(ref.mRefID));
+                }
+            }
+        }
+        for(const auto& [value, deleted] : cell.mLeasedRefs)
+        {
+            if(deleted)
+                refs.emplace_back(value.mRefNum, deletedRefID);
+            else
+            {
+                refs.emplace_back(value.mRefNum, refIDs.size());
+                refIDs.push_back(value.mRefID);
+            }
+        }*/
     }
 
     const std::string& getDefaultClass(const MWWorld::Store<ESM::Class>& classes)
@@ -203,7 +255,10 @@ using Types = AllTypeGetters<
     TypeGetter<ESM::Pathgrid>,
 
     // TES4
-    TypeGetter<ESM4::Activator>
+    TypeGetter<ESM4::Activator>,
+    TypeGetter<ESM4::Cell>,
+    TypeGetter<ESM4::Reference>,
+    TypeGetter<ESM4::Static>
 >;
 
 template <>
@@ -251,7 +306,10 @@ std::tuple<
     TypeGetter<ESM::Pathgrid>,
 
     // TES4
-    TypeGetter<ESM4::Activator>
+    TypeGetter<ESM4::Activator>,
+    TypeGetter<ESM4::Cell>,
+    TypeGetter<ESM4::Reference>,
+    TypeGetter<ESM4::Static>
     >
     Types::sAll = std::make_tuple(
         TypeGetter<ESM::Activator>(),
@@ -297,7 +355,10 @@ std::tuple<
         TypeGetter<ESM::Pathgrid>(),
 
         // TES4
-        TypeGetter<ESM4::Activator>());
+        TypeGetter<ESM4::Activator>(),
+        TypeGetter<ESM4::Cell>(),
+        TypeGetter<ESM4::Reference>(),
+        TypeGetter<ESM4::Static>());
 
 static bool isCacheableRecord(int id)
 {
@@ -306,7 +367,7 @@ static bool isCacheableRecord(int id)
         id == ESM::REC_DOOR || id == ESM::REC_INGR || id == ESM::REC_LEVC || id == ESM::REC_LEVI ||
         id == ESM::REC_LIGH || id == ESM::REC_LOCK || id == ESM::REC_MISC || id == ESM::REC_NPC_ ||
         id == ESM::REC_PROB || id == ESM::REC_REPA || id == ESM::REC_STAT || id == ESM::REC_WEAP ||
-        id == ESM::REC_BODY || id == ESM::REC_ACTI4)
+        id == ESM::REC_BODY || id == ESM::REC_ACTI4 || id == ESM::REC_REFR4 || id == ESM::REC_STAT4)
     {
         return true;
     }
@@ -323,6 +384,7 @@ struct ESMStoreImpl
     Store<ESM::Attribute> mAttributes;
 
     std::map<ESM::RecNameInts, StoreBase*> mRecordToStore;
+    std::map<ESM4::FormId, std::string> mTES4RecordIds;
 
     // Lookup of all IDs. Makes looking up references faster. Just
     // maps the id name to the record type.
@@ -410,7 +472,10 @@ struct ESMStoreImpl
         auto esm3RecordType_find = stores.mImpl->mRecordToStore.find(T::sRecordId);
         if (esm3RecordType_find != stores.mImpl->mRecordToStore.end())
         {
-            stores.mImpl->mIds[ptr->mId] = esm3RecordType_find->first;
+            if constexpr (requires(T & obj) { obj.mId; })
+                stores.mImpl->mIds[ptr->mId] = esm3RecordType_find->first;
+            else if constexpr (requires (T& obj) { obj.mEditorId; })
+                stores.mImpl->mIds[ptr->mEditorId] = esm3RecordType_find->first;
         }
         return ptr;
     }
@@ -540,6 +605,10 @@ struct ESM4Reading
                 it->second->eraseStatic(id.mId);
                 return;
             }
+            Misc::StringUtils::lowerCaseInPlace(id.mId);
+            const T* rec = store.get<T>().search(id.mId);
+            if (rec)
+                store.mImpl->mTES4RecordIds[rec->mFormId] = id.mId;
 
             if (n.toInt() == ESM::REC_DIAL4)
             {
@@ -607,7 +676,7 @@ struct ESM4Reading
             case ESM4::REC_BPTD: return readUnimplementedTypedRecord<ESM4::BodyPartData>(store, reader, dialogue);
             case ESM4::REC_CAMS: break;
             case ESM4::REC_CCRD: break;
-            case ESM4::REC_CELL: return readUnimplementedTypedRecord<ESM4::Cell>(store, reader, dialogue);
+            case ESM4::REC_CELL: return readImplementedTypedRecord<ESM4::Cell>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_CLAS: return readUnimplementedTypedRecord<ESM4::Class>(store, reader, dialogue);
             case ESM4::REC_CLFM: return readUnimplementedTypedRecord<ESM4::Colour>(store, reader, dialogue);
             case ESM4::REC_CLMT: break;
@@ -694,7 +763,7 @@ struct ESM4Reading
             case ESM4::REC_PWAT: return readUnimplementedTypedRecord<ESM4::PlaceableWater>(store, reader, dialogue);
             case ESM4::REC_QUST: return readUnimplementedTypedRecord<ESM4::Quest>(store, reader, dialogue);
             case ESM4::REC_RACE: return readUnimplementedTypedRecord<ESM4::Race>(store, reader, dialogue);
-            case ESM4::REC_REFR: return readUnimplementedTypedRecord<ESM4::Reference>(store, reader, dialogue);
+            case ESM4::REC_REFR: return readImplementedTypedRecord<ESM4::Reference>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_REGN: return readUnimplementedTypedRecord<ESM4::Region>(store, reader, dialogue);
             case ESM4::REC_RELA: break;
             case ESM4::REC_REVB: break;
@@ -717,7 +786,7 @@ struct ESM4Reading
             case ESM4::REC_SOUN: return readUnimplementedTypedRecord<ESM4::Sound>(store, reader, dialogue);
             case ESM4::REC_SPEL: break;
             case ESM4::REC_SPGD: break;
-            case ESM4::REC_STAT: return readUnimplementedTypedRecord<ESM4::Static>(store, reader, dialogue);
+            case ESM4::REC_STAT: return readImplementedTypedRecord<ESM4::Static>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_TACT: return readUnimplementedTypedRecord<ESM4::TalkingActivator>(store, reader, dialogue);
             case ESM4::REC_TERM: return readUnimplementedTypedRecord<ESM4::Terminal>(store, reader, dialogue);
             case ESM4::REC_TES4: return readUnimplementedTypedRecord<ESM4::Header>(store, reader, dialogue);
@@ -876,14 +945,24 @@ void ESMStore::countAllCellRefs(ESM::ReadersCache& readers)
     if(!mRefCount.empty())
         return;
     std::vector<Ref> refs;
+    std::vector<TES4Ref> refs4;
     std::vector<std::string> refIDs;
     for(auto it = get<ESM::Cell>().intBegin(); it != get<ESM::Cell>().intEnd(); ++it)
         readRefs(*it, refs, refIDs, readers);
     for(auto it = get<ESM::Cell>().extBegin(); it != get<ESM::Cell>().extEnd(); ++it)
         readRefs(*it, refs, refIDs, readers);
-    const auto lessByRefNum = [] (const Ref& l, const Ref& r) { return l.mRefNum < r.mRefNum; };
+    /*for (auto it = get<ESM4::Cell>().intBegin(); it != get<ESM4::Cell>().intEnd(); ++it)
+        readRefs(*it, refs4, refIDs, this);
+    for (auto it = get<ESM4::Cell>().extBegin(); it != get<ESM4::Cell>().extEnd(); ++it)
+        readRefs(*it, refs4, refIDs, this);*/
+    const auto lessByRefNum = [](const Ref& l, const Ref& r)
+    { return l.mRefNum < r.mRefNum; };
+    const auto refrLess = [](const TES4Ref& l, const TES4Ref& r)
+    { return false; }; // TODO
     std::stable_sort(refs.begin(), refs.end(), lessByRefNum);
     const auto equalByRefNum = [] (const Ref& l, const Ref& r) { return l.mRefNum == r.mRefNum; };
+    const auto refrEqual = [](const TES4Ref& l, const TES4Ref& r)
+    { return l.mRecord.mBaseObj == r.mRecord.mBaseObj; };
     const auto incrementRefCount = [&] (const Ref& value)
     {
         if (value.mRefID != deletedRefID)
@@ -894,7 +973,18 @@ void ESMStore::countAllCellRefs(ESM::ReadersCache& readers)
             ++mRefCount[std::move(refId)];
         }
     };
+    const auto increment4RefCount = [&](const TES4Ref& value)
+    {
+        if (true)
+        {
+            std::string& refId = refIDs[value.mRecord.mBaseObj];
+            // We manually lower case IDs here for the time being to improve performance.
+            Misc::StringUtils::lowerCaseInPlace(refId);
+            ++mRefCount[std::move(refId)];
+        }
+    };
     Misc::forEachUnique(refs.rbegin(), refs.rend(), equalByRefNum, incrementRefCount);
+    //Misc::forEachUnique(refs4.rbegin(), refs4.rend(), refrEqual, increment4RefCount);
 }
 
 int ESMStore::getRefCount(std::string_view id) const
@@ -1206,6 +1296,11 @@ const T* ESMStore::insertStatic(const T& x)
         return {ptr, true};
     }
 
+    const std::string& ESMStore::getFormName(uint32_t formId) const
+    {
+        return mImpl->mTES4RecordIds[formId];
+    }
+
     template <>
     const ESM::Book* ESMStore::insert<ESM::Book>(const ESM::Book& toInsert) { return mImpl->insert(*this, toInsert); }
     template <>
@@ -1227,6 +1322,8 @@ const T* ESMStore::insertStatic(const T& x)
     const ESM::GameSetting* ESMStore::insertStatic<ESM::GameSetting>(const ESM::GameSetting& toInsert) { return mImpl->insertStatic(*this, toInsert); }
     template <>
     const ESM::Static* ESMStore::insertStatic<ESM::Static>(const ESM::Static& toInsert) { return mImpl->insertStatic(*this, toInsert); }
+    template <>
+    const ESM4::Static* ESMStore::insertStatic<ESM4::Static>(const ESM4::Static& toInsert) { return mImpl->insertStatic(*this, toInsert); }
     template <>
     const ESM::Door* ESMStore::insertStatic<ESM::Door>(const ESM::Door& toInsert) { return mImpl->insertStatic(*this, toInsert); }
     template <>

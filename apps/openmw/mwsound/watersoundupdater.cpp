@@ -32,8 +32,16 @@ namespace MWSound
 
         const MWWorld::CellStore& cell = *player.getCell();
 
-        if (!cell.getCell()->hasWater())
+        if (!cell.isTes4())
+        {
+            if (!cell.getCell()->hasWater())
+                return 0.0f;
+        }
+        else
+        {
+            // todo
             return 0.0f;
+        }
 
         const osg::Vec3f pos = player.getRefData().getPosition().asVec3();
         const float dist = std::abs(cell.getWaterLevel() - pos.z());

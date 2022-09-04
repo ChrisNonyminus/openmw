@@ -909,7 +909,7 @@ namespace MWGui
         mMap->setCellName( name );
         mHud->setCellName( name );
 
-        if (cell->getCell()->isExterior())
+        if (cell->isExterior())
         {
             if (!cell->getCell()->mName.empty())
                 mMap->addVisitedLocation (name, cell->getCell()->getGridX (), cell->getCell()->getGridY ());
@@ -920,8 +920,16 @@ namespace MWGui
         }
         else
         {
-            mMap->setCellPrefix (cell->getCell()->mName );
-            mHud->setCellPrefix (cell->getCell()->mName );
+            if (cell->isTes4())
+            {
+                mMap->setCellPrefix(cell->getCell4()->mEditorId);
+                mHud->setCellPrefix(cell->getCell4()->mEditorId);
+            }
+            else
+            {
+                mMap->setCellPrefix(cell->getCell()->mName);
+                mHud->setCellPrefix(cell->getCell()->mName);
+            }
 
             osg::Vec3f worldPos;
             if (!MWBase::Environment::get().getWorld()->findInteriorPositionInWorldSpace(cell, worldPos))

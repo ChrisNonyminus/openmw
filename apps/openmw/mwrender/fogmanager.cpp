@@ -40,6 +40,8 @@ namespace MWRender
 
     void FogManager::configure(float viewDistance, const ESM::Cell *cell)
     {
+        if (!cell)
+            return;
         osg::Vec4f color = SceneUtil::colourFromRGB(cell->mAmbi.mFog);
 
         if (mDistantFog)

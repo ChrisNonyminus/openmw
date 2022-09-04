@@ -29,6 +29,8 @@
 
 #include <cstdint>
 
+#include <components/esm/defs.hpp>
+
 #include "reference.hpp" // FormId, Placement, EnableParent
 
 namespace ESM4
@@ -71,6 +73,7 @@ namespace ESM4
 
     struct Reference
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_REFR4;
         FormId mParent;       // cell FormId (currently persistent refs only), from the loading sequence
                               // NOTE: for exterior cells it will be the dummy cell FormId
 
@@ -110,6 +113,8 @@ namespace ESM4
         //void save(ESM4::Writer& writer) const;
 
         void blank();
+
+        static std::string getRecordType() { return "CellRef (TES4)"; }
     };
 }
 

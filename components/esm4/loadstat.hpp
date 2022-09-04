@@ -31,6 +31,8 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -40,6 +42,7 @@ namespace ESM4
 
     struct Static
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_STAT4;
         FormId mFormId;       // from the header
         std::uint32_t mFlags; // from the header, see enum type RecordFlag for details
 
@@ -53,6 +56,8 @@ namespace ESM4
         //void save(ESM4::Writer& writer) const;
 
         //void blank();
+
+        static std::string getRecordType() { return "Static (TES4)"; }
     };
 }
 

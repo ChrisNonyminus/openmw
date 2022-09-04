@@ -2013,7 +2013,7 @@ namespace MWWorld
         const CellStore *currentCell = mWorldScene->getCurrentCell();
         if (currentCell)
         {
-            return currentCell->getCell()->isExterior();
+            return currentCell->isExterior();
         }
         return false;
     }
@@ -2021,7 +2021,7 @@ namespace MWWorld
     bool World::isCellQuasiExterior() const
     {
         const CellStore *currentCell = mWorldScene->getCurrentCell();
-        if (currentCell)
+        if (currentCell && !currentCell->isTes4())
         {
             if (!(currentCell->getCell()->mData.mFlags & ESM::Cell::QuasiEx))
                 return false;
@@ -2357,9 +2357,19 @@ namespace MWWorld
     {
         if (!cell)
             return false;
-
-        if (!(cell->getCell()->hasWater())) {
-            return false;
+        if (cell->isTes4())
+        {
+            if ((cell->getCell4()->mCellFlags & ESM4::CELL_HasWater) == 0)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (!(cell->getCell()->hasWater()))
+            {
+                return false;
+            }
         }
         return pos.z() < cell->getWaterLevel();
     }
@@ -2839,6 +2849,24 @@ namespace MWWorld
                 }
             }
         }
+        for (const MWWorld::LiveCellRef<ESM4::Static>& stat4 : cellStore->getReadOnlyTes4Statics().mList)
+        {
+            if (Misc::StringUtils::lowerCase(stat4.mBase->mEditorId) == "cocmarkerheading")
+            {
+                // found the COC position?
+                pos = stat4.mRef.getPosition();
+                pos.rot[0] = pos.rot[1] = pos.rot[2] = 0;
+                return true;
+            }
+        }
+        // Fall back to the first static location.
+        const MWWorld::CellRefList<ESM4::Static>::List& statics4 = cellStore->getReadOnlyTes4Statics().mList;
+        if (!statics4.empty())
+        {
+            pos = statics4.begin()->mRef.getPosition();
+            pos.rot[0] = pos.rot[1] = pos.rot[2] = 0;
+            return true;
+        }
         // Fall back to the first static location.
         const MWWorld::CellRefList<ESM::Static>::List &statics = cellStore->getReadOnlyStatics().mList;
         if (!statics.empty())
@@ -3243,6 +3271,11 @@ namespace MWWorld
         }
         else
         {
+            if (cell->isTes4())
+            {
+                // todo
+                return false;
+            }
             uint32_t ambient = cell->getCell()->mAmbi.mAmbient;
             int ambientTotal = (ambient & 0xff)
                     + ((ambient>>8) & 0xff)
@@ -3261,7 +3294,12 @@ namespace MWWorld
         std::set< std::string >checkedCells;
         std::set< std::string >currentCells;
         std::set< std::string >nextCells;
-        nextCells.insert( cell->getCell()->mName );
+        if (cell->isTes4())
+        {
+            nextCells.insert(cell->getCell4()->mEditorId);
+        }
+        else
+            nextCells.insert(cell->getCell()->mName);
 
         while ( !nextCells.empty() ) {
             currentCells = nextCells;
@@ -3411,6 +3449,11 @@ namespace MWWorld
     void World::updateWeather(float duration, bool paused)
     {
         bool isExterior = isCellExterior() || isCellQuasiExterior();
+        if (getPlayerPtr().getCell()->isTes4())
+        {
+            // todo: update weather for tes4
+            return;
+        }
         if (mPlayer->wasTeleported())
         {
             mPlayer->setTeleported(false);

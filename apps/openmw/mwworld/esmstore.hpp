@@ -194,6 +194,8 @@ namespace MWWorld
         /// @return The shared spell list to use for this actor and whether or not it has already been initialized.
         std::pair<std::shared_ptr<MWMechanics::SpellList>, bool> getSpellList(const std::string& id) const;
 
+        const std::string& getFormName(uint32_t formId) const;
+
         template <>
         const Store<ESM::Attribute>& get<ESM::Attribute>() const;
         template <>
@@ -211,6 +213,12 @@ namespace MWWorld
     template <>
     inline const ESM::Cell *ESMStore::insert<ESM::Cell>(const ESM::Cell &cell) {
         return mStores.get<ESM::Cell>().insert(cell);
+    }
+
+    template <>
+    inline const ESM4::Cell* ESMStore::insert<ESM4::Cell>(const ESM4::Cell& cell)
+    {
+        return mStores.get<ESM4::Cell>().insert(cell);
     }
 }
 
