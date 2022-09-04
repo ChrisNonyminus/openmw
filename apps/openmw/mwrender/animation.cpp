@@ -1503,9 +1503,17 @@ namespace MWRender
         }
     }
 
-    void Animation::addExtraLight(osg::ref_ptr<osg::Group> parent, const ESM::Light *esmLight)
+    void Animation::addExtraLight(osg::ref_ptr<osg::Group> parent, const ESM::Light* esmLight)
     {
         bool exterior = mPtr.isInCell() && mPtr.getCell()->getCell()->isExterior();
+
+        mExtraLightSource = SceneUtil::addLight(parent, esmLight, Mask_Lighting, exterior);
+        mExtraLightSource->setActorFade(mAlpha);
+    }
+
+    void Animation::addExtraLight(osg::ref_ptr<osg::Group> parent, const ESM4::Light* esmLight)
+    {
+        bool exterior = mPtr.isInCell() && mPtr.getCell()->isExterior();
 
         mExtraLightSource = SceneUtil::addLight(parent, esmLight, Mask_Lighting, exterior);
         mExtraLightSource->setActorFade(mAlpha);
@@ -1836,6 +1844,8 @@ namespace MWRender
         }
         if (ptr.getType() == ESM::Light::sRecordId && allowLight)
             addExtraLight(getOrCreateObjectRoot(), ptr.get<ESM::Light>()->mBase);
+        if (ptr.getType() == ESM4::Light::sRecordId && allowLight)
+            addExtraLight(getOrCreateObjectRoot(), ptr.get<ESM4::Light>()->mBase);
 
         if (!allowLight && mObjectRoot)
         {

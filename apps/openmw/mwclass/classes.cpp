@@ -50,5 +50,6 @@ namespace MWClass
 
         TES4Activator::registerSelf();
         TES4Static::registerSelf();
+        TES4Light::registerSelf();
     }
 }

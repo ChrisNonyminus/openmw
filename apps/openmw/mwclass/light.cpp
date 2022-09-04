@@ -238,4 +238,219 @@ namespace MWClass
     {
       return ptr.get<ESM::Light>()->mBase->mSound;
     }
+
+    
+    TES4Light::TES4Light()
+        : MWWorld::RegisteredClass<TES4Light>(ESM4::Light::sRecordId)
+    {
+    }
+
+    void TES4Light::insertObjectRendering(const MWWorld::Ptr& ptr, const std::string& model, MWRender::RenderingInterface& renderingInterface) const
+    {
+        MWWorld::LiveCellRef<ESM4::Light> *ref =
+            ptr.get<ESM4::Light>();
+
+        // Insert even if model is empty, so that the light is added
+        renderingInterface.getObjects().insertModel(ptr, model, true, !(ref->mBase->mData.flags & ESM::Light::OffDefault));
+    }
+
+    void TES4Light::insertObject(const MWWorld::Ptr& ptr, const std::string& model, const osg::Quat& rotation, MWPhysics::PhysicsSystem& physics) const
+    {
+        MWWorld::LiveCellRef<ESM4::Light> *ref =
+            ptr.get<ESM4::Light>();
+        assert (ref->mBase != nullptr);
+
+        insertObjectPhysics(ptr, model, rotation, physics);
+
+        /*if (!ref->mBase->mSound && !(ref->mBase->mData.flags & ESM::Light::OffDefault))
+            MWBase::Environment::get().getSoundManager()->playSound3D(ptr, ref->mBase->mSound, 1.0, 1.0,
+                                                                      MWSound::Type::Sfx,
+                                                                      MWSound::PlayMode::Loop);*/
+    }
+
+    void TES4Light::insertObjectPhysics(const MWWorld::Ptr& ptr, const std::string& model, const osg::Quat& rotation, MWPhysics::PhysicsSystem& physics) const
+    {
+        // TODO: add option somewhere to enable collision for placeable objects
+        if ((ptr.get<ESM4::Light>()->mBase->mData.flags & ESM::Light::Carry) == 0)
+            physics.addObject(ptr, model, rotation, MWPhysics::CollisionType_World);
+    }
+
+    bool TES4Light::useAnim() const
+    {
+        return true;
+    }
+
+    std::string TES4Light::getModel(const MWWorld::ConstPtr& ptr) const
+    {
+        return getClassModel<ESM4::Light>(ptr);
+    }
+
+    std::string_view TES4Light::getName(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+
+        if (ref->mBase->mModel.empty())
+            return {};
+
+        const std::string& name = ref->mBase->mEditorId;
+        return !name.empty() ? name : ref->mBase->mEditorId;
+    }
+
+    std::unique_ptr<MWWorld::Action> TES4Light::activate(const MWWorld::Ptr& ptr,
+        const MWWorld::Ptr& actor) const
+    {
+        if(!MWBase::Environment::get().getWindowManager()->isAllowed(MWGui::GW_Inventory))
+            return std::make_unique<MWWorld::NullAction>();
+
+        MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+        if(!(ref->mBase->mData.flags&ESM::Light::Carry))
+            return std::make_unique<MWWorld::FailedAction>();
+
+        return defaultItemActivate(ptr, actor);
+    }
+
+    std::string_view TES4Light::getScript(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+
+        //return ref->mBase->mScriptId;
+
+        return ""; // todo
+    }
+
+    std::pair<std::vector<int>, bool> TES4Light::getEquipmentSlots(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+
+        std::vector<int> slots_;
+
+        if (ref->mBase->mData.flags & ESM::Light::Carry)
+            slots_.push_back (int (MWWorld::InventoryStore::Slot_CarriedLeft));
+
+        return std::make_pair (slots_, false);
+    }
+
+    int TES4Light::getValue(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+
+        return ref->mBase->mData.value;
+    }
+
+    std::string_view TES4Light::getUpSoundId(const MWWorld::ConstPtr& ptr) const
+    {
+        return "Item Misc Up";
+    }
+
+    std::string_view TES4Light::getDownSoundId(const MWWorld::ConstPtr& ptr) const
+    {
+        return "Item Misc Down";
+    }
+
+
+    const std::string& TES4Light::getInventoryIcon(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+
+        return ref->mBase->mIcon;
+    }
+
+    bool TES4Light::hasToolTip(const MWWorld::ConstPtr& ptr) const
+    {
+        return showsInInventory(ptr);
+    }
+
+    MWGui::ToolTipInfo TES4Light::getToolTipInfo(const MWWorld::ConstPtr& ptr, int count) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+
+        MWGui::ToolTipInfo info;
+        std::string_view name = getName(ptr);
+        info.caption = MyGUI::TextIterator::toTagsString(MWGui::toUString(name)) + MWGui::ToolTips::getCountString(count);
+        info.icon = ref->mBase->mIcon;
+
+        std::string text;
+
+        // Don't show duration for infinite light sources.
+        if (Settings::Manager::getBool("show effect duration","Game") && ptr.getClass().getRemainingUsageTime(ptr) != -1)
+            text += MWGui::ToolTips::getDurationString(ptr.getClass().getRemainingUsageTime(ptr), "\n#{sDuration}");
+
+        text += MWGui::ToolTips::getWeightString(ref->mBase->mData.weight, "#{sWeight}");
+        text += MWGui::ToolTips::getValueString(ref->mBase->mData.value, "#{sValue}");
+
+        if (MWBase::Environment::get().getWindowManager()->getFullHelp()) {
+            text += MWGui::ToolTips::getCellRefString(ptr.getCellRef());
+            //text += MWGui::ToolTips::getMiscString(ref->mBase->mScriptId, "Script");
+        }
+
+        info.text = text;
+
+        return info;
+    }
+
+    bool TES4Light::showsInInventory(const MWWorld::ConstPtr& ptr) const
+    {
+        const ESM4::Light* light = ptr.get<ESM4::Light>()->mBase;
+
+        if (!(light->mData.flags & ESM::Light::Carry))
+            return false;
+
+        return Class::showsInInventory(ptr);
+    }
+
+    std::unique_ptr<MWWorld::Action> TES4Light::use(const MWWorld::Ptr& ptr, bool force) const
+    {
+        std::unique_ptr<MWWorld::Action> action = std::make_unique<MWWorld::ActionEquip>(ptr, force);
+
+        action->setSound(getUpSoundId(ptr));
+
+        return action;
+    }
+
+    void TES4Light::setRemainingUsageTime(const MWWorld::Ptr& ptr, float duration) const
+    {
+        ptr.getCellRef().setChargeFloat(duration);
+    }
+
+    float TES4Light::getRemainingUsageTime(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+        if (ptr.getCellRef().getCharge() == -1)
+            return static_cast<float>(ref->mBase->mData.time);
+        else
+            return ptr.getCellRef().getChargeFloat();
+    }
+
+    MWWorld::Ptr TES4Light::copyToCellImpl(const MWWorld::ConstPtr& ptr, MWWorld::CellStore& cell) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+
+        return MWWorld::Ptr(cell.insert(ref), &cell);
+    }
+
+    bool TES4Light::canSell(const MWWorld::ConstPtr& item, int npcServices) const
+    {
+        return (npcServices & ESM::NPC::Lights) != 0;
+    }
+
+    float TES4Light::getWeight(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+        return ref->mBase->mData.weight;
+    }
+
+    std::pair<int, std::string_view> TES4Light::canBeEquipped(const MWWorld::ConstPtr& ptr, const MWWorld::Ptr& npc) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Light> *ref = ptr.get<ESM4::Light>();
+        if (!(ref->mBase->mData.flags & ESM::Light::Carry))
+            return {0, {}};
+
+        return {1, {}};
+    }
+
+    std::string_view TES4Light::getSound(const MWWorld::ConstPtr& ptr) const
+    {
+      //return ptr.get<ESM4::Light>()->mBase->mSound;
+        return ""; // todo
+    }
 }

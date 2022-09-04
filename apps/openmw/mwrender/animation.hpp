@@ -18,6 +18,11 @@ namespace ESM
     struct MagicEffect;
 }
 
+namespace ESM4
+{
+    struct Light;
+}
+
 namespace Resource
 {
     class ResourceSystem;
@@ -335,6 +340,9 @@ protected:
 
     /** Adds an additional light to the given node using the specified ESM record. */
     void addExtraLight(osg::ref_ptr<osg::Group> parent, const ESM::Light *light);
+
+    /** Adds an additional light to the given node using the specified ESM record. */
+    void addExtraLight(osg::ref_ptr<osg::Group> parent, const ESM4::Light *light);
 
     void clearAnimSources();
 

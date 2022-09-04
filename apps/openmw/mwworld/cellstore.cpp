@@ -286,7 +286,8 @@ namespace MWWorld
         TypeGetter<ESM::BodyPart>,
 
         TypeGetter<ESM4::Activator>,
-        TypeGetter<ESM4::Static>
+        TypeGetter<ESM4::Static>,
+        TypeGetter<ESM4::Light>
         >;
 
     template <>
@@ -313,7 +314,8 @@ namespace MWWorld
         TypeGetter<ESM::Weapon>,
         TypeGetter<ESM::BodyPart>,
         TypeGetter<ESM4::Activator>,
-        TypeGetter<ESM4::Static>>
+        TypeGetter<ESM4::Static>,
+        TypeGetter<ESM4::Light>>
         CellStoreTypes::sAll = std::make_tuple(
             
         TypeGetter<ESM::Activator>(),
@@ -338,7 +340,8 @@ namespace MWWorld
         TypeGetter<ESM::Weapon>(),
         TypeGetter<ESM::BodyPart>(),
         TypeGetter<ESM4::Activator>(),
-        TypeGetter<ESM4::Static>());
+        TypeGetter<ESM4::Static>(),
+        TypeGetter<ESM4::Light>());
     template <typename X>
     void CellRefList<X>::load(ESM::CellRef &ref, bool deleted, const MWWorld::ESMStore &esmStore)
     {
@@ -797,6 +800,10 @@ namespace MWWorld
             {
                 mMergedRefs.push_back(&obj);
             }
+            for (auto& obj : get<ESM4::Light>().mList)
+            {
+                mMergedRefs.push_back(&obj);
+            }
         }
         else
         {
@@ -1014,6 +1021,7 @@ namespace MWWorld
         {
             case ESM::REC_ACTI4: get<ESM4::Activator>().load(ref, deleted, store); break;
             case ESM::REC_STAT4: get<ESM4::Static>().load(ref, deleted, store); break;
+            case ESM::REC_LIGH4: get<ESM4::Light>().load(ref, deleted, store); break;
 
             case 0: Log(Debug::Error) << "Cell reference '" + id + "' not found!"; return;
 

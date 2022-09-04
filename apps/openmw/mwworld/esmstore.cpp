@@ -258,7 +258,8 @@ using Types = AllTypeGetters<
     TypeGetter<ESM4::Activator>,
     TypeGetter<ESM4::Cell>,
     TypeGetter<ESM4::Reference>,
-    TypeGetter<ESM4::Static>
+    TypeGetter<ESM4::Static>,
+    TypeGetter<ESM4::Light>
 >;
 
 template <>
@@ -309,7 +310,8 @@ std::tuple<
     TypeGetter<ESM4::Activator>,
     TypeGetter<ESM4::Cell>,
     TypeGetter<ESM4::Reference>,
-    TypeGetter<ESM4::Static>
+    TypeGetter<ESM4::Static>,
+    TypeGetter<ESM4::Light>
     >
     Types::sAll = std::make_tuple(
         TypeGetter<ESM::Activator>(),
@@ -358,7 +360,8 @@ std::tuple<
         TypeGetter<ESM4::Activator>(),
         TypeGetter<ESM4::Cell>(),
         TypeGetter<ESM4::Reference>(),
-        TypeGetter<ESM4::Static>());
+        TypeGetter<ESM4::Static>(),
+        TypeGetter<ESM4::Light>());
 
 static bool isCacheableRecord(int id)
 {
@@ -367,7 +370,9 @@ static bool isCacheableRecord(int id)
         id == ESM::REC_DOOR || id == ESM::REC_INGR || id == ESM::REC_LEVC || id == ESM::REC_LEVI ||
         id == ESM::REC_LIGH || id == ESM::REC_LOCK || id == ESM::REC_MISC || id == ESM::REC_NPC_ ||
         id == ESM::REC_PROB || id == ESM::REC_REPA || id == ESM::REC_STAT || id == ESM::REC_WEAP ||
-        id == ESM::REC_BODY || id == ESM::REC_ACTI4 || id == ESM::REC_REFR4 || id == ESM::REC_STAT4)
+        id == ESM::REC_BODY || 
+        id == ESM::REC_ACTI4 || id == ESM::REC_REFR4 || id == ESM::REC_STAT4 || 
+        id == ESM::REC_LIGH4)
     {
         return true;
     }
@@ -732,7 +737,7 @@ struct ESM4Reading
             case ESM4::REC_LCRT: break;
             case ESM4::REC_LCTN: break;
             case ESM4::REC_LGTM: return readUnimplementedTypedRecord<ESM4::LightingTemplate>(store, reader, dialogue);
-            case ESM4::REC_LIGH: return readUnimplementedTypedRecord<ESM4::Light>(store, reader, dialogue);
+            case ESM4::REC_LIGH: return readImplementedTypedRecord<ESM4::Light>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_LSCR: break;
             case ESM4::REC_LTEX: return readUnimplementedTypedRecord<ESM4::LandTexture>(store, reader, dialogue);
             case ESM4::REC_LVLC: return readUnimplementedTypedRecord<ESM4::LevelledCreature>(store, reader, dialogue);

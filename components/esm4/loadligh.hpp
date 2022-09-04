@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -39,6 +41,7 @@ namespace ESM4
 
     struct Light
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_LIGH4;
         struct Data
         {
             std::uint32_t time;               // FO/FONV only
@@ -88,6 +91,8 @@ namespace ESM4
         //void save(ESM4::Writer& writer) const;
 
         //void blank();
+
+        static std::string getRecordType() { return "Light (TES4)"; }
     };
 }
 

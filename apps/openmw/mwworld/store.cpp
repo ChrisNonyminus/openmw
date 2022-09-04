@@ -1663,3 +1663,4 @@ template class MWWorld::Store<ESM::Weapon>;
 template class MWWorld::Store<ESM4::Activator>;
 template class MWWorld::Store<ESM4::Reference>;
 template class MWWorld::Store<ESM4::Static>;
+template class MWWorld::Store<ESM4::Light>;

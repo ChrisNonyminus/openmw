@@ -7,6 +7,7 @@
 
 #include <components/esm3/loadligh.hpp>
 #include <components/fallback/fallback.hpp>
+#include <components/esm4/loadligh.hpp>
 
 #include "lightmanager.hpp"
 #include "lightcontroller.hpp"
@@ -134,6 +135,62 @@ namespace SceneUtil
         if (esmLight->mData.mFlags & ESM::Light::Pulse)
             ctrl->setType(SceneUtil::LightController::LT_Pulse);
         if (esmLight->mData.mFlags & ESM::Light::PulseSlow)
+            ctrl->setType(SceneUtil::LightController::LT_PulseSlow);
+
+        lightSource->addUpdateCallback(ctrl);
+
+        return lightSource;
+    }
+
+    osg::ref_ptr<LightSource> addLight(osg::Group* node, const ESM4::Light* esmLight, unsigned int lightMask, bool isExterior)
+    {
+        SceneUtil::FindByNameVisitor visitor("AttachLight");
+        node->accept(visitor);
+
+        osg::Group* attachTo = visitor.mFoundNode ? visitor.mFoundNode : node;
+        osg::ref_ptr<LightSource> lightSource = createLightSource(esmLight, lightMask, isExterior, osg::Vec4f(0,0,0,1));
+        attachTo->addChild(lightSource);
+
+        CheckEmptyLightVisitor emptyVisitor;
+        node->accept(emptyVisitor);
+
+        lightSource->setEmpty(emptyVisitor.mEmpty);
+
+        return lightSource;
+    }
+
+    osg::ref_ptr<LightSource> createLightSource(const ESM4::Light* esmLight, unsigned int lightMask, bool isExterior, const osg::Vec4f& ambient)
+    {
+        osg::ref_ptr<SceneUtil::LightSource> lightSource (new SceneUtil::LightSource);
+        osg::ref_ptr<osg::Light> light (new osg::Light);
+        lightSource->setNodeMask(lightMask);
+
+        float radius = esmLight->mData.radius;
+        lightSource->setRadius(radius);
+
+        configureLight(light, radius, isExterior);
+
+        osg::Vec4f diffuse = SceneUtil::colourFromRGB(esmLight->mData.colour);
+        if (esmLight->mData.flags & ESM::Light::Negative)
+        {
+            diffuse *= -1;
+            diffuse.a() = 1;
+        }
+        light->setDiffuse(diffuse);
+        light->setAmbient(ambient);
+        light->setSpecular(osg::Vec4f(0,0,0,0));
+
+        lightSource->setLight(light);
+
+        osg::ref_ptr<SceneUtil::LightController> ctrl (new SceneUtil::LightController);
+        ctrl->setDiffuse(light->getDiffuse());
+        if (esmLight->mData.flags & ESM::Light::Flicker)
+            ctrl->setType(SceneUtil::LightController::LT_Flicker);
+        if (esmLight->mData.flags & ESM::Light::FlickerSlow)
+            ctrl->setType(SceneUtil::LightController::LT_FlickerSlow);
+        if (esmLight->mData.flags & ESM::Light::Pulse)
+            ctrl->setType(SceneUtil::LightController::LT_Pulse);
+        if (esmLight->mData.flags & ESM::Light::PulseSlow)
             ctrl->setType(SceneUtil::LightController::LT_PulseSlow);
 
         lightSource->addUpdateCallback(ctrl);
