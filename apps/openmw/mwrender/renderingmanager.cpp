@@ -737,7 +737,7 @@ namespace MWRender
         mSky->setMoonColour(red);
     }
 
-    void RenderingManager::configureAmbient(const ESM::Cell *cell)
+    void RenderingManager::configureAmbient(const ESM::Cell* cell)
     {
         bool isInterior = !cell->isExterior() && !(cell->mData.mFlags & ESM::Cell::QuasiEx);
         bool needsAdjusting = false;
@@ -753,7 +753,7 @@ namespace MWRender
             constexpr float pB = 0.0722;
 
             // we already work in linear RGB so no conversions are needed for the luminosity function
-            float relativeLuminance = pR*ambient.r() + pG*ambient.g() + pB*ambient.b();
+            float relativeLuminance = pR * ambient.r() + pG * ambient.g() + pB * ambient.b();
             if (relativeLuminance < mMinimumAmbientLuminance)
             {
                 // brighten ambient so it reaches the minimum threshold but no more, we want to mess with content data as least we can
@@ -767,6 +767,41 @@ namespace MWRender
         setAmbientColour(ambient);
 
         osg::Vec4f diffuse = SceneUtil::colourFromRGB(cell->mAmbi.mSunlight);
+        mSunLight->setDiffuse(diffuse);
+        mSunLight->setSpecular(diffuse);
+        mSunLight->setPosition(osg::Vec4f(-0.15f, 0.15f, 1.f, 0.f));
+    }
+
+    void RenderingManager::configureAmbient(const ESM4::Cell* cell)
+    {
+        bool isInterior = !cell->isExterior();
+        bool needsAdjusting = false;
+        if (mResourceSystem->getSceneManager()->getLightingMethod() != SceneUtil::LightingMethod::FFP)
+            needsAdjusting = isInterior;
+
+        auto ambient = SceneUtil::colourFromRGB(cell->mLighting.ambient);
+
+        if (needsAdjusting)
+        {
+            constexpr float pR = 0.2126;
+            constexpr float pG = 0.7152;
+            constexpr float pB = 0.0722;
+
+            // we already work in linear RGB so no conversions are needed for the luminosity function
+            float relativeLuminance = pR * ambient.r() + pG * ambient.g() + pB * ambient.b();
+            if (relativeLuminance < mMinimumAmbientLuminance)
+            {
+                // brighten ambient so it reaches the minimum threshold but no more, we want to mess with content data as least we can
+                if (ambient.r() == 0.f && ambient.g() == 0.f && ambient.b() == 0.f)
+                    ambient = osg::Vec4(mMinimumAmbientLuminance, mMinimumAmbientLuminance, mMinimumAmbientLuminance, ambient.a());
+                else
+                    ambient *= mMinimumAmbientLuminance / relativeLuminance;
+            }
+        }
+
+        setAmbientColour(ambient);
+
+        osg::Vec4f diffuse = SceneUtil::colourFromRGB(cell->mLighting.directional);
         mSunLight->setDiffuse(diffuse);
         mSunLight->setSpecular(diffuse);
         mSunLight->setPosition(osg::Vec4f(-0.15f, 0.15f, 1.f, 0.f));

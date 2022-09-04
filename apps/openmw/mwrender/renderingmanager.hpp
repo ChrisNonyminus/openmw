@@ -45,6 +45,11 @@ namespace ESM
     struct RefNum;
 }
 
+namespace ESM4
+{
+    struct Cell;
+}
+
 namespace Terrain
 {
     class World;
@@ -136,6 +141,7 @@ namespace MWRender
         void setNight(bool isNight) { mNight = isNight; }
 
         void configureAmbient(const ESM::Cell* cell);
+        void configureAmbient(const ESM4::Cell* cell);
         void configureFog(const ESM::Cell* cell);
         void configureFog(float fogDepth, float underwaterFog, float dlFactor, float dlOffset, const osg::Vec4f& colour);
 

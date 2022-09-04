@@ -322,7 +322,7 @@ namespace MWWorld
         };
 
         typedef std::unordered_map<std::string, ESM4::Cell, Misc::StringUtils::CiHash, Misc::StringUtils::CiEqual> DynamicInt;
-        typedef std::map<ESM4::FormId, ESM4::Cell, DynamicExtCmp> DynamicExt;
+        typedef std::map<ESM4::FormId, ESM4::Cell> DynamicExt;
 
         DynamicInt mInt;
         DynamicExt mExt;

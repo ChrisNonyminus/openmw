@@ -442,8 +442,8 @@ namespace MWWorld
 
             mNavigator.update(position);
 
-            /*if (!cell->isExterior())
-                mRendering.configureAmbient(cell->getCell4());*/
+            if (!cell->isExterior())
+                mRendering.configureAmbient(cell->getCell4());
 
             mPreloader->notifyLoaded(cell);
         }

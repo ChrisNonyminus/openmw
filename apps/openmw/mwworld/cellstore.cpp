@@ -786,6 +786,17 @@ namespace MWWorld
                 }
                 ++it;
             }
+
+            // test
+
+            for (auto& obj : get<ESM4::Activator>().mList)
+            {
+                mMergedRefs.push_back(&obj);
+            }
+            for (auto& obj : get<ESM4::Static>().mList)
+            {
+                mMergedRefs.push_back(&obj);
+            }
         }
         else
         {
