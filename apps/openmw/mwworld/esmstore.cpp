@@ -259,7 +259,8 @@ using Types = AllTypeGetters<
     TypeGetter<ESM4::Cell>,
     TypeGetter<ESM4::Reference>,
     TypeGetter<ESM4::Static>,
-    TypeGetter<ESM4::Light>
+    TypeGetter<ESM4::Light>,
+    TypeGetter<ESM4::Sound>
 >;
 
 template <>
@@ -311,7 +312,8 @@ std::tuple<
     TypeGetter<ESM4::Cell>,
     TypeGetter<ESM4::Reference>,
     TypeGetter<ESM4::Static>,
-    TypeGetter<ESM4::Light>
+    TypeGetter<ESM4::Light>,
+    TypeGetter<ESM4::Sound>
     >
     Types::sAll = std::make_tuple(
         TypeGetter<ESM::Activator>(),
@@ -361,7 +363,8 @@ std::tuple<
         TypeGetter<ESM4::Cell>(),
         TypeGetter<ESM4::Reference>(),
         TypeGetter<ESM4::Static>(),
-        TypeGetter<ESM4::Light>());
+        TypeGetter<ESM4::Light>(),
+        TypeGetter<ESM4::Sound>());
 
 static bool isCacheableRecord(int id)
 {
@@ -372,7 +375,7 @@ static bool isCacheableRecord(int id)
         id == ESM::REC_PROB || id == ESM::REC_REPA || id == ESM::REC_STAT || id == ESM::REC_WEAP ||
         id == ESM::REC_BODY || 
         id == ESM::REC_ACTI4 || id == ESM::REC_REFR4 || id == ESM::REC_STAT4 || 
-        id == ESM::REC_LIGH4)
+        id == ESM::REC_LIGH4 || id == ESM::REC_SOUN4)
     {
         return true;
     }
@@ -788,7 +791,7 @@ struct ESM4Reading
             case ESM4::REC_SNCT: break;
             case ESM4::REC_SNDR: return readUnimplementedTypedRecord<ESM4::SoundReference>(store, reader, dialogue);
             case ESM4::REC_SOPM: break;
-            case ESM4::REC_SOUN: return readUnimplementedTypedRecord<ESM4::Sound>(store, reader, dialogue);
+            case ESM4::REC_SOUN: return readImplementedTypedRecord<ESM4::Sound>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_SPEL: break;
             case ESM4::REC_SPGD: break;
             case ESM4::REC_STAT: return readImplementedTypedRecord<ESM4::Static>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);

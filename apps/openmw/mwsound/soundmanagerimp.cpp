@@ -683,6 +683,12 @@ namespace MWSound
             if (ref != nullptr && ref != MWMechanics::getPlayer().mRef && sound.mCell == cell)
                 mOutput->finishStream(sound.mStream.get());
         }
+
+        for (auto& ambi : mAmbience)
+        {
+            stopSound(ambi);
+        }
+        mAmbience.clear();
     }
 
     void SoundManager::fadeOutSound3D(const MWWorld::ConstPtr &ptr,
@@ -776,12 +782,64 @@ namespace MWSound
 
         if (cell->isTes4())
         {
-            // TODO
         }
         else
         {
             if (const auto next = mRegionSoundSelector.getNextRandom(duration, cell->getCell()->mRegion, *world))
                 mCurrentRegionSound = playSound(*next, 1.0f, 1.0f);
+        }
+    }
+
+    void SoundManager::updateAmbience(float duration)
+    {
+        MWBase::World* world = MWBase::Environment::get().getWorld();
+        const MWWorld::ConstPtr player = world->getPlayerPtr();
+        auto& prng = world->getPrng();
+        const auto* cell = player.getCell();
+
+        if (cell->isTes4())
+        {
+            const auto& sounds = cell->get<ESM4::Sound>().mList;
+            for (auto& sound : sounds)
+            {
+                uint32_t playmode = 0;
+                if (sound.mBase->mData.flags & 0x10) // loop
+                {
+                    playmode |= (uint32_t)PlayMode::Loop;
+                }
+                if (sound.mBase->mData.flags & 0x04) // no env
+                {
+                    playmode |= (uint32_t)PlayMode::NoEnv;
+                }
+                if (sound.mBase->mData.flags & 0x20) // 2D
+                {
+                    if (sound.mBase->mData.flags & 0x2) // play at random
+                    {
+                        if (Misc::Rng::rollDice(2, prng) == 1)
+                        {
+                            mAmbience.push_back(playSound(sound.mBase->mEditorId, 1.0f, 1.0f, Type::Sfx, (PlayMode)playmode));
+                        }
+                    }
+                    else
+                    {
+                        mAmbience.push_back(playSound(sound.mBase->mEditorId, 1.0f, 1.0f, Type::Sfx, (PlayMode)playmode));
+                    }
+                }
+                else
+                {
+                    if (sound.mBase->mData.flags & 0x2) // play at random
+                    {
+                        if (Misc::Rng::rollDice(2, prng) == 1)
+                        {
+                            mAmbience.push_back(playSound3D(osg::Vec3f(sound.mRef.getPosition().pos[0], sound.mRef.getPosition().pos[1], sound.mRef.getPosition().pos[2]), sound.mBase->mEditorId, 1.0f, 1.0f, Type::Sfx, (PlayMode)playmode));
+                        }
+                    }
+                    else
+                    {
+                        mAmbience.push_back(playSound3D(osg::Vec3f(sound.mRef.getPosition().pos[0], sound.mRef.getPosition().pos[1], sound.mRef.getPosition().pos[2]), sound.mBase->mEditorId, 1.0f, 1.0f, Type::Sfx, (PlayMode)playmode));
+                    }
+                }
+            }
         }
     }
 
@@ -1044,6 +1102,7 @@ namespace MWSound
             MWBase::StateManager::State_NoGame)
         {
             updateRegionSound(duration);
+            updateAmbience(duration);
             updateWaterSound();
         }
     }

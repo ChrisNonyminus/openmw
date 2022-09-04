@@ -18,6 +18,11 @@ namespace VFS
     class Manager;
 }
 
+namespace ESM4
+{
+    struct Sound;
+}
+
 namespace MWSound
 {
     class SoundBufferPool;
@@ -98,6 +103,8 @@ namespace MWSound
             std::deque<Sound_Buffer*> mUnusedBuffers;
 
             inline Sound_Buffer* insertSound(const std::string& soundId, const ESM::Sound& sound);
+
+            inline Sound_Buffer* insertSound(const std::string& soundId, const ESM4::Sound& sound);
 
             inline void unloadUnused();
     };

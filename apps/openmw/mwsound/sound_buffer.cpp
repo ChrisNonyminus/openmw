@@ -66,6 +66,8 @@ namespace MWSound
         {
             for (const ESM::Sound& sound : MWBase::Environment::get().getWorld()->getStore().get<ESM::Sound>())
                 insertSound(Misc::StringUtils::lowerCase(sound.mId), sound);
+            for (const ESM4::Sound& sound : MWBase::Environment::get().getWorld()->getStore().get<ESM4::Sound>())
+                insertSound(Misc::StringUtils::lowerCase(sound.mEditorId), sound);
         }
 
         Sound_Buffer* sfx;
@@ -74,10 +76,21 @@ namespace MWSound
             sfx = it->second;
         else
         {
-            const ESM::Sound *sound = MWBase::Environment::get().getWorld()->getStore().get<ESM::Sound>().search(soundId);
-            if (sound == nullptr)
-                return {};
-            sfx = insertSound(soundId, *sound);
+
+            if (const ESM::Sound* sound = MWBase::Environment::get().getWorld()->getStore().get<ESM::Sound>().search(soundId))
+            {
+                if (sound == nullptr)
+                    return {};
+                sfx = insertSound(soundId, *sound);
+            }
+            else
+            {
+                const ESM4::Sound* sound4 = MWBase::Environment::get().getWorld()->getStore().get<ESM4::Sound>().search(soundId);
+                if (sound4 == nullptr)
+                    return {};
+                sfx = insertSound(soundId, *sound);
+            }
+            
         }
 
         if (sfx->getHandle() == nullptr)
@@ -131,6 +144,31 @@ namespace MWSound
         max = std::max(min, max);
 
         Sound_Buffer& sfx = mSoundBuffers.emplace_back("Sound/" + sound.mSound, volume, min, max);
+        sfx.mResourceName = mVfs->normalizeFilename(sfx.mResourceName);
+
+        mBufferNameMap.emplace(soundId, &sfx);
+        return &sfx;
+    }
+
+    Sound_Buffer* SoundBufferPool::insertSound(const std::string& soundId, const ESM4::Sound& sound)
+    {
+        static const AudioParams audioParams = makeAudioParams(*MWBase::Environment::get().getWorld());
+
+        float volume = static_cast<float>(std::pow(10.0, (sound.mData.freqAdjustment / 255.0 * 3348.0 - 3348.0) / 2000.0));
+        float min = sound.mData.minAttenuation * 5.0f;
+        float max = sound.mData.maxAttenuation * 100.0f;
+        if (min == 0 && max == 0)
+        {
+            min = audioParams.mAudioDefaultMinDistance;
+            max = audioParams.mAudioDefaultMaxDistance;
+        }
+
+        min *= audioParams.mAudioMinDistanceMult;
+        max *= audioParams.mAudioMaxDistanceMult;
+        min = std::max(min, 1.0f);
+        max = std::max(min, max);
+
+        Sound_Buffer& sfx = mSoundBuffers.emplace_back("Sound/" + sound.mSoundFile, volume, min, max);
         sfx.mResourceName = mVfs->normalizeFilename(sfx.mResourceName);
 
         mBufferNameMap.emplace(soundId, &sfx);

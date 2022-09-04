@@ -63,10 +63,16 @@ void ESM4::Sound::load(ESM4::Reader& reader)
             case ESM4::SUB_ANAM: // FO3
             case ESM4::SUB_GNAM: // FO3
             case ESM4::SUB_HNAM: // FO3
+            {
+                //std::cout << "SOUN " << ESM::printName(subHdr.typeId) << " skipping..."
+                //<< subHdr.dataSize << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_RNAM: // FONV
             {
                 //std::cout << "SOUN " << ESM::printName(subHdr.typeId) << " skipping..."
-                          //<< subHdr.dataSize << std::endl;
+                //<< subHdr.dataSize << std::endl;
                 reader.skipSubRecordData();
                 break;
             }

@@ -111,6 +111,8 @@ namespace MWSound
 
         Sound* mCurrentRegionSound;
 
+        std::vector<Sound*> mAmbience;
+
         Sound_Buffer *insertSound(const std::string &soundId, const ESM::Sound *sound);
 
         // returns a decoder to start streaming, or nullptr if the sound was not found
@@ -129,6 +131,7 @@ namespace MWSound
 
         void updateSounds(float duration);
         void updateRegionSound(float duration);
+        void updateAmbience(float duration);
         void updateWaterSound();
         void updateMusic(float duration);
 

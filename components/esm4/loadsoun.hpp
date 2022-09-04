@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -39,6 +41,7 @@ namespace ESM4
 
     struct Sound
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_SOUN4;
         enum Flags
         {
             Flag_RandomFreqShift = 0x0001,
@@ -92,6 +95,8 @@ namespace ESM4
         //void save(ESM4::Writer& writer) const;
 
         //void blank();
+
+        static std::string getRecordType() { return "Sound (TES4)"; }
     };
 }
 

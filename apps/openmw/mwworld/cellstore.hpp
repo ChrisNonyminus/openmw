@@ -203,6 +203,8 @@ namespace MWWorld
                     forEachImp (visitor, get<ESM::CreatureLevList>());
             }
 
+        public:
+
             /// @note If you get a linker error here, this means the given type can not be stored in a cell. The supported types are
             /// defined at the bottom of this file.
             template <class T>
@@ -215,8 +217,6 @@ namespace MWWorld
             {
                 return mTypeMap.get<T>();
             }
-
-        public:
 
             /// Should this reference be accessible to the outside world (i.e. to scripts / game logic)?
             /// Determined based on the deletion flags. By default, objects deleted by content files are never accessible;

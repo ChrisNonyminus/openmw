@@ -159,9 +159,7 @@ namespace MWWorld
             std::copy_if(mShared.begin(), mShared.end(), std::back_inserter(results),
                 [&id](const T* item)
                 {
-                    std::stringstream toHex;
-                    toHex << std::hex << item->mFormId;
-                    return Misc::StringUtils::ciStartsWith(toHex.str(), id);
+                    return Misc::StringUtils::ciStartsWith(ESM4::formIdToString(item->mFormId), id);
                 });
         }
         if(!results.empty())
@@ -244,9 +242,7 @@ namespace MWWorld
             }
             else if constexpr (requires(T & item) { item.mFormId; })
             {
-                std::stringstream ss;
-                ss << std::hex << (*it)->mFormId;
-                list.push_back(ss.str());
+                list.push_back(ESM4::formIdToString((*it)->mFormId));
             }
         }
     }
@@ -283,15 +279,13 @@ namespace MWWorld
         }
         else if constexpr (requires(T & item) { item.mFormId; })
         {
-            std::stringstream ss;
-            ss << std::hex << item.mFormId;
             if (overrideOnly)
             {
-                auto it = mStatic.find(ss.str());
+                auto it = mStatic.find(ESM4::formIdToString(item.mEditorId));
                 if (it == mStatic.end())
                     return nullptr;
             }
-            std::pair<typename Dynamic::iterator, bool> result = mDynamic.insert_or_assign(ss.str(), item);
+            std::pair<typename Dynamic::iterator, bool> result = mDynamic.insert_or_assign(ESM4::formIdToString(item.mEditorId), item);
             T* ptr = &result.first->second;
             if (result.second)
                 mShared.push_back(ptr);
@@ -321,9 +315,7 @@ namespace MWWorld
         }
         else if constexpr (requires(T & item) { item.mFormId; })
         {
-            std::stringstream ss;
-            ss << std::hex << item.mFormId;
-            std::pair<typename Static::iterator, bool> result = mStatic.insert_or_assign(ss.str(), item);
+            std::pair<typename Static::iterator, bool> result = mStatic.insert_or_assign(ESM4::formIdToString(item.mFormId), item);
             T* ptr = &result.first->second;
             if (result.second)
                 mShared.push_back(ptr);
@@ -395,9 +387,7 @@ namespace MWWorld
 
                 while (sharedIter != mShared.end() && sharedIter != end)
                 {
-                    std::stringstream ss;
-                    ss << std::hex << (*sharedIter)->mFormId;
-                    if (Misc::StringUtils::ciEqual(ss.str(), id))
+                    if (Misc::StringUtils::ciEqual(ESM4::formIdToString((*sharedIter)->mFormId), id))
                     {
                         mShared.erase(sharedIter);
                         break;
@@ -439,9 +429,7 @@ namespace MWWorld
         }
         else if constexpr (requires(T & item) { item.mFormId; })
         {
-            std::stringstream ss;
-            ss << std::hex << item.mFormId;
-            return erase(ss.str());
+            return erase(ESM4::formIdToString(item.mFormId));
         }
     }
     template <class T>
@@ -462,15 +450,13 @@ namespace MWWorld
                 Misc::StringUtils::trim(record.mEditorId);
                 if (record.mEditorId == "")
                 {
-                    std::stringstream toHex;
-                    toHex << std::hex << record.mFormId;
-                    record.mEditorId = toHex.str();
+                    record.mEditorId = ESM4::formIdToString(record.mFormId);
                 }
                 Misc::StringUtils::lowerCaseInPlace(record.mEditorId); // TODO: remove this line once we have ported our remaining code base to lowercase on lookup
                 id << record.mEditorId;
             }
             else
-                id << std::hex << record.mFormId;
+                id << ESM4::formIdToString(record.mFormId);
 
             std::pair<typename Static::iterator, bool> inserted = mStatic.insert_or_assign(id.str(), record);
             if (inserted.second)
@@ -529,7 +515,7 @@ namespace MWWorld
             if constexpr (requires { record.mEditorId; })
                 id << record.mEditorId;
             else
-                id << std::hex << record.mFormId;
+                id << ESM4::formIdToString(record.mFormId);
 
             return RecordId(id.str(), isDeleted);
         }
@@ -1664,3 +1650,4 @@ template class MWWorld::Store<ESM4::Activator>;
 template class MWWorld::Store<ESM4::Reference>;
 template class MWWorld::Store<ESM4::Static>;
 template class MWWorld::Store<ESM4::Light>;
+template class MWWorld::Store<ESM4::Sound>;
