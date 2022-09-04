@@ -260,7 +260,9 @@ using Types = AllTypeGetters<
     TypeGetter<ESM4::Reference>,
     TypeGetter<ESM4::Static>,
     TypeGetter<ESM4::Light>,
-    TypeGetter<ESM4::Sound>
+    TypeGetter<ESM4::Sound>,
+    TypeGetter<ESM4::World>,
+    TypeGetter<ESM4::Land>
 >;
 
 template <>
@@ -313,7 +315,9 @@ std::tuple<
     TypeGetter<ESM4::Reference>,
     TypeGetter<ESM4::Static>,
     TypeGetter<ESM4::Light>,
-    TypeGetter<ESM4::Sound>
+    TypeGetter<ESM4::Sound>,
+    TypeGetter<ESM4::World>,
+    TypeGetter<ESM4::Land>
     >
     Types::sAll = std::make_tuple(
         TypeGetter<ESM::Activator>(),
@@ -364,7 +368,9 @@ std::tuple<
         TypeGetter<ESM4::Reference>(),
         TypeGetter<ESM4::Static>(),
         TypeGetter<ESM4::Light>(),
-        TypeGetter<ESM4::Sound>());
+        TypeGetter<ESM4::Sound>(),
+        TypeGetter<ESM4::World>(),
+        TypeGetter<ESM4::Land>());
 
 static bool isCacheableRecord(int id)
 {
@@ -375,7 +381,8 @@ static bool isCacheableRecord(int id)
         id == ESM::REC_PROB || id == ESM::REC_REPA || id == ESM::REC_STAT || id == ESM::REC_WEAP ||
         id == ESM::REC_BODY || 
         id == ESM::REC_ACTI4 || id == ESM::REC_REFR4 || id == ESM::REC_STAT4 || 
-        id == ESM::REC_LIGH4 || id == ESM::REC_SOUN4)
+        id == ESM::REC_LIGH4 || id == ESM::REC_SOUN4 || id == ESM::REC_WRLD4 ||
+        id == ESM::REC_LAND4)
     {
         return true;
     }
@@ -736,7 +743,7 @@ struct ESM4Reading
             case ESM4::REC_IPDS: break;
             case ESM4::REC_KEYM: return readUnimplementedTypedRecord<ESM4::Key>(store, reader, dialogue);
             case ESM4::REC_KYWD: break;
-            case ESM4::REC_LAND: return readUnimplementedTypedRecord<ESM4::Land>(store, reader, dialogue);
+            case ESM4::REC_LAND: return readImplementedTypedRecord<ESM4::Land>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_LCRT: break;
             case ESM4::REC_LCTN: break;
             case ESM4::REC_LGTM: return readUnimplementedTypedRecord<ESM4::LightingTemplate>(store, reader, dialogue);
@@ -804,7 +811,7 @@ struct ESM4Reading
             case ESM4::REC_WATR: break;
             case ESM4::REC_WEAP: return readUnimplementedTypedRecord<ESM4::Weapon>(store, reader, dialogue);
             case ESM4::REC_WOOP: break;
-            case ESM4::REC_WRLD: return readUnimplementedTypedRecord<ESM4::World>(store, reader, dialogue);
+            case ESM4::REC_WRLD: return readImplementedTypedRecord<ESM4::World>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_WTHR: break;
         }
 

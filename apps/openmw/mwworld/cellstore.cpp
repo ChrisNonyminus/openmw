@@ -534,7 +534,7 @@ namespace MWWorld
         , mState(State_Unloaded)
         , mHasState(false)
         , mLastRespawn(0, 0), mIsTes4(false)
-        , mRechargingItemsUpToDate(false)
+        , mRechargingItemsUpToDate(false), mLand(0)
     {
         mWaterLevel = cell->mWater;
         iterateTuple(CellStoreTypes::sAll, [&](auto typeGetter)
@@ -551,7 +551,7 @@ namespace MWWorld
         mHasState(false),
           mLastRespawn(0, 0), mIsTes4(true),
         mRechargingItemsUpToDate(false),
-        mReaders(readers)
+          mReaders(readers), mLand(0)
     {
         mWaterLevel = cell->mWaterHeight;
         iterateTuple(CellStoreTypes::sAll, [&](auto typeGetter)
@@ -569,6 +569,12 @@ namespace MWWorld
     const ESM4::Cell* CellStore::getCell4() const
     {
         return mCell4;
+    }
+
+    ESM4::FormId CellStore::getLandId() const
+    {
+        assert(isTes4());
+        return mLand;
     }
 
     CellStore::State CellStore::getState() const
@@ -791,6 +797,19 @@ namespace MWWorld
                     }
                 }
                 ++it;
+            }
+
+            // hacky: get the land
+            auto& land = MWBase::Environment::get().getWorld()->getStore().get<ESM4::Land>();
+            auto lit = land.begin();
+            while (lit != land.end())
+            {
+                if (lit->mCell == mCell4->mFormId)
+                {
+                    mLand = lit->mFormId;
+                    break;
+                }
+                ++lit;
             }
 
             // test

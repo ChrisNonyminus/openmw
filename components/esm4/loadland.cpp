@@ -59,6 +59,7 @@ void ESM4::Land::load(ESM4::Reader& reader)
     reader.adjustFormId(mFormId);
     mFlags  = reader.hdr().record.flags;
     mDataTypes = 0;
+    mCell = reader.currCell();
 
     TxtLayer layer;
     std::int8_t currentAddQuad = -1; // for VTXT following ATXT
@@ -229,6 +230,35 @@ void ESM4::Land::load(ESM4::Reader& reader)
     // at least one of the quadrants do not have a base texture, return without setting the flag
     if (!missing)
         mDataTypes |= LAND_VTEX;
+
+    // github.com/cc9cii/openmw/components/esm4terrain/land.cpp
+    float offset = mHeightMap.heightOffset * 8;
+    float row_offset = 0;
+    for (int i = 0; i < 1089; i++)
+    {
+        float value = mHeightMap.gradientData[i] * 8;
+
+        int r = i / 33;
+        int c = i % 33;
+
+        if (c == 0) // first column value controls height for all remaining points in cell
+        {
+            row_offset = 0;
+            offset += value;
+        }
+        else
+        {
+            row_offset += value;
+        }
+
+        mHeightMapF[c * r] = offset + row_offset;
+    }
+
+}
+
+float ESM4::Land::getHeight(int x, int y)
+{
+    return mHeightMapF[x * y];
 }
 
 //void ESM4::Land::save(ESM4::Writer& writer) const

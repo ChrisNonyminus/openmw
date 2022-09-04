@@ -843,7 +843,10 @@ namespace MWRender
         }
         else
         {
-            // TODO: terrain
+            if (store->isExterior())
+            {
+                mTerrain->loadCell(store->getCell4()->mX, store->getCell4()->mY);
+            }
         }
     }
     void RenderingManager::removeCell(const MWWorld::CellStore *store)
@@ -1589,6 +1592,11 @@ namespace MWRender
     LandManager *RenderingManager::getLandManager() const
     {
         return mTerrainStorage->getLandManager();
+    }
+
+    TES4LandManager* RenderingManager::getTes4LandManager() const
+    {
+        return mTerrainStorage->getTES4LandManager();
     }
 
     void RenderingManager::updateActorPath(const MWWorld::ConstPtr& actor, const std::deque<osg::Vec3f>& path,

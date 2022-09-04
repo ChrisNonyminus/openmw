@@ -120,6 +120,7 @@ namespace MWWorld
 
             const ESM::Cell *mCell;
             const ESM4::Cell* mCell4;
+            ESM4::FormId mLand;
             bool mIsTes4;
             State mState;
             bool mHasState;
@@ -255,6 +256,7 @@ namespace MWWorld
 
             const ESM::Cell* getCell() const;
             const ESM4::Cell* getCell4() const;
+            ESM4::FormId getLandId() const;
 
             State getState() const;
 

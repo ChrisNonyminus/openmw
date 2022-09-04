@@ -20,9 +20,21 @@ namespace ESMTerrain
         Map mMap;
     };
 
+    class TES4LandCache
+    {
+    public:
+        typedef std::map<uint32_t, osg::ref_ptr<const TES4LandObject>> Map;
+        Map mMap;
+    };
+
     LandObject::LandObject()
         : mLand(nullptr)
         , mLoadFlags(0)
+    {
+    }
+
+    TES4LandObject::TES4LandObject()
+        : mLoadFlags(0)
     {
     }
 
@@ -33,13 +45,29 @@ namespace ESMTerrain
         mLand->loadData(mLoadFlags, &mData);
     }
 
+    TES4LandObject::TES4LandObject(const ESM4::Land* land, int loadFlags)
+        : mLand(*land)
+        , mLoadFlags(loadFlags)
+    {
+        
+    }
+
     LandObject::LandObject(const LandObject &copy, const osg::CopyOp &copyop)
         : mLand(nullptr)
         , mLoadFlags(0)
     {
     }
 
+    TES4LandObject::TES4LandObject(const TES4LandObject& copy, const osg::CopyOp& copyop)
+        : mLoadFlags(0)
+    {
+    }
+
     LandObject::~LandObject()
+    {
+    }
+
+    TES4LandObject::~TES4LandObject()
     {
     }
 
@@ -139,6 +167,80 @@ namespace ESMTerrain
         fixNormal(n3, cellX, cellY, col, row+1, cache);
         fixNormal(n4, cellX, cellY, col, row-1, cache);
         normal = (n1+n2+n3+n4);
+        normal.normalize();
+    }
+
+    inline void Storage::fixNormal(osg::Vec3f& normal, uint32_t formId, int cellX, int cellY, int col, int row, TES4LandCache& cache)
+    {
+        while (col >= ESM4::Land::VERTS_PER_SIDE - 1)
+        {
+            ++cellY;
+            col -= 33 - 1;
+        }
+        while (row >= ESM4::Land::VERTS_PER_SIDE - 1)
+        {
+            ++cellX;
+            row -= ESM4::Land::VERTS_PER_SIDE - 1;
+        }
+        while (col < 0)
+        {
+            --cellY;
+            col += ESM4::Land::VERTS_PER_SIDE - 1;
+        }
+        while (row < 0)
+        {
+            --cellX;
+            row += ESM4::Land::VERTS_PER_SIDE - 1;
+        }
+
+        const TES4LandObject* land = getTes4Land(formId, cache);
+        const ESM4::Land* data = land ? land->getData(ESM::Land::DATA_VNML) : nullptr;
+        if (data)
+        {
+            normal.x() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3];
+            normal.y() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1];
+            normal.z() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2];
+            normal.normalize();
+        }
+        else
+            normal = osg::Vec3f(0, 0, 1);
+    }
+
+    inline void Storage::fixColour(osg::Vec4ub& colour, uint32_t formId, int cellX, int cellY, int col, int row, TES4LandCache& cache)
+    {
+        if (col == ESM4::Land::VERTS_PER_SIDE - 1)
+        {
+            ++cellY;
+            col = 0;
+        }
+        if (col == ESM4::Land::VERTS_PER_SIDE - 1)
+        {
+            ++cellX;
+            row = 0;
+        }
+
+        if (const auto* data = getTes4Land(formId, cache)->getData(0))
+        {
+            colour[0] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3] / 255.f;
+            colour[1] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1] / 255.f;
+            colour[2] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2] / 255.f;
+        }
+        else
+        {
+            colour[0] = 1;
+            colour[1] = 1;
+            colour[2] = 1;
+        }
+    }
+
+    inline void Storage::averageNormal(osg::Vec3f& normal, uint32_t formId, int cellX, int cellY, int col, int row, TES4LandCache& cache)
+    {
+        osg::Vec3f n1, n2, n3, n4;
+        fixNormal(n1, formId, cellX, cellY, col + 1, row, cache);
+        fixNormal(n2, formId, cellX, cellY, col - 1, row, cache);
+        fixNormal(n3, formId, cellX, cellY, col, row + 1, cache);
+        fixNormal(n4, formId, cellX, cellY, col, row - 1, cache);
+        normal = (n1 + n2 + n3 + n4);
         normal.normalize();
     }
 
@@ -352,6 +454,43 @@ namespace ESMTerrain
         return std::make_pair(0,0);
     }
 
+    inline Storage::UniqueTextureId Storage::getVtexIndexAt(uint32_t formId, int cellX, int cellY, int x, int y, TES4LandCache& cache)
+    {
+        // For the first/last row/column, we need to get the texture from the neighbour cell
+        // to get consistent blending at the borders
+        --x;
+        if (x < 0)
+        {
+            --cellX;
+            x += ESM4::Land::VERTS_PER_SIDE;
+        }
+        while (x >= ESM::Land::LAND_TEXTURE_SIZE)
+        {
+            ++cellX;
+            x -= ESM4::Land::VERTS_PER_SIDE;
+        }
+        while (y >= ESM::Land::LAND_TEXTURE_SIZE) // Y appears to be wrapped from the other side because why the hell not?
+        {
+            ++cellY;
+            y -= ESM4::Land::VERTS_PER_SIDE;
+        }
+
+        assert(x < ESM4::Land::VERTS_PER_SIDE);
+        assert(y < ESM4::Land::VERTS_PER_SIDE);
+
+        const TES4LandObject* land = getTes4Land(formId, cache);
+
+        const ESM4::Land* data = land ? land->getData(ESM::Land::DATA_VTEX) : nullptr;
+        if (data)
+        {
+            int tex = 0; // todo
+            if (tex == 0)
+                return std::make_pair(0, 0); // vtex 0 is always the base texture, regardless of plugin
+            return std::make_pair(tex, land->getPlugin());
+        }
+        return std::make_pair(0, 0);
+    }
+
     std::string Storage::getTextureName(UniqueTextureId id)
     {
         static constexpr char defaultTexture[] = "textures\\_land_default.dds";
@@ -535,7 +674,23 @@ namespace ESMTerrain
         }
     }
 
+    inline const TES4LandObject* Storage::getTes4Land(uint32_t formId, TES4LandCache& cache)
+    {
+        TES4LandCache::Map::iterator found = cache.mMap.find(formId);
+        if (found != cache.mMap.end())
+            return found->second;
+        else
+        {
+            found = cache.mMap.insert(std::make_pair(formId, getTes4Land(formId))).first;
+            return found->second;
+        }
+    }
+
     void Storage::adjustColor(int col, int row, const ESM::Land::LandData *heightData, osg::Vec4ub& color) const
+    {
+    }
+
+    void Storage::adjustColor(int col, int row, const ESM4::Land* heightData, osg::Vec4ub& color) const
     {
     }
 

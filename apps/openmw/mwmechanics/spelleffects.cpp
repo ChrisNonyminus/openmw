@@ -467,7 +467,7 @@ void applyMagicEffect(const MWWorld::Ptr& target, const MWWorld::Ptr& caster, co
                     std::string_view dest;
                     if (!markedCell->isExterior())
                         dest = markedCell->getCell()->mName;
-                    MWWorld::ActionTeleport action(dest, markedPosition, false);
+                    MWWorld::ActionTeleport action(dest, markedPosition, 0, false);
                     action.execute(target);
                     if(!caster.isEmpty())
                     {

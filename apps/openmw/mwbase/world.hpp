@@ -135,7 +135,7 @@ namespace MWBase
             virtual void readRecord (ESM::ESMReader& reader, uint32_t type,
                 const std::map<int, int>& contentFileMap) = 0;
 
-            virtual MWWorld::CellStore *getExterior (int x, int y) = 0;
+            virtual MWWorld::CellStore *getExterior (int x, int y, uint32_t wrld = 0) = 0;
 
             virtual MWWorld::CellStore* getInterior(std::string_view name) = 0;
 
@@ -266,7 +266,7 @@ namespace MWBase
             ///< Move to interior cell.
             ///< @param changeEvent If false, do not trigger cell change flag or detect worldspace changes
 
-            virtual void changeToExteriorCell (const ESM::Position& position, bool adjustPlayerPos, bool changeEvent=true) = 0;
+            virtual void changeToExteriorCell (const ESM::Position& position, uint32_t wrldId, bool adjustPlayerPos, bool changeEvent=true) = 0;
             ///< Move to exterior cell.
             ///< @param changeEvent If false, do not trigger cell change flag or detect worldspace changes
 
@@ -516,7 +516,7 @@ namespace MWBase
 
             /// Find default position inside exterior cell specified by name
             /// \return false if exterior with given name not exists, true otherwise
-            virtual bool findExteriorPosition(std::string_view name, ESM::Position& pos) = 0;
+            virtual bool findExteriorPosition(std::string_view name, ESM::Position& pos, uint32_t* wrldId = nullptr) = 0;
 
             /// Find default position inside interior cell specified by name
             /// \return false if interior with given name not exists, true otherwise

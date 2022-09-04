@@ -96,6 +96,7 @@ namespace MWRender
     class Water;
     class TerrainStorage;
     class LandManager;
+    class TES4LandManager;
     class NavMesh;
     class ActorsPaths;
     class RecastMesh;
@@ -241,6 +242,7 @@ namespace MWRender
         void exportSceneGraph(const MWWorld::Ptr& ptr, const std::string& filename, const std::string& format);
 
         LandManager* getLandManager() const;
+        TES4LandManager* getTes4LandManager() const;
 
         bool toggleBorders();
 

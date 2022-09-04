@@ -194,7 +194,7 @@ namespace MWClass
                 }
                 else
                 {
-                    std::unique_ptr<MWWorld::Action> action = std::make_unique<MWWorld::ActionTeleport>(ptr.getCellRef().getDestCell(), ptr.getCellRef().getDoorDest(), true);
+                    std::unique_ptr<MWWorld::Action> action = std::make_unique<MWWorld::ActionTeleport>(ptr.getCellRef().getDestCell(), ptr.getCellRef().getDoorDest(), 0 /*todo: get worldspace id*/, true);
                     action->setSound(openSound);
                     return action;
                 }

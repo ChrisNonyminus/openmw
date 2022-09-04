@@ -68,6 +68,13 @@ struct Position
     }
 };
 
+// struct that holds the Position and the formId of the parent world space
+struct WrldPosition
+{
+    Position mPos;
+    uint32_t mWrldFormId = 0;
+};
+
 bool inline operator== (const Position& left, const Position& right) noexcept
 {
     return left.pos[0] == right.pos[0] &&

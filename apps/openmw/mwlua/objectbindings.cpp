@@ -61,7 +61,7 @@ namespace MWLua
                     std::memcpy(esmPos.rot, &mRot, sizeof(osg::Vec3f));
                     world->getPlayer().setTeleported(true);
                     if (cell->isExterior())
-                        world->changeToExteriorCell(esmPos, true);
+                        world->changeToExteriorCell(esmPos, 0, true);
                     else
                         world->changeToInteriorCell(mCell, esmPos, true);
                 }

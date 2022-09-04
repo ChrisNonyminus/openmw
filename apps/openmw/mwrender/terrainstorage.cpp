@@ -10,8 +10,7 @@ namespace MWRender
 {
 
     TerrainStorage::TerrainStorage(Resource::ResourceSystem* resourceSystem, const std::string& normalMapPattern, const std::string& normalHeightMapPattern, bool autoUseNormalMaps, const std::string& specularMapPattern, bool autoUseSpecularMaps)
-        : ESMTerrain::Storage(resourceSystem->getVFS(), normalMapPattern, normalHeightMapPattern, autoUseNormalMaps, specularMapPattern, autoUseSpecularMaps)
-        , mLandManager(new LandManager(ESM::Land::DATA_VCLR|ESM::Land::DATA_VHGT|ESM::Land::DATA_VNML|ESM::Land::DATA_VTEX))
+        : ESMTerrain::Storage(resourceSystem->getVFS(), normalMapPattern, normalHeightMapPattern, autoUseNormalMaps, specularMapPattern, autoUseSpecularMaps), mLandManager(new LandManager(ESM::Land::DATA_VCLR | ESM::Land::DATA_VHGT | ESM::Land::DATA_VNML | ESM::Land::DATA_VTEX)), mTES4LandManager(new TES4LandManager(0))
         , mResourceSystem(resourceSystem)
     {
         mResourceSystem->addResourceManager(mLandManager.get());
@@ -29,6 +28,13 @@ namespace MWRender
 
         const ESM::Land* land = esmStore.get<ESM::Land>().search(cellX, cellY);
         return land != nullptr;
+    }
+
+    bool TerrainStorage::hasData(ESM4::FormId id)
+    {
+        const MWWorld::ESMStore& esmStore = MWBase::Environment::get().getWorld()->getStore();
+        std::string formIdStr = ESM4::formIdToString(id);
+        return esmStore.get<ESM4::Land>().search(formIdStr) != nullptr;
     }
 
     void TerrainStorage::getBounds(float& minX, float& maxX, float& minY, float& maxY)
@@ -64,9 +70,19 @@ namespace MWRender
         return mLandManager.get();
     }
 
+    TES4LandManager* TerrainStorage::getTES4LandManager() const
+    {
+        return mTES4LandManager.get();
+    }
+
     osg::ref_ptr<const ESMTerrain::LandObject> TerrainStorage::getLand(int cellX, int cellY)
     {
         return mLandManager->getLand(cellX, cellY);
+    }
+
+    osg::ref_ptr<const ESMTerrain::TES4LandObject> TerrainStorage::getTes4Land(ESM4::FormId id)
+    {
+        return mTES4LandManager->getLand(id);
     }
 
     const ESM::LandTexture* TerrainStorage::getLandTexture(int index, short plugin)

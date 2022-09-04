@@ -80,7 +80,29 @@ namespace MWWorld
             , mKeyframeManager(keyframeManager)
             , mTerrain(terrain)
             , mLandManager(landManager)
+            , mTES4LandManager(nullptr)
             , mPreloadInstances(preloadInstances)
+            , mLandFormId(0)
+            , mAbort(false)
+        {
+            mTerrainView = mTerrain->createView();
+
+            ListModelsVisitor visitor (mMeshes);
+            cell->forEach(visitor);
+        }
+        /// Constructor to be called from the main thread.
+        PreloadItem(MWWorld::CellStore* cell, Resource::SceneManager* sceneManager, Resource::BulletShapeManager* bulletShapeManager, Resource::KeyframeManager* keyframeManager, Terrain::World* terrain, MWRender::TES4LandManager* landManager, bool preloadInstances)
+            : mIsExterior(cell->getCell4()->isExterior())
+            , mX(cell->getCell4()->mX)
+            , mY(cell->getCell4()->mY)
+            , mSceneManager(sceneManager)
+            , mBulletShapeManager(bulletShapeManager)
+            , mKeyframeManager(keyframeManager)
+            , mTerrain(terrain)
+            , mLandManager(nullptr)
+            , mTES4LandManager(landManager)
+            , mPreloadInstances(preloadInstances)
+            , mLandFormId(cell->getLandId())
             , mAbort(false)
         {
             mTerrainView = mTerrain->createView();
@@ -102,7 +124,10 @@ namespace MWWorld
                 try
                 {
                     mTerrain->cacheCell(mTerrainView.get(), mX, mY);
-                    mPreloadedObjects.insert(mLandManager->getLand(mX, mY));
+                    if (mLandManager)
+                        mPreloadedObjects.insert(mLandManager->getLand(mX, mY));
+                    else
+                        mPreloadedObjects.insert(mTES4LandManager->getLand(mLandFormId));
                 }
                 catch(std::exception&)
                 {
@@ -159,7 +184,9 @@ namespace MWWorld
         Resource::KeyframeManager* mKeyframeManager;
         Terrain::World* mTerrain;
         MWRender::LandManager* mLandManager;
+        MWRender::TES4LandManager* mTES4LandManager;
         bool mPreloadInstances;
+        ESM4::FormId mLandFormId;
 
         std::atomic<bool> mAbort;
 
@@ -233,6 +260,22 @@ namespace MWWorld
         , mBulletShapeManager(bulletShapeManager)
         , mTerrain(terrain)
         , mLandManager(landManager)
+        , mTES4LandManager(nullptr)
+        , mExpiryDelay(0.0)
+        , mMinCacheSize(0)
+        , mMaxCacheSize(0)
+        , mPreloadInstances(true)
+        , mLastResourceCacheUpdate(0.0)
+        , mLoadedTerrainTimestamp(0.0)
+    {
+    }
+
+    CellPreloader::CellPreloader(Resource::ResourceSystem* resourceSystem, Resource::BulletShapeManager* bulletShapeManager, Terrain::World* terrain, MWRender::TES4LandManager* landManager)
+        : mResourceSystem(resourceSystem)
+        , mBulletShapeManager(bulletShapeManager)
+        , mTerrain(terrain)
+        , mLandManager(nullptr)
+        , mTES4LandManager(landManager)
         , mExpiryDelay(0.0)
         , mMinCacheSize(0)
         , mMaxCacheSize(0)
@@ -311,10 +354,20 @@ namespace MWWorld
                 return;
         }
 
-        osg::ref_ptr<PreloadItem> item (new PreloadItem(cell, mResourceSystem->getSceneManager(), mBulletShapeManager, mResourceSystem->getKeyframeManager(), mTerrain, mLandManager, mPreloadInstances));
-        mWorkQueue->addWorkItem(item);
+        if (cell->isTes4())
+        {
+            osg::ref_ptr<PreloadItem> item(new PreloadItem(cell, mResourceSystem->getSceneManager(), mBulletShapeManager, mResourceSystem->getKeyframeManager(), mTerrain, mTES4LandManager, mPreloadInstances));
+            mWorkQueue->addWorkItem(item);
 
-        mPreloadCells[cell] = PreloadEntry(timestamp, item);
+            mPreloadCells[cell] = PreloadEntry(timestamp, item);
+        }
+        else
+        {
+            osg::ref_ptr<PreloadItem> item(new PreloadItem(cell, mResourceSystem->getSceneManager(), mBulletShapeManager, mResourceSystem->getKeyframeManager(), mTerrain, mLandManager, mPreloadInstances));
+            mWorkQueue->addWorkItem(item);
+
+            mPreloadCells[cell] = PreloadEntry(timestamp, item);
+        }
     }
 
     void CellPreloader::notifyLoaded(CellStore *cell)

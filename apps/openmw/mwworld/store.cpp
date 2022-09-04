@@ -281,11 +281,11 @@ namespace MWWorld
         {
             if (overrideOnly)
             {
-                auto it = mStatic.find(ESM4::formIdToString(item.mEditorId));
+                auto it = mStatic.find(ESM4::formIdToString(item.mFormId));
                 if (it == mStatic.end())
                     return nullptr;
             }
-            std::pair<typename Dynamic::iterator, bool> result = mDynamic.insert_or_assign(ESM4::formIdToString(item.mEditorId), item);
+            std::pair<typename Dynamic::iterator, bool> result = mDynamic.insert_or_assign(ESM4::formIdToString(item.mFormId), item);
             T* ptr = &result.first->second;
             if (result.second)
                 mShared.push_back(ptr);
@@ -1346,7 +1346,7 @@ namespace MWWorld
     {
         if (cell.isExterior())
         {
-            return search(cell.mFormId);
+            return search(std::make_pair(cell.mParent, std::make_pair(cell.mX, cell.mY)));
         }
         return search(cell.mEditorId);
     }
@@ -1370,7 +1370,7 @@ namespace MWWorld
 
         return nullptr;
     }
-    const ESM4::Cell* Store<ESM4::Cell>::search(ESM4::FormId id) const
+    const ESM4::Cell* Store<ESM4::Cell>::search(ExtLocation id) const
     {
         DynamicExt::const_iterator it = mExt.find(id);
         if (it != mExt.end())
@@ -1382,7 +1382,7 @@ namespace MWWorld
 
         return nullptr;
     }
-    const ESM4::Cell* Store<ESM4::Cell>::searchStatic(ESM4::FormId id) const
+    const ESM4::Cell* Store<ESM4::Cell>::searchStatic(ExtLocation id) const
     {
         DynamicExt::const_iterator it = mExt.find(id);
         if (it != mExt.end())
@@ -1390,7 +1390,7 @@ namespace MWWorld
 
         return nullptr;
     }
-    const ESM4::Cell* Store<ESM4::Cell>::searchOrCreate(ESM4::FormId id, int x, int y)
+    const ESM4::Cell* Store<ESM4::Cell>::searchOrCreate(ExtLocation id)
     {
         DynamicExt::const_iterator it = mExt.find(id);
         if (it != mExt.end())
@@ -1401,10 +1401,10 @@ namespace MWWorld
             return &dit->second;
 
         ESM4::Cell newCell;
-        newCell.mX = x;
-        newCell.mY = y;
+        newCell.mX = id.second.first;
+        newCell.mY = id.second.second;
         newCell.mCellFlags = ESM4::CELL_HasWater;
-        newCell.mFormId = id;
+        newCell.mParent = id.first;
         
         return &mExt.insert(std::make_pair(id, newCell)).first->second;
     }
@@ -1418,13 +1418,13 @@ namespace MWWorld
         }
         return ptr;
     }
-    const ESM4::Cell* Store<ESM4::Cell>::find(ESM4::FormId id) const
+    const ESM4::Cell* Store<ESM4::Cell>::find(ExtLocation id) const
     {
         const ESM4::Cell* ptr = search(id);
         if (ptr == nullptr)
         {
             std::stringstream msg;
-            msg << "Cell '" << std::hex << id << "' not found";
+            msg << "Cell in worldspace '" << std::hex << id.first << "' at position (" << id.second.first << "," << id.second.second << ") not found ";
             throw std::runtime_error(msg.str());
         }
         return ptr;
@@ -1459,7 +1459,7 @@ namespace MWWorld
         }
         else
         {
-            mExt[cell.mFormId] = cell;
+            mExt[std::make_pair(cell.mParent, std::make_pair(cell.mX, cell.mY))] = cell;
         }
         return RecordId(cell.mEditorId, isDeleted);
     }
@@ -1542,7 +1542,7 @@ namespace MWWorld
         {
 
             // duplicate insertions are avoided by search(ESM::Cell &)
-            DynamicExt::iterator result = mDynamicExt.emplace(cell.mFormId, cell).first;
+            DynamicExt::iterator result = mDynamicExt.emplace(std::make_pair(cell.mParent, std::make_pair(cell.mX, cell.mY)), cell).first;
             mSharedExt.push_back(&result->second);
             return &result->second;
         }
@@ -1558,7 +1558,7 @@ namespace MWWorld
     {
         if (cell.isExterior())
         {
-            return erase(cell.mFormId);
+            return erase(std::make_pair(cell.mParent, std::make_pair(cell.mX, cell.mY)));
         }
         return erase(cell.mEditorId);
     }
@@ -1582,7 +1582,7 @@ namespace MWWorld
 
         return true;
     }
-    bool Store<ESM4::Cell>::erase(ESM4::FormId id)
+    bool Store<ESM4::Cell>::erase(ExtLocation id)
     {
         DynamicExt::iterator it = mDynamicExt.find(id);
 
@@ -1651,3 +1651,5 @@ template class MWWorld::Store<ESM4::Reference>;
 template class MWWorld::Store<ESM4::Static>;
 template class MWWorld::Store<ESM4::Light>;
 template class MWWorld::Store<ESM4::Sound>;
+template class MWWorld::Store<ESM4::World>;
+template class MWWorld::Store<ESM4::Land>;

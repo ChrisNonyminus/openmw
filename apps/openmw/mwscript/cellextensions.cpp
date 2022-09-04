@@ -93,10 +93,10 @@ namespace MWScript
                     ESM::Position pos;
                     MWBase::World *world = MWBase::Environment::get().getWorld();
                     const MWWorld::Ptr playerPtr = world->getPlayerPtr();
-
-                    if (world->findExteriorPosition(cell, pos))
+                    uint32_t wrldFormId = 0;
+                    if (world->findExteriorPosition(cell, pos, &wrldFormId))
                     {
-                        MWWorld::ActionTeleport({}, pos, false).execute(playerPtr);
+                        MWWorld::ActionTeleport({}, pos, wrldFormId, false).execute(playerPtr);
                         world->adjustPosition(playerPtr, false);
                     }
                     else
@@ -104,7 +104,7 @@ namespace MWScript
                         // Change to interior even if findInteriorPosition()
                         // yields false. In this case position will be zero-point.
                         world->findInteriorPosition(cell, pos);
-                        MWWorld::ActionTeleport(cell, pos, false).execute(playerPtr);
+                        MWWorld::ActionTeleport(cell, pos, 0, false).execute(playerPtr);
                     }
                 }
         };
@@ -130,7 +130,7 @@ namespace MWScript
 
                     pos.rot[0] = pos.rot[1] = pos.rot[2] = 0;
 
-                    MWWorld::ActionTeleport({}, pos, false).execute(playerPtr);
+                    MWWorld::ActionTeleport({}, pos, 0 /*todo: get worldspace id*/, false).execute(playerPtr);
                     world->adjustPosition(playerPtr, false);
                 }
         };

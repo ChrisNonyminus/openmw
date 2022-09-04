@@ -15,6 +15,7 @@ namespace MWWorld
     {
             std::string mCellName;
             ESM::Position mPosition;
+            uint32_t mWrld;
             bool mTeleportFollowers;
 
             /// Teleports this actor and also teleports anyone following that actor.
@@ -27,7 +28,7 @@ namespace MWWorld
 
             /// If cellName is empty, an exterior cell is assumed.
             /// @param teleportFollowers Whether to teleport any following actors of the target actor as well.
-            ActionTeleport(std::string_view cellName, const ESM::Position& position, bool teleportFollowers);
+            ActionTeleport(std::string_view cellName, const ESM::Position& position, uint32_t wrld, bool teleportFollowers);
 
             /// @param includeHostiles If true, include hostile followers (which won't actually be teleported) in the output,
             ///                        e.g. so that the teleport action can calm them.

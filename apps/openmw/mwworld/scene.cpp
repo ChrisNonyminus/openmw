@@ -249,9 +249,17 @@ namespace
     {
         for (auto *cell : collection)
         {
-            assert(cell->getCell()->isExterior());
-            if (x == cell->getCell()->getGridX() && y == cell->getCell()->getGridY())
-                return true;
+            assert(cell->isExterior());
+            if (cell->isTes4())
+            {
+                if (x == cell->getCell4()->mX && y == cell->getCell4()->mY)
+                    return true;
+            }
+            else
+            {
+                if (x == cell->getCell()->getGridX() && y == cell->getCell()->getGridY())
+                    return true;
+            }
         }
         return false;
     }
@@ -312,7 +320,8 @@ namespace MWWorld
         if (mChangeCellGridRequest.has_value())
         {
             changeCellGrid(mChangeCellGridRequest->mPosition, mChangeCellGridRequest->mCell.x(),
-                           mChangeCellGridRequest->mCell.y(), mChangeCellGridRequest->mChangeEvent);
+                           mChangeCellGridRequest->mCell.y(), mCurrentCell->isTes4() ? mCurrentCell->getCell4()->mParent
+                           : 0, mChangeCellGridRequest->mChangeEvent);
             mChangeCellGridRequest.reset();
         }
 
@@ -457,10 +466,43 @@ namespace MWWorld
             // TODO
             //mNavigator.setWorldspace(MWBase::Environment::get().getWorld()->getStore().getFormName(cell->getCell4()->mParent));
 
-            if (cell->getCell4()->isExterior())
+            if (cell->getCell4()->isExterior() && cell->getLandId())
             {
-                osg::ref_ptr<const ESMTerrain::LandObject> land = mRendering.getLandManager()->getLand(cellX, cellY);
-                // TODO
+                osg::ref_ptr<const ESMTerrain::TES4LandObject> land = mRendering.getTes4LandManager()->getLand(cell->getLandId());
+                const ESM4::Land* data = land ? land->getData(ESM::Land::DATA_VHGT) : nullptr;
+                const int verts = ESM4::Land::VERTS_PER_SIDE;
+                const int worldsize = ESM4::Land::REAL_SIZE;
+                if (data)
+                {
+                    mPhysics->addHeightField(data->mHeightMapF, cellX, cellY, worldsize / (verts - 1), verts, ESM::Land::DEFAULT_HEIGHT, -ESM::Land::DEFAULT_HEIGHT, land.get());
+                }
+                else
+                {
+                    throw std::runtime_error("TES4LandObject had no data");
+                }
+                if (const auto heightField = mPhysics->getHeightField(cellX, cellY))
+                {
+                    const osg::Vec2i cellPosition(cellX, cellY);
+                    const btVector3& origin = heightField->getCollisionObject()->getWorldTransform().getOrigin();
+                    const osg::Vec3f shift(origin.x(), origin.y(), origin.z());
+                    const HeightfieldShape shape = [&]() -> HeightfieldShape
+                    {
+                        if (data == nullptr)
+                        {
+                            return DetourNavigator::HeightfieldPlane{ static_cast<float>(ESM::Land::DEFAULT_HEIGHT) };
+                        }
+                        else
+                        {
+                            DetourNavigator::HeightfieldSurface heights;
+                            heights.mHeights = data->mHeightMapF;
+                            heights.mSize = static_cast<std::size_t>(ESM::Land::LAND_SIZE);
+                            heights.mMinHeight = ESM::Land::DEFAULT_HEIGHT;
+                            heights.mMaxHeight = -ESM::Land::DEFAULT_HEIGHT;
+                            return heights;
+                        }
+                    }();
+                    mNavigator.addHeightfield(cellPosition, ESM4::Land::REAL_SIZE, shape);
+                }
             }
             
             // TODO
@@ -654,17 +696,27 @@ namespace MWWorld
         mChangeCellGridRequest = ChangeCellGridRequest {position, cell, changeEvent};
     }
 
-    void Scene::changeCellGrid (const osg::Vec3f &pos, int playerCellX, int playerCellY, bool changeEvent)
+    void Scene::changeCellGrid (const osg::Vec3f &pos, int playerCellX, int playerCellY, uint32_t wrldId, bool changeEvent)
     {
         for (auto iter = mActiveCells.begin(); iter != mActiveCells.end(); )
         {
             auto* cell = *iter++;
-            if (cell->getCell()->isExterior())
+            if (cell->isExterior())
             {
-                const auto dx = std::abs(playerCellX - cell->getCell()->getGridX());
-                const auto dy = std::abs(playerCellY - cell->getCell()->getGridY());
-                if (dx > mHalfGridSize || dy > mHalfGridSize)
-                    unloadCell(cell);
+                if (cell->isTes4())
+                {
+                    const auto dx = std::abs(playerCellX - cell->getCell4()->mX);
+                    const auto dy = std::abs(playerCellY - cell->getCell4()->mY);
+                    if (dx > mHalfGridSize || dy > mHalfGridSize)
+                        unloadCell(cell);
+                }
+                else
+                {
+                    const auto dx = std::abs(playerCellX - cell->getCell()->getGridX());
+                    const auto dy = std::abs(playerCellY - cell->getCell()->getGridY());
+                    if (dx > mHalfGridSize || dy > mHalfGridSize)
+                        unloadCell(cell);
+                }
             }
             else
                 unloadCell (cell);
@@ -684,9 +736,9 @@ namespace MWWorld
         mRendering.getPagedRefnums(newGrid, mPagedRefs);
 
         std::size_t refsToLoad = 0;
-        const auto cellsToLoad = [&] (CellStoreCollection& collection, int range) -> std::vector<std::pair<int,int>>
+        const auto cellsToLoad = [&] (CellStoreCollection& collection, int range) -> std::vector<std::pair<uint32_t, std::pair<int, int>>>
         {
-            std::vector<std::pair<int, int>> cellsPositionsToLoad;
+            std::vector<std::pair<uint32_t, std::pair<int, int>>> cellsPositionsToLoad;
             for (int x = playerCellX - range; x <= playerCellX + range; ++x)
             {
                 for (int y = playerCellY - range; y <= playerCellY + range; ++y)
@@ -694,7 +746,7 @@ namespace MWWorld
                     if (!isCellInCollection(x, y, collection))
                     {
                         refsToLoad += mWorld.getExterior(x, y)->count();
-                        cellsPositionsToLoad.emplace_back(x, y);
+                        cellsPositionsToLoad.emplace_back(std::make_pair(wrldId,std::make_pair(x, y)));
                     }
                 }
             }
@@ -722,15 +774,16 @@ namespace MWWorld
         };
 
         std::sort(cellsPositionsToLoad.begin(), cellsPositionsToLoad.end(),
-            [&] (const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) {
-                return getCellPositionPriority(lhs) < getCellPositionPriority(rhs);
+            [&](const std::pair<uint32_t, std::pair<int, int>>& lhs, const std::pair<uint32_t, std::pair<int, int>>& rhs)
+            {
+                return getCellPositionPriority(lhs.second) < getCellPositionPriority(rhs.second);
             });
 
-        for (const auto& [x,y] : cellsPositionsToLoad)
+        for (const auto& [wrld,coords] : cellsPositionsToLoad)
         {
-            if (!isCellInCollection(x, y, mActiveCells))
+            if (!isCellInCollection(coords.first, coords.second, mActiveCells))
             {
-                CellStore *cell = mWorld.getExterior(x, y);
+                CellStore *cell = mWorld.getExterior(coords.first, coords.second, wrld);
                 loadCell(cell, loadingListener, changeEvent, pos);
             }
         }
@@ -1000,16 +1053,16 @@ namespace MWWorld
         MWBase::Environment::get().getWorld()->getPostProcessor()->setExteriorFlag(cell->isQuasiExterior());
     }
 
-    void Scene::changeToExteriorCell (const ESM::Position& position, bool adjustPlayerPos, bool changeEvent)
+    void Scene::changeToExteriorCell (const ESM::Position& position, uint32_t wrldId, bool adjustPlayerPos, bool changeEvent)
     {
         const osg::Vec2i cellIndex = positionToCellIndex(position.pos[0], position.pos[1]);
 
         if (changeEvent)
             MWBase::Environment::get().getWindowManager()->fadeScreenOut(0.5);
 
-        changeCellGrid(position.asVec3(), cellIndex.x(), cellIndex.y(), changeEvent);
+        changeCellGrid(position.asVec3(), cellIndex.x(), cellIndex.y(), wrldId, changeEvent);
 
-        CellStore* current = mWorld.getExterior(cellIndex.x(), cellIndex.y());
+        CellStore* current = mWorld.getExterior(cellIndex.x(), cellIndex.y(), wrldId);
         changePlayerCell(current, position, adjustPlayerPos);
 
         if (changeEvent)

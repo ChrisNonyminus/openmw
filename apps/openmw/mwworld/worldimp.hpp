@@ -221,7 +221,7 @@ namespace MWWorld
             void readRecord (ESM::ESMReader& reader, uint32_t type,
                 const std::map<int, int>& contentFileMap) override;
 
-            CellStore *getExterior (int x, int y) override;
+            CellStore *getExterior (int x, int y, uint32_t wrld = 0) override;
 
             CellStore* getInterior(std::string_view name) override;
 
@@ -364,7 +364,7 @@ namespace MWWorld
             ///< Move to interior cell.
             ///< @param changeEvent If false, do not trigger cell change flag or detect worldspace changes
 
-            void changeToExteriorCell (const ESM::Position& position, bool adjustPlayerPos, bool changeEvent = true) override;
+            void changeToExteriorCell (const ESM::Position& position, uint32_t wrldId, bool adjustPlayerPos, bool changeEvent = true) override;
             ///< Move to exterior cell.
             ///< @param changeEvent If false, do not trigger cell change flag or detect worldspace changes
 
@@ -616,7 +616,7 @@ namespace MWWorld
 
             /// Find center of exterior cell above land surface
             /// \return false if exterior with given name not exists, true otherwise
-            bool findExteriorPosition(std::string_view name, ESM::Position& pos) override;
+            bool findExteriorPosition(std::string_view name, ESM::Position& pos, uint32_t* wrldId = nullptr) override;
 
             /// Find position in interior cell near door entrance
             /// \return false if interior with given name not exists, true otherwise

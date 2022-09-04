@@ -763,7 +763,10 @@ void Water::changeCell(const MWWorld::CellStore* store)
     bool wasInterior = mInterior;
     if (!isInterior)
     {
-        mWaterNode->setPosition(getSceneNodeCoordinates(store->getCell()->mData.mX, store->getCell()->mData.mY));
+        if (store->isTes4())
+            mWaterNode->setPosition(getSceneNodeCoordinates(store->getCell4()->mX, store->getCell4()->mY));
+        else
+            mWaterNode->setPosition(getSceneNodeCoordinates(store->getCell()->mData.mX, store->getCell()->mData.mY));
         mInterior = false;
     }
     else

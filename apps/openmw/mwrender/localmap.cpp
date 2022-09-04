@@ -215,7 +215,8 @@ void LocalMap::removeExteriorCell(int x, int y)
 
 void LocalMap::removeCell(MWWorld::CellStore *cell)
 {
-    saveFogOfWar(cell);
+    if (!cell->isTes4())
+        saveFogOfWar(cell);
 
     if (!cell->isExterior())
         mInteriorSegments.clear();

@@ -114,7 +114,7 @@ namespace MWWorld
             osg::Vec2i mCurrentGridCenter;
 
             // Load and unload cells as necessary to create a cell grid with "X" and "Y" in the center
-            void changeCellGrid (const osg::Vec3f &pos, int playerCellX, int playerCellY, bool changeEvent = true);
+            void changeCellGrid (const osg::Vec3f &pos, int playerCellX, int playerCellY, uint32_t wrldId, bool changeEvent = true);
 
             void requestChangeCellGrid(const osg::Vec3f &position, const osg::Vec2i& cell, bool changeEvent = true);
 
@@ -161,7 +161,7 @@ namespace MWWorld
             ///< Move to interior cell.
             /// @param changeEvent Set cellChanged flag?
 
-            void changeToExteriorCell (const ESM::Position& position, bool adjustPlayerPos, bool changeEvent=true);
+            void changeToExteriorCell (const ESM::Position& position, uint32_t wrldId, bool adjustPlayerPos, bool changeEvent=true);
             ///< Move to exterior cell.
             /// @param changeEvent Set cellChanged flag?
 

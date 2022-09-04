@@ -6,6 +6,7 @@
 #include <string>
 
 #include "ptr.hpp"
+#include "store.hpp"
 
 namespace ESM
 {
@@ -41,6 +42,7 @@ namespace MWWorld
             ESM::ReadersCache& mReaders;
             mutable std::map<std::string, CellStore> mInteriors;
             mutable std::map<std::pair<int, int>, CellStore> mExteriors;
+            mutable std::map<Store<ESM4::Cell>::ExtLocation, CellStore> mExteriorsByWorldSpace;
             IdCache mIdCache;
             std::size_t mIdCacheIndex;
 
@@ -63,7 +65,7 @@ namespace MWWorld
 
             explicit Cells(const MWWorld::ESMStore& store, ESM::ReadersCache& reader);
 
-            CellStore *getExterior (int x, int y);
+            CellStore *getExterior (int x, int y, ESM4::FormId wrld = 0);
 
             CellStore* getInterior(std::string_view name);
 

@@ -31,6 +31,8 @@
 #include <vector>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "common.hpp"
 
 namespace ESM4
@@ -40,6 +42,7 @@ namespace ESM4
 
     struct World
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_WRLD4;
         enum WorldFlags                 // TES4                 TES5
         {                               // -------------------- -----------------
             WLD_Small          = 0x01,  // Small World          Small World
@@ -128,6 +131,8 @@ namespace ESM4
 
         void load(ESM4::Reader& reader);
         //void save(ESM4::Writer& writer) const;
+
+        static std::string getRecordType() { return "Worldspace (TES4)"; }
     };
 }
 

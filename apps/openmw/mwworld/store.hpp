@@ -297,13 +297,14 @@ namespace MWWorld
 
         // Must be threadsafe! Called from terrain background loading threads.
         // Not a big deal here, since ESM::Land can never be modified or inserted/erased
-        const ESM::Land *search(int x, int y) const;
-        const ESM::Land *find(int x, int y) const;
+        const ESM::Land* search(int x, int y) const;
+        const ESM::Land* find(int x, int y) const;
 
-        RecordId load(ESM::ESMReader &esm) override;
+        RecordId load(ESM::ESMReader& esm) override;
         void setUp() override;
 
         ESM::RecNameInts getRecName() override { return ESM::Land::sRecordId; }
+
     private:
         bool mBuilt = false;
     };
@@ -311,18 +312,22 @@ namespace MWWorld
     template <>
     class Store<ESM4::Cell> : public StoreBase
     {
+    public:
+        typedef std::pair<ESM4::FormId, std::pair<int, int>> ExtLocation;
+
+    private:
         struct DynamicExtCmp
         {
-            bool operator()(const ESM4::FormId& left, const ESM4::FormId& right) const
+            bool operator()(const ExtLocation& left, const ExtLocation& right) const
             {
-                if (left == right)
+                if (left.first == right.first && left.second.first == right.second.first && left.second.second == right.second.second)
                     return false;
                 return true;
             }
         };
 
         typedef std::unordered_map<std::string, ESM4::Cell, Misc::StringUtils::CiHash, Misc::StringUtils::CiEqual> DynamicInt;
-        typedef std::map<ESM4::FormId, ESM4::Cell> DynamicExt;
+        typedef std::map<ExtLocation, ESM4::Cell> DynamicExt;
 
         DynamicInt mInt;
         DynamicExt mExt;
@@ -337,15 +342,16 @@ namespace MWWorld
         void handleMovedCellRefs(ESM4::Reader& esm, ESM4::Cell* cell);
 
     public:
+
         typedef SharedIterator<ESM4::Cell> iterator;
 
         const ESM4::Cell* search(std::string_view id) const;
-        const ESM4::Cell* search(ESM4::FormId id) const;
-        const ESM4::Cell* searchStatic(ESM4::FormId id) const;
-        const ESM4::Cell* searchOrCreate(ESM4::FormId id, int x, int y);
+        const ESM4::Cell* search(ExtLocation id) const;
+        const ESM4::Cell* searchStatic(ExtLocation id) const;
+        const ESM4::Cell* searchOrCreate(ExtLocation id);
 
         const ESM4::Cell* find(std::string_view id) const;
-        const ESM4::Cell* find(ESM4::FormId id) const;
+        const ESM4::Cell* find(ExtLocation id) const;
 
         void clearDynamic() override;
         void setUp() override;
@@ -378,7 +384,7 @@ namespace MWWorld
         bool erase(const ESM4::Cell& cell);
         bool erase(std::string_view id);
 
-        bool erase(ESM4::FormId id);
+        bool erase(ExtLocation id);
 
         ESM::RecNameInts getRecName() override { return ESM4::Cell::sRecordId; }
     };

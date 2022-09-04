@@ -36,6 +36,8 @@ namespace Terrain
             return getMinMaxHeights(1, osg::Vec2f(cellX+0.5, cellY+0.5), dummy, dummy);
         }
 
+        virtual bool hasData(uint32_t formId) = 0;
+
         /// Get the minimum and maximum heights of a terrain region.
         /// @note Will only be called for chunks with size = minBatchSize, i.e. leafs of the quad tree.
         ///        Larger chunks can simply merge AABB of children.

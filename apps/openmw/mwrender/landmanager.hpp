@@ -14,13 +14,27 @@ namespace ESM
 namespace MWRender
 {
 
-    class LandManager : public Resource::GenericResourceManager<std::pair<int, int> >
+    class LandManager : public Resource::GenericResourceManager<std::pair<int, int>>
     {
     public:
         LandManager(int loadFlags);
 
         /// @note Will return nullptr if not found.
         osg::ref_ptr<ESMTerrain::LandObject> getLand(int x, int y);
+
+        void reportStats(unsigned int frameNumber, osg::Stats* stats) const override;
+
+    private:
+        int mLoadFlags;
+    };
+
+    class TES4LandManager : public Resource::GenericResourceManager<uint32_t>
+    {
+    public:
+        TES4LandManager(int loadFlags);
+
+        /// @note Will return nullptr if not found.
+        osg::ref_ptr<ESMTerrain::TES4LandObject> getLand(uint32_t id);
 
         void reportStats(unsigned int frameNumber, osg::Stats* stats) const override;
 

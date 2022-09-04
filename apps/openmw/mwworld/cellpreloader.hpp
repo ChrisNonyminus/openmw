@@ -22,6 +22,7 @@ namespace Terrain
 namespace MWRender
 {
     class LandManager;
+    class TES4LandManager;
 }
 
 namespace Loading
@@ -38,6 +39,7 @@ namespace MWWorld
     {
     public:
         CellPreloader(Resource::ResourceSystem* resourceSystem, Resource::BulletShapeManager* bulletShapeManager, Terrain::World* terrain, MWRender::LandManager* landManager);
+        CellPreloader(Resource::ResourceSystem* resourceSystem, Resource::BulletShapeManager* bulletShapeManager, Terrain::World* terrain, MWRender::TES4LandManager* landManager);
         ~CellPreloader();
 
         /// Ask a background thread to preload rendering meshes and collision shapes for objects in this cell.
@@ -79,6 +81,7 @@ namespace MWWorld
         Resource::BulletShapeManager* mBulletShapeManager;
         Terrain::World* mTerrain;
         MWRender::LandManager* mLandManager;
+        MWRender::TES4LandManager* mTES4LandManager;
         osg::ref_ptr<SceneUtil::WorkQueue> mWorkQueue;
         double mExpiryDelay;
         unsigned int mMinCacheSize;

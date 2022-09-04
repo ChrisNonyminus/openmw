@@ -187,7 +187,7 @@ namespace MWGui
         MWBase::Environment::get().getWindowManager()->fadeScreenOut(1);
 
         // Teleports any followers, too.
-        MWWorld::ActionTeleport action(interior ? cellname : std::string_view{}, pos, true);
+        MWWorld::ActionTeleport action(interior ? cellname : std::string_view{}, pos, 0 /*todo: get worldspace id*/, true);
         action.execute(player);
 
         MWBase::Environment::get().getWindowManager()->fadeScreenOut(0);

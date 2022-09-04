@@ -31,6 +31,8 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -39,6 +41,7 @@ namespace ESM4
 
     struct Land
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_LAND4;
         enum
         {
             LAND_VNML = 1,
@@ -117,16 +120,23 @@ namespace ESM4
         // FIXME: lazy loading not yet implemented
         int mDataTypes; // which data types are loaded
 
+        float mHeightMapF[33 * 33];
+
         signed char   mVertNorm[VERTS_PER_SIDE * VERTS_PER_SIDE * 3]; // from VNML subrecord
         signed char   mVertColr[VERTS_PER_SIDE * VERTS_PER_SIDE * 3]; // from VCLR subrecord
+
         VHGT          mHeightMap;
         Texture       mTextures[4]; // 0 = bottom left, 1 = bottom right, 2 = top left, 3 = top right
         std::vector<FormId> mIds;   // land texture (LTEX) formids
+        FormId mCell; // the cell this land is in
 
         virtual void load(Reader& reader);
         //virtual void save(Writer& writer) const;
+        float getHeight(int x, int y);
 
         //void blank();
+
+        static std::string getRecordType() { return "Land (TES4)"; }
     };
 }
 

@@ -17,8 +17,9 @@
 namespace MWWorld
 {
     ActionTeleport::ActionTeleport(std::string_view cellName,
-        const ESM::Position& position, bool teleportFollowers)
-    : Action (true), mCellName (cellName), mPosition (position), mTeleportFollowers(teleportFollowers)
+        const ESM::Position& position, uint32_t wrld, bool teleportFollowers)
+    : Action (true), mCellName (cellName), mPosition (position), mTeleportFollowers(teleportFollowers),
+          mWrld(wrld)
     {
     }
 
@@ -45,7 +46,7 @@ namespace MWWorld
         {
             world->getPlayer().setTeleported(true);
             if (mCellName.empty())
-                world->changeToExteriorCell (mPosition, true);
+                world->changeToExteriorCell (mPosition, mWrld, true);
             else
                 world->changeToInteriorCell (mCellName, mPosition, true);
         }
@@ -56,7 +57,7 @@ namespace MWWorld
             else if (mCellName.empty())
             {
                 const osg::Vec2i index = positionToCellIndex(mPosition.pos[0], mPosition.pos[1]);
-                world->moveObject(actor, world->getExterior(index.x(), index.y()), mPosition.asVec3(), true, true);
+                world->moveObject(actor, world->getExterior(index.x(), index.y(), mWrld), mPosition.asVec3(), true, true);
             }
             else
                 world->moveObject(actor,world->getInterior(mCellName),mPosition.asVec3(), true, true);
