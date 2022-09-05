@@ -453,6 +453,10 @@ namespace ESMTerrain
         int startCellX = startCell->mX;
         int startCellY = startCell->mY;
 
+        osg::Vec2f origin(startCellX + .5f, startCellY + .5f);
+        origin -= osg::Vec2f(size / 2.f, size / 2.f);
+        startCellX = static_cast<int>(std::floor(origin.x()));
+        startCellY = static_cast<int>(std::floor(origin.y()));
         positions->resize(numVerts * numVerts);
         normals->resize(numVerts * numVerts);
         colours->resize(numVerts * numVerts);
@@ -471,7 +475,7 @@ namespace ESMTerrain
             float vertX_ = 0; // of current cell corner
             for (int cellX = startCellX; cellX < startCellX + std::ceil(size); ++cellX)
             {
-                const TES4LandObject* land = getTes4Land(startCellX, startCellY, startCell->mParent, cache);
+                const TES4LandObject* land = getTes4Land(cellX, cellY, startCell->mParent, cache);
                 const ESM4::Land* data = nullptr;
                 if (land)
                 {
@@ -489,8 +493,8 @@ namespace ESMTerrain
                     rowStart += increment;
 
                 // Only relevant for chunks smaller than (contained in) one cell
-                rowStart += (/*startCellX*/0)*ESM4::Land::VERTS_PER_SIDE;
-                colStart += (/*startCellY*/0)*ESM4::Land::VERTS_PER_SIDE;
+                rowStart += (origin.x() - startCellX)*ESM4::Land::VERTS_PER_SIDE;
+                colStart += (origin.y() - startCellY) * ESM4::Land::VERTS_PER_SIDE;
                 int rowEnd = std::min(static_cast<int>(rowStart + std::min(1.f, size) * (ESM4::Land::VERTS_PER_SIDE - 1) + 1), static_cast<int>(ESM4::Land::VERTS_PER_SIDE));
                 int colEnd = std::min(static_cast<int>(colStart + std::min(1.f, size) * (ESM4::Land::VERTS_PER_SIDE - 1) + 1), static_cast<int>(ESM4::Land::VERTS_PER_SIDE));
 
@@ -507,7 +511,7 @@ namespace ESMTerrain
                         assert(vertX < numVerts);
                         assert(vertY < numVerts);
 
-                        float height = defaultHeight;
+                        float height = -1024.f;
                         if (data)
                             height = data->mHeightMapF[col * ESM4::Land::VERTS_PER_SIDE + row];
                         if (alteration)

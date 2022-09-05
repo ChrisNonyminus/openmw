@@ -87,23 +87,23 @@ osg::ref_ptr<osg::Node> TerrainGrid::buildTerrain (osg::Group* parent, float chu
 
 osg::ref_ptr<osg::Node> TerrainGrid::buildTerrain(osg::Group* parent, float chunkSize, const ESM4::Cell* chunkCenter, const ESM4::Cell** chunkNeighbors)
 {
-    if (chunkSize * mNumSplits > 1.f)
-    {
-        assert(chunkNeighbors);
-        // keep splitting
-        osg::ref_ptr<osg::Group> group(new osg::Group);
-        if (parent)
-            parent->addChild(group);
+    //if (chunkSize * mNumSplits > 1.f)
+    //{
+    //    assert(chunkNeighbors);
+    //    // keep splitting
+    //    osg::ref_ptr<osg::Group> group(new osg::Group);
+    //    if (parent)
+    //        parent->addChild(group);
 
-        float newChunkSize = chunkSize / 2.f;
-        buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[0], nullptr);
-        buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[1], nullptr);
-        buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[2], nullptr);
-        buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[3], nullptr);
-        buildTerrain(group, newChunkSize / 2.f, chunkCenter, nullptr);
-        return group;
-    }
-    else
+    //    float newChunkSize = chunkSize / 2.f;
+    //    buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[0], nullptr);
+    //    buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[1], nullptr);
+    //    buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[2], nullptr);
+    //    buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[3], nullptr);
+    //    buildTerrain(group, newChunkSize / 2.f, chunkCenter, nullptr);
+    //    return group;
+    //}
+    //else
     {
         osg::ref_ptr<osg::Node> node = mChunkManager->getChunk(chunkSize, chunkCenter, 0, 0, false, osg::Vec3f(), true);
         if (!node)
