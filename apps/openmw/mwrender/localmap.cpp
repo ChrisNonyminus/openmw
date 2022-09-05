@@ -205,6 +205,8 @@ void LocalMap::addCell(MWWorld::CellStore *cell)
     else
     {
         // TODO: tes4
+        if (cell->isExterior())
+            mExteriorSegments[std::make_pair(cell->getCell4()->mX, cell->getCell4()->mY)].needUpdate = true;
     }
 }
 

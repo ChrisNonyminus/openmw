@@ -232,33 +232,26 @@ void ESM4::Land::load(ESM4::Reader& reader)
         mDataTypes |= LAND_VTEX;
 
     // github.com/cc9cii/openmw/components/esm4terrain/land.cpp
-    float offset = mHeightMap.heightOffset * 8;
-    float row_offset = 0;
-    for (int i = 0; i < 1089; i++)
+    float row_offset = mHeightMap.heightOffset;
+    for (int y = 0; y < VERTS_PER_SIDE; y++)
     {
-        float value = mHeightMap.gradientData[i] * 8;
+        row_offset += mHeightMap.gradientData[y * VERTS_PER_SIDE];
 
-        int r = i / 33;
-        int c = i % 33;
+        mHeightMapF[y * VERTS_PER_SIDE] = row_offset * HEIGHT_SCALE;
 
-        if (c == 0) // first column value controls height for all remaining points in cell
+        float colOffset = row_offset;
+        for (int x = 1; x < VERTS_PER_SIDE; x++)
         {
-            row_offset = 0;
-            offset += value;
+            colOffset += mHeightMap.gradientData[y * VERTS_PER_SIDE + x];
+            mHeightMapF[x + y * VERTS_PER_SIDE] = colOffset * HEIGHT_SCALE;
         }
-        else
-        {
-            row_offset += value;
-        }
-
-        mHeightMapF[c * r] = offset + row_offset;
     }
 
 }
 
 float ESM4::Land::getHeight(int x, int y)
 {
-    return mHeightMapF[x * y];
+    return mHeightMapF[x + y * VERTS_PER_SIDE];
 }
 
 //void ESM4::Land::save(ESM4::Writer& writer) const

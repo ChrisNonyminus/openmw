@@ -122,7 +122,7 @@ namespace ESMTerrain
         void getBlendmaps (float chunkSize, const osg::Vec2f& chunkCenter, ImageVector& blendmaps,
                                std::vector<Terrain::LayerInfo>& layerList) override;
 
-        float getHeightAt (const osg::Vec3f& worldPos) override;
+        float getHeightAt (const osg::Vec3f& worldPos, uint32_t wrldid) override;
 
         /// Get the transformation factor for mapping cell units to world units.
         float getCellWorldSize() override;
@@ -143,7 +143,7 @@ namespace ESMTerrain
         {
             assert(x < ESM4::Land::VERTS_PER_SIDE);
             assert(y < ESM4::Land::VERTS_PER_SIDE);
-            return data->mHeightMapF[y * ESM::Land::LAND_SIZE + x];
+            return data->mHeightMapF[y * ESM4::Land::VERTS_PER_SIDE + x];
         }
 
     private:

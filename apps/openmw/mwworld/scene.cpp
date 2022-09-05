@@ -495,7 +495,7 @@ namespace MWWorld
                         {
                             DetourNavigator::HeightfieldSurface heights;
                             heights.mHeights = data->mHeightMapF;
-                            heights.mSize = static_cast<std::size_t>(ESM::Land::LAND_SIZE);
+                            heights.mSize = static_cast<std::size_t>(ESM4::Land::VERTS_PER_SIDE);
                             heights.mMinHeight = ESM::Land::DEFAULT_HEIGHT;
                             heights.mMaxHeight = -ESM::Land::DEFAULT_HEIGHT;
                             return heights;
@@ -544,8 +544,7 @@ namespace MWWorld
 
             mNavigator.update(position);
 
-            if (!cell->isExterior())
-                mRendering.configureAmbient(cell->getCell4());
+            mRendering.configureAmbient(cell->getCell4());
 
             mPreloader->notifyLoaded(cell);
         }

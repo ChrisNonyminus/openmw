@@ -76,7 +76,7 @@ namespace Terrain
         virtual void getBlendmaps (float chunkSize, const osg::Vec2f& chunkCenter, ImageVector& blendmaps,
                                std::vector<LayerInfo>& layerList) = 0;
 
-        virtual float getHeightAt (const osg::Vec3f& worldPos) = 0;
+        virtual float getHeightAt (const osg::Vec3f& worldPos, uint32_t landId) = 0;
 
         /// Get the transformation factor for mapping cell units to world units.
         virtual float getCellWorldSize() = 0;

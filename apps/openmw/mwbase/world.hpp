@@ -636,7 +636,7 @@ namespace MWBase
             virtual void rotateWorldObject (const MWWorld::Ptr& ptr, const osg::Quat& rotate) = 0;
 
             /// Return terrain height at \a worldPos position.
-            virtual float getTerrainHeightAt(const osg::Vec3f& worldPos) const = 0;
+            virtual float getTerrainHeightAt(const osg::Vec3f& worldPos, uint32_t wrldid) const = 0;
 
             /// Return physical or rendering half extents of the given actor.
             virtual osg::Vec3f getHalfExtents(const MWWorld::ConstPtr& actor, bool rendering=false) const = 0;

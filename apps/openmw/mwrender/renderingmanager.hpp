@@ -225,7 +225,7 @@ namespace MWRender
 
         void setViewDistance(float distance, bool delay = false);
 
-        float getTerrainHeightAt(const osg::Vec3f& pos);
+        float getTerrainHeightAt(const osg::Vec3f& pos, uint32_t landId);
 
         // camera stuff
         Camera* getCamera() { return mCamera.get(); }

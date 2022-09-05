@@ -866,7 +866,7 @@ namespace MWRender
         {
             if (store->getCell4()->isExterior())
             {
-                // todo
+                mTerrain->unloadCell(store->getCell4()->mX, store->getCell4()->mY);
             }
         }
 
@@ -1522,9 +1522,9 @@ namespace MWRender
         updateProjectionMatrix();
     }
 
-    float RenderingManager::getTerrainHeightAt(const osg::Vec3f &pos)
+    float RenderingManager::getTerrainHeightAt(const osg::Vec3f &pos, uint32_t landId)
     {
-        return mTerrain->getHeightAt(pos);
+        return mTerrain->getHeightAt(pos, landId);
     }
 
     void RenderingManager::overrideFieldOfView(float val)

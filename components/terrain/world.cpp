@@ -119,9 +119,9 @@ void World::setTargetFrameRate(float rate)
     mCompositeMapRenderer->setTargetFrameRate(rate);
 }
 
-float World::getHeightAt(const osg::Vec3f &worldPos)
+float World::getHeightAt(const osg::Vec3f& worldPos, uint32_t landId)
 {
-    return mStorage->getHeightAt(worldPos);
+    return mStorage->getHeightAt(worldPos, landId);
 }
 
 void World::updateTextureFiltering()

@@ -45,7 +45,7 @@ osg::ref_ptr<osg::Group> CellBorder::createBorderGeometry(float x, float y, floa
             osg::Vec3(size, (i - borderSegments) * borderStep,0.0f);
 
         pos += cellCorner;
-        pos += osg::Vec3f(0,0, terrain->getHeightAt(pos) + offset);
+        pos += osg::Vec3f(0, 0, terrain->getHeightAt(pos, 0 /*todo: get land id*/) + offset);
 
         vertices->push_back(pos);
 

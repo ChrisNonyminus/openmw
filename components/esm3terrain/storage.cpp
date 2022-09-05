@@ -578,72 +578,74 @@ namespace ESMTerrain
             blendmaps.clear(); // If a single texture fills the whole terrain, there is no need to blend
     }
 
-    float Storage::getHeightAt(const osg::Vec3f &worldPos)
+    float Storage::getHeightAt(const osg::Vec3f &worldPos, uint32_t landId)
     {
-        int cellX = static_cast<int>(std::floor(worldPos.x() / float(Constants::CellSizeInUnits)));
-        int cellY = static_cast<int>(std::floor(worldPos.y() / float(Constants::CellSizeInUnits)));
+        int cellX = static_cast<int>(std::floor(worldPos.x() / float(ESM4::Land::REAL_SIZE)));
+        int cellY = static_cast<int>(std::floor(worldPos.y() / float(ESM4::Land::REAL_SIZE)));
 
-        osg::ref_ptr<const LandObject> land = getLand(cellX, cellY);
-        if (!land)
-            return defaultHeight;
+        if (landId)
+        {
+            osg::ref_ptr<const TES4LandObject> land = getTes4Land(landId);
+            if (!land)
+                return defaultHeight;
 
-        const ESM::Land::LandData* data = land->getData(ESM::Land::DATA_VHGT);
-        if (!data)
-            return defaultHeight;
+            const auto* data = land->getData(ESM::Land::DATA_VHGT);
+            if (!data)
+                return defaultHeight;
 
-        // Mostly lifted from Ogre::Terrain::getHeightAtTerrainPosition
+            // Mostly lifted from Ogre::Terrain::getHeightAtTerrainPosition
 
-        // Normalized position in the cell
-        float nX = (worldPos.x() - (cellX * Constants::CellSizeInUnits)) / float(Constants::CellSizeInUnits);
-        float nY = (worldPos.y() - (cellY * Constants::CellSizeInUnits)) / float(Constants::CellSizeInUnits);
+            // Normalized position in the cell
+            float nX = (worldPos.x() - (cellX * ESM4::Land::REAL_SIZE)) / float(ESM4::Land::REAL_SIZE);
+            float nY = (worldPos.y() - (cellY * ESM4::Land::REAL_SIZE)) / float(ESM4::Land::REAL_SIZE);
 
-        // get left / bottom points (rounded down)
-        float factor = ESM::Land::LAND_SIZE - 1.0f;
-        float invFactor = 1.0f / factor;
+            // get left / bottom points (rounded down)
+            float factor = ESM4::Land::VERTS_PER_SIDE - 1.0f;
+            float invFactor = 1.0f / factor;
 
-        int startX = static_cast<int>(nX * factor);
-        int startY = static_cast<int>(nY * factor);
-        int endX = startX + 1;
-        int endY = startY + 1;
+            int startX = static_cast<int>(nX * factor);
+            int startY = static_cast<int>(nY * factor);
+            int endX = startX + 1;
+            int endY = startY + 1;
 
-        endX = std::min(endX, ESM::Land::LAND_SIZE-1);
-        endY = std::min(endY, ESM::Land::LAND_SIZE-1);
+            endX = std::min(endX, ESM4::Land::VERTS_PER_SIDE - 1);
+            endY = std::min(endY, ESM4::Land::VERTS_PER_SIDE - 1);
 
-        // now get points in terrain space (effectively rounding them to boundaries)
-        float startXTS = startX * invFactor;
-        float startYTS = startY * invFactor;
-        float endXTS = endX * invFactor;
-        float endYTS = endY * invFactor;
+            // now get points in terrain space (effectively rounding them to boundaries)
+            float startXTS = startX * invFactor;
+            float startYTS = startY * invFactor;
+            float endXTS = endX * invFactor;
+            float endYTS = endY * invFactor;
 
-        // get parametric from start coord to next point
-        float xParam = (nX - startXTS) * factor;
-        float yParam = (nY - startYTS) * factor;
+            // get parametric from start coord to next point
+            float xParam = (nX - startXTS) * factor;
+            float yParam = (nY - startYTS) * factor;
 
-        /* For even / odd tri strip rows, triangles are this shape:
+            /* For even / odd tri strip rows, triangles are this shape:
         even     odd
         3---2   3---2
         | / |   | \ |
         0---1   0---1
         */
 
-        // Build all 4 positions in normalized cell space, using point-sampled height
-        osg::Vec3f v0 (startXTS, startYTS, getVertexHeight(data, startX, startY) / float(Constants::CellSizeInUnits));
-        osg::Vec3f v1 (endXTS, startYTS, getVertexHeight(data, endX, startY) / float(Constants::CellSizeInUnits));
-        osg::Vec3f v2 (endXTS, endYTS, getVertexHeight(data, endX, endY) / float(Constants::CellSizeInUnits));
-        osg::Vec3f v3 (startXTS, endYTS, getVertexHeight(data, startX, endY) / float(Constants::CellSizeInUnits));
-        // define this plane in terrain space
-        osg::Plane plane;
-        // FIXME: deal with differing triangle alignment
-        if (true)
-        {
-            // odd row
-            bool secondTri = ((1.0 - yParam) > xParam);
-            if (secondTri)
-                plane = osg::Plane(v0, v1, v3);
-            else
-                plane = osg::Plane(v1, v2, v3);
-        }
-        /*
+            // Build all 4 positions in normalized cell space, using point-sampled height
+            osg::Vec3f v0(startXTS, startYTS, getVertexHeight(data, startX, startY) / float(ESM4::Land::REAL_SIZE));
+            osg::Vec3f v1(endXTS, startYTS, getVertexHeight(data, endX, startY) / float(ESM4::Land::REAL_SIZE));
+            osg::Vec3f v2(endXTS, endYTS, getVertexHeight(data, endX, endY) / float(ESM4::Land::REAL_SIZE));
+            osg::Vec3f v3(startXTS, endYTS, getVertexHeight(data, startX, endY) / float(ESM4::Land::REAL_SIZE));
+            // define this plane in terrain space
+            osg::Plane plane;
+            // FIXME: deal with differing triangle alignment
+            if (true)
+            {
+                // odd row
+                bool secondTri = ((1.0 - yParam) > xParam);
+                if (secondTri)
+                    plane = osg::Plane(v0, v1, v3);
+                else
+                    plane = osg::Plane(v1, v2, v3);
+            }
+            /*
         else
         {
             // even row
@@ -655,11 +657,94 @@ namespace ESMTerrain
         }
         */
 
-        // Solve plane equation for z
-        return (-plane.getNormal().x() * nX
-                -plane.getNormal().y() * nY
-                - plane[3]) / plane.getNormal().z() * Constants::CellSizeInUnits;
+            // Solve plane equation for z
+            return (-plane.getNormal().x() * nX
+                       - plane.getNormal().y() * nY
+                       - plane[3])
+                / plane.getNormal().z() * Constants::CellSizeInUnits;
 
+        }
+        else
+        {
+            osg::ref_ptr<const LandObject> land = getLand(cellX, cellY);
+            if (!land)
+                return defaultHeight;
+
+            const ESM::Land::LandData* data = land->getData(ESM::Land::DATA_VHGT);
+            if (!data)
+                return defaultHeight;
+
+            // Mostly lifted from Ogre::Terrain::getHeightAtTerrainPosition
+
+            // Normalized position in the cell
+            float nX = (worldPos.x() - (cellX * Constants::CellSizeInUnits)) / float(Constants::CellSizeInUnits);
+            float nY = (worldPos.y() - (cellY * Constants::CellSizeInUnits)) / float(Constants::CellSizeInUnits);
+
+            // get left / bottom points (rounded down)
+            float factor = ESM::Land::LAND_SIZE - 1.0f;
+            float invFactor = 1.0f / factor;
+
+            int startX = static_cast<int>(nX * factor);
+            int startY = static_cast<int>(nY * factor);
+            int endX = startX + 1;
+            int endY = startY + 1;
+
+            endX = std::min(endX, ESM::Land::LAND_SIZE - 1);
+            endY = std::min(endY, ESM::Land::LAND_SIZE - 1);
+
+            // now get points in terrain space (effectively rounding them to boundaries)
+            float startXTS = startX * invFactor;
+            float startYTS = startY * invFactor;
+            float endXTS = endX * invFactor;
+            float endYTS = endY * invFactor;
+
+            // get parametric from start coord to next point
+            float xParam = (nX - startXTS) * factor;
+            float yParam = (nY - startYTS) * factor;
+
+            /* For even / odd tri strip rows, triangles are this shape:
+        even     odd
+        3---2   3---2
+        | / |   | \ |
+        0---1   0---1
+        */
+
+            // Build all 4 positions in normalized cell space, using point-sampled height
+            osg::Vec3f v0(startXTS, startYTS, getVertexHeight(data, startX, startY) / float(Constants::CellSizeInUnits));
+            osg::Vec3f v1(endXTS, startYTS, getVertexHeight(data, endX, startY) / float(Constants::CellSizeInUnits));
+            osg::Vec3f v2(endXTS, endYTS, getVertexHeight(data, endX, endY) / float(Constants::CellSizeInUnits));
+            osg::Vec3f v3(startXTS, endYTS, getVertexHeight(data, startX, endY) / float(Constants::CellSizeInUnits));
+            // define this plane in terrain space
+            osg::Plane plane;
+            // FIXME: deal with differing triangle alignment
+            if (true)
+            {
+                // odd row
+                bool secondTri = ((1.0 - yParam) > xParam);
+                if (secondTri)
+                    plane = osg::Plane(v0, v1, v3);
+                else
+                    plane = osg::Plane(v1, v2, v3);
+            }
+            /*
+        else
+        {
+            // even row
+            bool secondTri = (yParam > xParam);
+            if (secondTri)
+                plane.redefine(v0, v2, v3);
+            else
+                plane.redefine(v0, v1, v2);
+        }
+        */
+
+            // Solve plane equation for z
+            return (-plane.getNormal().x() * nX
+                       - plane.getNormal().y() * nY
+                       - plane[3])
+                / plane.getNormal().z() * Constants::CellSizeInUnits;
+
+        }
     }
 
     const LandObject* Storage::getLand(int cellX, int cellY, LandCache& cache)

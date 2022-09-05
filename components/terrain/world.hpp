@@ -60,7 +60,7 @@ namespace Terrain
         /// @note Thread safe.
         void updateTextureFiltering();
 
-        float getHeightAt (const osg::Vec3f& worldPos);
+        float getHeightAt (const osg::Vec3f& worldPos, uint32_t wrldid);
 
         /// Clears the cached land and landtexture data.
         /// @note Thread safe.
