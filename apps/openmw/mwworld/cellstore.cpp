@@ -553,7 +553,7 @@ namespace MWWorld
         mRechargingItemsUpToDate(false),
           mReaders(readers), mLand(0)
     {
-        mWaterLevel = cell->mWaterHeight;
+        mWaterLevel = cell->mParent ? store.get<ESM4::World>().search(store.getFormName(cell->mParent))->mWaterLevel : cell->mWaterHeight;
         iterateTuple(CellStoreTypes::sAll, [&](auto typeGetter)
             {
                 using type = typename decltype(typeGetter)::type;
@@ -683,8 +683,6 @@ namespace MWWorld
 
     float CellStore::getWaterLevel() const
     {
-        if (isExterior())
-            return -1;
         return mWaterLevel;
     }
 

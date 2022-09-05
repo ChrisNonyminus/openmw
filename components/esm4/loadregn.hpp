@@ -31,6 +31,8 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -40,6 +42,7 @@ namespace ESM4
 
     struct Region
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_REGN4;
         enum RegionDataType
         {
             RDAT_None      = 0x00,
@@ -67,6 +70,13 @@ namespace ESM4
             std::uint32_t flags; // 0 pleasant, 1 cloudy, 2 rainy, 3 snowy
             std::uint32_t chance;
         };
+
+        struct RDWT
+        {
+            FormId weather;
+            uint32_t chance;
+            FormId global;
+        };
 #pragma pack(pop)
 
         FormId mFormId;       // from the header
@@ -85,10 +95,14 @@ namespace ESM4
         RegionData mData;
         std::vector<RegionSound> mSounds;
 
+        RDWT mWeatherInfo;
+
         void load(ESM4::Reader& reader);
         //void save(ESM4::Writer& writer) const;
 
         void blank();
+
+        static std::string getRecordType() { return "Region (TES4)"; }
     };
 }
 

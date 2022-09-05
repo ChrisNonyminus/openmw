@@ -89,6 +89,13 @@ QuadTreeNode::QuadTreeNode(QuadTreeNode* parent, ChildDirection direction, float
         mNeighbours[i] = nullptr;
 }
 
+QuadTreeNode::QuadTreeNode(QuadTreeNode* parent, ChildDirection dir, float size, const ESM4::Cell* center)
+    : mParent(parent), mDirection(dir), mValidBounds(false), mSize(size), mTES4Cell(center)
+{
+    for (unsigned int i = 0; i < 4; ++i)
+        mNeighbours[i] = nullptr;
+}
+
 QuadTreeNode::~QuadTreeNode()
 {
 }
@@ -148,6 +155,11 @@ float QuadTreeNode::getSize() const
 const osg::Vec2f &QuadTreeNode::getCenter() const
 {
     return mCenter;
+}
+
+const ESM4::Cell* QuadTreeNode::getCell() const
+{
+    return mTES4Cell;
 }
 
 }

@@ -117,6 +117,9 @@ namespace ESM4
 
         std::uint32_t mLandFlags; // from DATA subrecord
 
+        FormId mWorldspace;
+        int mX, mY;
+
         // FIXME: lazy loading not yet implemented
         int mDataTypes; // which data types are loaded
 

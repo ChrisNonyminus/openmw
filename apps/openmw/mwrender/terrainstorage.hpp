@@ -23,6 +23,7 @@ namespace MWRender
 
         osg::ref_ptr<const ESMTerrain::LandObject> getLand (int cellX, int cellY) override;
         osg::ref_ptr<const ESMTerrain::TES4LandObject> getTes4Land(ESM4::FormId id) override;
+        osg::ref_ptr<const ESMTerrain::TES4LandObject> getTes4Land(int cellX, int cellY, ESM4::FormId id) override;
         const ESM::LandTexture* getLandTexture(int index, short plugin) override;
         const ESM4::LandTexture* getTes4LandTexture(int index, short plugin) override { return nullptr; /*TODO*/ }
 

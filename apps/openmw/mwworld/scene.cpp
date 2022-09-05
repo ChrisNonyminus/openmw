@@ -17,6 +17,7 @@
 #include <components/detournavigator/agentbounds.hpp>
 #include <components/misc/convert.hpp>
 #include <components/detournavigator/heightfieldshape.hpp>
+#include <components/terrain/world.hpp>
 
 #include "../mwbase/environment.hpp"
 #include "../mwbase/world.hpp"
@@ -28,6 +29,7 @@
 #include "../mwrender/renderingmanager.hpp"
 #include "../mwrender/landmanager.hpp"
 #include "../mwrender/postprocessor.hpp"
+#include "../mwrender/terrainstorage.hpp"
 
 #include "../mwphysics/physicssystem.hpp"
 #include "../mwphysics/actor.hpp"
@@ -470,11 +472,13 @@ namespace MWWorld
             {
                 osg::ref_ptr<const ESMTerrain::TES4LandObject> land = mRendering.getTes4LandManager()->getLand(cell->getLandId());
                 const ESM4::Land* data = land ? land->getData(ESM::Land::DATA_VHGT) : nullptr;
+                const ESM4::World* wrldspace = mWorld.getStore().get<ESM4::World>().search(mWorld.getStore().getFormName(cell->getCell4()->mParent));
+                osg::Vec2f minMax = mRendering.getTerrain()->getStorage()->getTes4MinMaxHeights(data, wrldspace->mLandLevel, wrldspace->mLandLevel);
                 const int verts = ESM4::Land::VERTS_PER_SIDE;
                 const int worldsize = ESM4::Land::REAL_SIZE;
                 if (data)
                 {
-                    mPhysics->addHeightField(data->mHeightMapF, cellX, cellY, worldsize / (verts - 1), verts, ESM::Land::DEFAULT_HEIGHT, -ESM::Land::DEFAULT_HEIGHT, land.get());
+                    mPhysics->addHeightField(data->mHeightMapF, cellX, cellY, worldsize, verts, minMax.x(), minMax.y(), land.get());
                 }
                 else
                 {
@@ -489,15 +493,15 @@ namespace MWWorld
                     {
                         if (data == nullptr)
                         {
-                            return DetourNavigator::HeightfieldPlane{ static_cast<float>(ESM::Land::DEFAULT_HEIGHT) };
+                            return DetourNavigator::HeightfieldPlane{ static_cast<float>(wrldspace->mLandLevel) };
                         }
                         else
                         {
                             DetourNavigator::HeightfieldSurface heights;
                             heights.mHeights = data->mHeightMapF;
                             heights.mSize = static_cast<std::size_t>(ESM4::Land::VERTS_PER_SIDE);
-                            heights.mMinHeight = ESM::Land::DEFAULT_HEIGHT;
-                            heights.mMaxHeight = -ESM::Land::DEFAULT_HEIGHT;
+                            heights.mMinHeight = minMax.x();
+                            heights.mMaxHeight = minMax.y();
                             return heights;
                         }
                     }();

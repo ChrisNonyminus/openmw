@@ -54,6 +54,8 @@
 #include <components/detournavigator/navmeshcacheitem.hpp>
 
 #include "../mwworld/cellstore.hpp"
+#include "../mwworld/esmstore.hpp"
+#include "../mwworld/store.hpp"
 #include "../mwworld/class.hpp"
 #include "../mwworld/groundcoverstore.hpp"
 
@@ -836,16 +838,24 @@ namespace MWRender
 
         if (!store->isTes4())
         {
-            if (store->getCell()->isExterior())
-            {
+            if (store->isExterior())
                 mTerrain->loadCell(store->getCell()->getGridX(), store->getCell()->getGridY());
-            }
         }
         else
         {
             if (store->isExterior())
             {
-                mTerrain->loadCell(store->getCell4()->mX, store->getCell4()->mY);
+                const ESM4::Cell* neighbors[] = {
+                    MWBase::Environment::get().getWorld()->getStore().get<ESM4::Cell>().search(
+                        std::make_pair(store->getCell4()->mParent, std::make_pair(store->getCell4()->mX + 1, store->getCell4()->mY))),
+                    MWBase::Environment::get().getWorld()->getStore().get<ESM4::Cell>().search(
+                        std::make_pair(store->getCell4()->mParent, std::make_pair(store->getCell4()->mX - 1, store->getCell4()->mY))),
+                    MWBase::Environment::get().getWorld()->getStore().get<ESM4::Cell>().search(
+                        std::make_pair(store->getCell4()->mParent, std::make_pair(store->getCell4()->mX, store->getCell4()->mY + 1))),
+                    MWBase::Environment::get().getWorld()->getStore().get<ESM4::Cell>().search(
+                        std::make_pair(store->getCell4()->mParent, std::make_pair(store->getCell4()->mX, store->getCell4()->mY - 1)))
+                };
+                mTerrain->loadCell(store->getCell4(), neighbors);
             }
         }
     }
@@ -857,16 +867,14 @@ namespace MWRender
 
         if (!store->isTes4())
         {
-            if (store->getCell()->isExterior())
-            {
+            if (store->isExterior())
                 mTerrain->unloadCell(store->getCell()->getGridX(), store->getCell()->getGridY());
-            }
         }
         else
         {
-            if (store->getCell4()->isExterior())
+            if (store->isExterior())
             {
-                mTerrain->unloadCell(store->getCell4()->mX, store->getCell4()->mY);
+                mTerrain->unloadCell(store->getCell4()->mParent, store->getCell4()->mX, store->getCell4()->mY);
             }
         }
 

@@ -112,7 +112,15 @@ void ESM4::Region::load(ESM4::Reader& reader)
             }
             case ESM4::SUB_RDGS: // Only in Oblivion? (ToddTestRegion1) // formId
             case ESM4::SUB_RDSA:
+            {
+                reader.skipSubRecordData(); // FIXME: process the subrecord rather than skip
+                break;
+            }
             case ESM4::SUB_RDWT: // formId
+            {
+                reader.get(mWeatherInfo);
+                break;
+            }
             case ESM4::SUB_RDOT: // formId
             case ESM4::SUB_RDID: // FONV
             case ESM4::SUB_RDSB: // FONV

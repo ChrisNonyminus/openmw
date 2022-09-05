@@ -5,6 +5,11 @@
 
 #include "defs.hpp"
 
+namespace ESM4
+{
+    struct Cell;
+}
+
 namespace Terrain
 {
 
@@ -40,6 +45,7 @@ namespace Terrain
     {
     public:
         QuadTreeNode(QuadTreeNode* parent, ChildDirection dir, float size, const osg::Vec2f& center);
+        QuadTreeNode(QuadTreeNode* parent, ChildDirection dir, float size, const ESM4::Cell* center);
         virtual ~QuadTreeNode();
 
         inline QuadTreeNode* getParent() { return mParent; }
@@ -77,6 +83,9 @@ namespace Terrain
         /// center in cell coordinates
         const osg::Vec2f& getCenter() const;
 
+        /// center in cell coordinates
+        const ESM4::Cell* getCell() const;
+
         /// Traverse nodes according to LOD selection.
         void traverseNodes(ViewData* vd, const osg::Vec3f& viewPoint, LodCallback* lodCallback);
 
@@ -91,6 +100,7 @@ namespace Terrain
         bool mValidBounds;
         float mSize;
         osg::Vec2f mCenter;
+        const ESM4::Cell* mTES4Cell;
     };
 
 }

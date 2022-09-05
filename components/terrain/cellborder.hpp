@@ -20,6 +20,7 @@ namespace Terrain
     class CellBorder
     {
     public:
+        typedef std::map<std::pair<uint32_t, std::pair<int, int>>, osg::ref_ptr<osg::Node>> TES4Grid;
         typedef std::map<std::pair<int, int>, osg::ref_ptr<osg::Node> > CellGrid; 
 
         CellBorder(Terrain::World *world, osg::Group *root, int borderMask, Resource::SceneManager* sceneManager);

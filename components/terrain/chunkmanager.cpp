@@ -8,6 +8,9 @@
 #include <components/resource/objectcache.hpp>
 #include <components/resource/scenemanager.hpp>
 
+#include <components/esm4/loadland.hpp>
+#include <components/esm4/loadcell.hpp>
+
 #include <components/sceneutil/lightmanager.hpp>
 
 #include "terraindrawable.hpp"
@@ -54,6 +57,27 @@ osg::ref_ptr<osg::Node> ChunkManager::getChunk(float size, const osg::Vec2f& cen
     // TODO: maybe we can refactor this code by moving all vertexLodMod code into this class.
     lod = static_cast<unsigned char>(lodFlags >> (4*4));
     ChunkId id = std::make_tuple(center, lod, lodFlags);
+    osg::ref_ptr<osg::Object> obj = mCache->getRefFromObjectCache(id);
+    if (obj)
+        return static_cast<osg::Node*>(obj.get());
+    else
+    {
+        FindChunkTemplate find;
+        find.mId = id;
+        mCache->call(find);
+        TerrainDrawable* templateGeometry = find.mFoundTemplate ? static_cast<TerrainDrawable*>(find.mFoundTemplate.get()) : nullptr;
+        osg::ref_ptr<osg::Node> node = createChunk(size, center, lod, lodFlags, compile, templateGeometry);
+        mCache->addEntryToObjectCache(id, node.get());
+        return node;
+    }
+}
+
+osg::ref_ptr<osg::Node> ChunkManager::getChunk(float size, const ESM4::Cell* center, unsigned char lod, unsigned int lodFlags, bool activeGrid, const osg::Vec3f& viewPoint, bool compile)
+{
+    // Override lod with the vertexLodMod adjusted value.
+    // TODO: maybe we can refactor this code by moving all vertexLodMod code into this class.
+    lod = static_cast<unsigned char>(lodFlags >> (4 * 4));
+    ChunkId id = std::make_tuple(osg::Vec2f((float)center->mX, (float)center->mY), lod, lodFlags);
     osg::ref_ptr<osg::Object> obj = mCache->getRefFromObjectCache(id);
     if (obj)
         return static_cast<osg::Node*>(obj.get());
@@ -275,6 +299,110 @@ osg::ref_ptr<osg::Node> ChunkManager::createChunk(float chunkSize, const osg::Ve
     }
 
     geometry->setupWaterBoundingBox(-1, chunkSize * mStorage->getCellWorldSize() / numVerts);
+
+    if (!templateGeometry && compile && mSceneManager->getIncrementalCompileOperation())
+    {
+        mSceneManager->getIncrementalCompileOperation()->add(geometry);
+    }
+    geometry->setNodeMask(mNodeMask);
+
+    return geometry;
+}
+
+osg::ref_ptr<osg::Node> ChunkManager::createChunk(float size, const ESM4::Cell* center, unsigned char lod, unsigned int lodFlags, bool compile, TerrainDrawable* templateGeometry)
+{
+    osg::ref_ptr<TerrainDrawable> geometry(new TerrainDrawable);
+
+    if (!templateGeometry)
+    {
+        osg::ref_ptr<osg::Vec3Array> positions(new osg::Vec3Array);
+        osg::ref_ptr<osg::Vec3Array> normals(new osg::Vec3Array);
+        osg::ref_ptr<osg::Vec4ubArray> colors(new osg::Vec4ubArray);
+        colors->setNormalize(true);
+
+        mStorage->fillTes4VertexBuffers(lod, size, center, positions, normals, colors);
+
+        osg::ref_ptr<osg::VertexBufferObject> vbo(new osg::VertexBufferObject);
+        positions->setVertexBufferObject(vbo);
+        normals->setVertexBufferObject(vbo);
+        colors->setVertexBufferObject(vbo);
+
+        geometry->setVertexArray(positions);
+        geometry->setNormalArray(normals, osg::Array::BIND_PER_VERTEX);
+        geometry->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
+    }
+    else
+    {
+        // Unfortunately we need to copy vertex data because of poor coupling with VertexBufferObject.
+        osg::ref_ptr<osg::Array> positions = static_cast<osg::Array*>(templateGeometry->getVertexArray()->clone(osg::CopyOp::DEEP_COPY_ALL));
+        osg::ref_ptr<osg::Array> normals = static_cast<osg::Array*>(templateGeometry->getNormalArray()->clone(osg::CopyOp::DEEP_COPY_ALL));
+        osg::ref_ptr<osg::Array> colors = static_cast<osg::Array*>(templateGeometry->getColorArray()->clone(osg::CopyOp::DEEP_COPY_ALL));
+
+        osg::ref_ptr<osg::VertexBufferObject> vbo(new osg::VertexBufferObject);
+        positions->setVertexBufferObject(vbo);
+        normals->setVertexBufferObject(vbo);
+        colors->setVertexBufferObject(vbo);
+
+        geometry->setVertexArray(positions);
+        geometry->setNormalArray(normals, osg::Array::BIND_PER_VERTEX);
+        geometry->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
+    }
+
+    geometry->setUseDisplayList(false);
+    geometry->setUseVertexBufferObjects(true);
+
+    if (size <= 1.f)
+        geometry->setLightListCallback(new SceneUtil::LightListCallback);
+
+    unsigned int numVerts = ((ESM4::Land::VERTS_PER_SIDE) - 1) * size / (1 << lod) + 1;
+
+    geometry->addPrimitiveSet(mBufferCache.getIndexBuffer(numVerts, lodFlags));
+
+    bool useCompositeMap = size >= mCompositeMapLevel;
+    unsigned int numUvSets = useCompositeMap ? 1 : 2;
+
+    geometry->setTexCoordArrayList(osg::Geometry::ArrayList(numUvSets, mBufferCache.getUVBuffer(numVerts)));
+
+    geometry->createClusterCullingCallback();
+
+    geometry->setStateSet(mMultiPassRoot);
+
+    if (templateGeometry)
+    {
+        if (templateGeometry->getCompositeMap())
+        {
+            geometry->setCompositeMap(templateGeometry->getCompositeMap());
+            geometry->setCompositeMapRenderer(mCompositeMapRenderer);
+        }
+        geometry->setPasses(templateGeometry->getPasses());
+    }
+    else
+    {
+        if (useCompositeMap)
+        {
+            osg::ref_ptr<CompositeMap> compositeMap = new CompositeMap;
+            compositeMap->mTexture = createCompositeMapRTT();
+
+            createCompositeMapGeometry(size, osg::Vec2f((float)center->mX, (float)center->mY), osg::Vec4f(0, 0, 1, 1), *compositeMap);
+
+            mCompositeMapRenderer->addCompositeMap(compositeMap.get(), false);
+
+            geometry->setCompositeMap(compositeMap);
+            geometry->setCompositeMapRenderer(mCompositeMapRenderer);
+
+            TextureLayer layer;
+            layer.mDiffuseMap = compositeMap->mTexture;
+            layer.mParallax = false;
+            layer.mSpecular = false;
+            geometry->setPasses(::Terrain::createPasses(mSceneManager->getForceShaders() || !mSceneManager->getClampLighting(), mSceneManager, std::vector<TextureLayer>(1, layer), std::vector<osg::ref_ptr<osg::Texture2D>>(), 1.f, 1.f));
+        }
+        else
+        {
+            geometry->setPasses(createPasses(size, osg::Vec2f((float)center->mX, (float)center->mY), false));
+        }
+    }
+
+    geometry->setupWaterBoundingBox(-1, size * 4096.f / numVerts);
 
     if (!templateGeometry && compile && mSceneManager->getIncrementalCompileOperation())
     {

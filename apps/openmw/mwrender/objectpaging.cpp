@@ -93,6 +93,25 @@ namespace MWRender
         }
     }
 
+    osg::ref_ptr<osg::Node> ObjectPaging::getChunk(float size, const ESM4::Cell* center, unsigned char lod, unsigned int lodFlags, bool activeGrid, const osg::Vec3f& viewPoint, bool compile)
+    {
+        lod = static_cast<unsigned char>(lodFlags >> (4 * 4));
+        if (activeGrid && !mActiveGrid)
+            return nullptr;
+
+        ChunkId id = std::make_tuple(osg::Vec2f((float)center->mX, (float)center->mY), size, activeGrid);
+
+        osg::ref_ptr<osg::Object> obj = mCache->getRefFromObjectCache(id);
+        if (obj)
+            return static_cast<osg::Node*>(obj.get());
+        else
+        {
+            osg::ref_ptr<osg::Node> node = createChunk(size, center, activeGrid, viewPoint, compile, lod);
+            mCache->addEntryToObjectCache(id, node.get());
+            return node;
+        }
+    }
+
     class CanOptimizeCallback : public SceneUtil::Optimizer::IsOperationPermissibleForObjectCallback
     {
     public:
@@ -749,6 +768,11 @@ namespace MWRender
         udc->addUserObject(templateRefs);
 
         return group;
+    }
+
+    osg::ref_ptr<osg::Node> ObjectPaging::createChunk(float size, const ESM4::Cell* center, bool activeGrid, const osg::Vec3f& viewPoint, bool compile, unsigned char lod)
+    {
+        throw std::runtime_error("createChunk() unimplemented for ObjectPaging");
     }
 
     unsigned int ObjectPaging::getNodeMask()

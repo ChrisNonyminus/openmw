@@ -58,7 +58,10 @@ void ESM4::Land::load(ESM4::Reader& reader)
     mFormId = reader.hdr().record.id;
     reader.adjustFormId(mFormId);
     mFlags  = reader.hdr().record.flags;
+    mWorldspace = reader.currWorld();
     mDataTypes = 0;
+    mX = reader.currCellGrid().grid.x;
+    mY = reader.currCellGrid().grid.x;
     mCell = reader.currCell();
 
     TxtLayer layer;

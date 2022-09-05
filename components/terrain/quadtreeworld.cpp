@@ -108,6 +108,10 @@ public:
         , mWorld(nullptr)
     {
     }
+    RootNode(float size, const ESM4::Cell* center)
+        : QuadTreeNode(nullptr, Root, size, center), mWorld(nullptr)
+    {
+    }
 
     void setWorld(QuadTreeWorld* world)
     {
@@ -130,8 +134,8 @@ private:
 class QuadTreeBuilder
 {
 public:
-    QuadTreeBuilder(Terrain::Storage* storage, float minSize)
-        : mStorage(storage)
+    QuadTreeBuilder(Terrain::Storage* storage, float minSize, const ESM4::Cell* centerCell = nullptr)
+        : mStorage(storage), mCenterCell(centerCell)
         , mMinX(0.f), mMaxX(0.f), mMinY(0.f), mMaxY(0.f)
         , mMinSize(minSize)
     {
@@ -150,7 +154,10 @@ public:
         float centerX = (mMinX+mMaxX)/2.f + (size-origSizeX)/2.f;
         float centerY = (mMinY+mMaxY)/2.f + (size-origSizeY)/2.f;
 
-        mRootNode = new RootNode(size, osg::Vec2f(centerX, centerY));
+        if (!mCenterCell)
+            mRootNode = new RootNode(size, osg::Vec2f(centerX, centerY));
+        else
+            mRootNode = new RootNode(size, mCenterCell);
         addChildren(mRootNode);
 
         mRootNode->initNeighbours();
@@ -244,6 +251,7 @@ public:
 
 private:
     Terrain::Storage* mStorage;
+    const ESM4::Cell* mCenterCell;
 
     float mMinX, mMaxX, mMinY, mMaxY;
     float mMinSize;
@@ -261,6 +269,15 @@ public:
         auto chunkBorder = CellBorder::createBorderGeometry(center.x() - size / 2.f, center.y() - size / 2.f, size, mStorage, mSceneManager, mNodeMask, 5.f, { 1, 0, 0, 0 });
         osg::ref_ptr<SceneUtil::PositionAttitudeTransform> pat = new SceneUtil::PositionAttitudeTransform;
         pat->setPosition(-center*Constants::CellSizeInUnits);
+        pat->addChild(chunkBorder);
+        return pat;
+    }
+    osg::ref_ptr<osg::Node> getChunk(float size, const ESM4::Cell* centerCell, unsigned char lod, unsigned int lodFlags, bool activeGrid, const osg::Vec3f& viewPoint, bool compile)
+    {
+        osg::Vec3f center = { (float)centerCell->mX, (float)centerCell->mY, 0 };
+        auto chunkBorder = CellBorder::createBorderGeometry(center.x() - size / 2.f, center.y() - size / 2.f, size, mStorage, mSceneManager, mNodeMask, 5.f, { 1, 0, 0, 0 });
+        osg::ref_ptr<SceneUtil::PositionAttitudeTransform> pat = new SceneUtil::PositionAttitudeTransform;
+        pat->setPosition(-center * Constants::CellSizeInUnits);
         pat->addChild(chunkBorder);
         return pat;
     }
@@ -378,7 +395,11 @@ void QuadTreeWorld::loadRenderingNode(ViewDataEntry& entry, ViewData* vd, float 
 
         for (QuadTreeWorld::ChunkManager* m : mChunkManagers)
         {
-            osg::ref_ptr<osg::Node> n = m->getChunk(entry.mNode->getSize(), entry.mNode->getCenter(), DefaultLodCallback::getNativeLodLevel(entry.mNode, mMinSize), entry.mLodFlags, activeGrid, vd->getViewPoint(), compile);
+            osg::ref_ptr<osg::Node> n;
+            if (entry.mNode->getCell())
+                n = m->getChunk(entry.mNode->getSize(), entry.mNode->getCell(), DefaultLodCallback::getNativeLodLevel(entry.mNode, mMinSize), entry.mLodFlags, activeGrid, vd->getViewPoint(), compile);
+            else
+                n = m->getChunk(entry.mNode->getSize(), entry.mNode->getCenter(), DefaultLodCallback::getNativeLodLevel(entry.mNode, mMinSize), entry.mLodFlags, activeGrid, vd->getViewPoint(), compile);
             if (n) pat->addChild(n);
         }
         entry.mRenderingNode = pat;
@@ -477,13 +498,13 @@ void QuadTreeWorld::accept(osg::NodeVisitor &nv)
     }
 }
 
-void QuadTreeWorld::ensureQuadTreeBuilt()
+void QuadTreeWorld::ensureQuadTreeBuilt(const ESM4::Cell* centerCell)
 {
     std::lock_guard<std::mutex> lock(mQuadTreeMutex);
     if (mQuadTreeBuilt)
         return;
 
-    QuadTreeBuilder builder(mStorage, mMinSize);
+    QuadTreeBuilder builder(mStorage, mMinSize, centerCell);
     builder.build();
 
     mRootNode = builder.getRootNode();
@@ -574,6 +595,24 @@ void QuadTreeWorld::unloadCell(int x, int y)
         TerrainGrid::unloadCell(x,y);
     else
         World::unloadCell(x,y);
+}
+
+void QuadTreeWorld::loadCell(const ESM4::Cell* cell, const ESM4::Cell** chunkNeighbors)
+{
+    // fallback behavior only for undefined cells (every other is already handled in quadtree)
+    if (mChunkManager)
+        TerrainGrid::loadCell(cell, chunkNeighbors);
+    else
+        World::loadCell(cell, chunkNeighbors);
+}
+
+void QuadTreeWorld::unloadCell(uint32_t id, int x, int y)
+{
+    // fallback behavior only for undefined cells (every other is already handled in quadtree)
+    if (mChunkManager)
+        TerrainGrid::unloadCell(id, x, y);
+    else
+        World::unloadCell(id, x, y);
 }
 
 void QuadTreeWorld::addChunkManager(QuadTreeWorld::ChunkManager* m)

@@ -692,8 +692,10 @@ namespace MWWorld
                     return cell->getCell4()->mFullName;
 
                 // todo: regions
-                /*if (const ESM::Region* region = mStore.get<ESM::Region>().search(cell->mRegion))
+                /*if (const ESM4::Region* region = mStore.get<ESM4::Region>().search(getStore().getFormName(cell->mRegions[0])))
                     return region->mName;*/
+
+                return getStore().get<ESM4::World>().search(getStore().getFormName(cell->getCell4()->mParent))->mFullName;
             }
         }
         return getCellName(cell->getCell());
@@ -1401,7 +1403,7 @@ namespace MWWorld
         bool swims = ptr.getClass().isActor() && isSwimming(ptr) && !(ptr.getClass().isPersistent(ptr) && ptr.getClass().getCreatureStats(ptr).isDeathAnimationFinished());
         if (force || !ptr.getClass().isActor() || (!isFlying(ptr) && !swims && isActorCollisionEnabled(ptr)))
         {
-            osg::Vec3f traced = mPhysics->traceDown(ptr, pos, Constants::CellSizeInUnits);
+            osg::Vec3f traced = mPhysics->traceDown(ptr, pos, ptr.getCell()->isTes4() ? ESM4::Land::REAL_SIZE : Constants::CellSizeInUnits);
             pos.z() = std::min(pos.z(), traced.z());
         }
 

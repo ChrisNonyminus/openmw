@@ -29,7 +29,10 @@ namespace MWRender
 
         osg::ref_ptr<osg::Node> getChunk(float size, const osg::Vec2f& center, unsigned char lod, unsigned int lodFlags, bool activeGrid, const osg::Vec3f& viewPoint, bool compile) override;
 
+        osg::ref_ptr<osg::Node> getChunk(float size, const ESM4::Cell* center, unsigned char lod, unsigned int lodFlags, bool activeGrid, const osg::Vec3f& viewPoint, bool compile) override;
+
         osg::ref_ptr<osg::Node> createChunk(float size, const osg::Vec2f& center, bool activeGrid, const osg::Vec3f& viewPoint, bool compile, unsigned char lod);
+        osg::ref_ptr<osg::Node> createChunk(float size, const ESM4::Cell* center, bool activeGrid, const osg::Vec3f& viewPoint, bool compile, unsigned char lod);
 
         unsigned int getNodeMask() override;
 

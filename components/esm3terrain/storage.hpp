@@ -10,6 +10,7 @@
 #include <components/esm3/loadltex.hpp>
 
 #include <components/esm4/loadland.hpp>
+#include <components/esm4/loadcell.hpp>
 #include <components/esm4/loadltex.hpp>
 
 namespace VFS
@@ -82,6 +83,7 @@ namespace ESMTerrain
         virtual osg::ref_ptr<const LandObject> getLand (int cellX, int cellY)= 0;
         virtual const ESM::LandTexture* getLandTexture(int index, short plugin) = 0;
         virtual osg::ref_ptr<const TES4LandObject> getTes4Land(ESM4::FormId id) = 0;
+        virtual osg::ref_ptr<const TES4LandObject> getTes4Land(int cellX, int cellY, uint32_t formId) = 0;
         virtual const ESM4::LandTexture* getTes4LandTexture(int index, short plugin) = 0;
         /// Get bounds of the whole terrain in cell units
         void getBounds(float& minX, float& maxX, float& minY, float& maxY) override = 0;
@@ -110,6 +112,10 @@ namespace ESMTerrain
                                 osg::ref_ptr<osg::Vec3Array> positions,
                                 osg::ref_ptr<osg::Vec3Array> normals,
                                 osg::ref_ptr<osg::Vec4ubArray> colours) override;
+        void fillTes4VertexBuffers(int lodLevel, float size, const ESM4::Cell* startCell,
+                                    osg::ref_ptr<osg::Vec3Array> positions,
+                                    osg::ref_ptr<osg::Vec3Array> normals,
+                                    osg::ref_ptr<osg::Vec4ubArray> colours) override;
 
         /// Create textures holding layer blend values for a terrain chunk.
         /// @note The terrain chunk shouldn't be larger than one cell since otherwise we might
@@ -146,6 +152,8 @@ namespace ESMTerrain
             return data->mHeightMapF[y * ESM4::Land::VERTS_PER_SIDE + x];
         }
 
+        osg::Vec2f getTes4MinMaxHeights(const ESM4::Land* data, float defMin, float defMax) override;
+
     private:
         const VFS::Manager* mVFS;
 
@@ -159,6 +167,7 @@ namespace ESMTerrain
 
         inline const LandObject* getLand(int cellX, int cellY, LandCache& cache);
         inline const TES4LandObject* getTes4Land(uint32_t formId, TES4LandCache& cache);
+        inline const TES4LandObject* getTes4Land(int cellX, int cellY, uint32_t wrldId, TES4LandCache& cache);
 
         virtual bool useAlteration() const { return false; }
         virtual void adjustColor(int col, int row, const ESM::Land::LandData *heightData, osg::Vec4ub& color) const;

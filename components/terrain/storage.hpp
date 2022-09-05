@@ -15,6 +15,12 @@ namespace osg
     class Image;
 }
 
+namespace ESM4
+{
+    struct Land;
+    struct Cell;
+}
+
 namespace Terrain
 {
     /// We keep storage of terrain data abstract here since we need different implementations for game and editor
@@ -85,6 +91,13 @@ namespace Terrain
         virtual int getCellVertices() = 0;
 
         virtual int getBlendmapScale(float chunkSize) = 0;
+
+        virtual osg::Vec2f getTes4MinMaxHeights(const ESM4::Land* data, float defMin, float defMax) = 0;
+
+        virtual void fillTes4VertexBuffers(int lodLevel, float size, const ESM4::Cell* startCell,
+            osg::ref_ptr<osg::Vec3Array> positions,
+            osg::ref_ptr<osg::Vec3Array> normals,
+            osg::ref_ptr<osg::Vec4ubArray> colours) = 0;
     };
 
 }

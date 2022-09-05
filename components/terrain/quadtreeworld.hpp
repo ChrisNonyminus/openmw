@@ -14,6 +14,11 @@ namespace osg
     class Stats;
 }
 
+namespace ESM4
+{
+    struct Cell;
+}
+
 namespace Terrain
 {
     class RootNode;
@@ -43,6 +48,11 @@ namespace Terrain
         /// @note Not thread safe.
         void unloadCell(int x, int y) override;
 
+        /// @note Not thread safe.
+        void loadCell(const ESM4::Cell* cell, const ESM4::Cell** chunkNeighbors) override;
+        /// @note Not thread safe.
+        void unloadCell(uint32_t id, int x, int y) override;
+
         View* createView() override;
         void preload(View* view, const osg::Vec3f& eyePoint, const osg::Vec4i &cellgrid, std::atomic<bool>& abort, Loading::Reporter& reporter) override;
         void rebuildViews() override;
@@ -54,6 +64,11 @@ namespace Terrain
         public:
             virtual ~ChunkManager(){}
             virtual osg::ref_ptr<osg::Node> getChunk(float size, const osg::Vec2f& center, unsigned char lod, unsigned int lodFlags, bool activeGrid, const osg::Vec3f& viewPoint, bool compile) = 0;
+
+            virtual osg::ref_ptr<osg::Node> getChunk(float size, const ESM4::Cell* center, unsigned char lod, unsigned int lodFlags, bool activeGrid, const osg::Vec3f& viewPoint, bool compile) 
+            {
+                throw std::runtime_error("getChunk() override unimplemented");
+            }
             virtual unsigned int getNodeMask() { return 0; }
 
             void setViewDistance(float viewDistance) { mViewDistance = viewDistance; }
@@ -69,7 +84,7 @@ namespace Terrain
         void addChunkManager(ChunkManager*);
 
     private:
-        void ensureQuadTreeBuilt();
+        void ensureQuadTreeBuilt(const ESM4::Cell* centerCell = nullptr);
         void loadRenderingNode(ViewDataEntry& entry, ViewData* vd, float cellWorldSize, const osg::Vec4i &gridbounds, bool compile);
 
         osg::ref_ptr<RootNode> mRootNode;

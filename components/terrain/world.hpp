@@ -28,6 +28,11 @@ namespace Loading
     class Reporter;
 }
 
+namespace ESM4
+{
+    struct Cell;
+}
+
 namespace Terrain
 {
     class Storage;
@@ -77,6 +82,14 @@ namespace Terrain
         /// Remove the cell from the scene graph.
         /// @note Not thread safe.
         virtual void unloadCell(int x, int y);
+
+        /// Load the cell into the scene graph.
+        /// @note Not thread safe.
+        virtual void loadCell(const ESM4::Cell* cell, const ESM4::Cell** chunkNeighbors);
+
+        /// Remove the cell from the scene graph.
+        /// @note Not thread safe.
+        virtual void unloadCell(uint32_t wrldId, int x, int y);
 
         virtual void enable(bool enabled) {}
 

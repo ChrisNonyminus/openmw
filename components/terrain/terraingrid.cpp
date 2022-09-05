@@ -41,6 +41,10 @@ TerrainGrid::~TerrainGrid()
     {
         TerrainGrid::unloadCell(mGrid.begin()->first.first, mGrid.begin()->first.second);
     }
+    while (!mTES4Grid.empty())
+    {
+        TerrainGrid::unloadCell(mTES4Grid.begin()->first.first, mTES4Grid.begin()->first.second.first, mTES4Grid.begin()->first.second.second);
+    }
 }
 
 void TerrainGrid::cacheCell(View* view, int x, int y)
@@ -81,6 +85,40 @@ osg::ref_ptr<osg::Node> TerrainGrid::buildTerrain (osg::Group* parent, float chu
     }
 }
 
+osg::ref_ptr<osg::Node> TerrainGrid::buildTerrain(osg::Group* parent, float chunkSize, const ESM4::Cell* chunkCenter, const ESM4::Cell** chunkNeighbors)
+{
+    if (chunkSize * mNumSplits > 1.f)
+    {
+        assert(chunkNeighbors);
+        // keep splitting
+        osg::ref_ptr<osg::Group> group(new osg::Group);
+        if (parent)
+            parent->addChild(group);
+
+        float newChunkSize = chunkSize / 2.f;
+        buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[0], nullptr);
+        buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[1], nullptr);
+        buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[2], nullptr);
+        buildTerrain(group, newChunkSize / 2.f, chunkNeighbors[3], nullptr);
+        buildTerrain(group, newChunkSize / 2.f, chunkCenter, nullptr);
+        return group;
+    }
+    else
+    {
+        osg::ref_ptr<osg::Node> node = mChunkManager->getChunk(chunkSize, chunkCenter, 0, 0, false, osg::Vec3f(), true);
+        if (!node)
+            return nullptr;
+
+        const float cellWorldSize = 4096.f;
+        osg::ref_ptr<SceneUtil::PositionAttitudeTransform> pat = new SceneUtil::PositionAttitudeTransform;
+        pat->setPosition(osg::Vec3f(chunkCenter->mX * cellWorldSize, chunkCenter->mY * cellWorldSize, 0.f));
+        pat->addChild(node);
+        if (parent)
+            parent->addChild(pat);
+        return pat;
+    }
+}
+
 void TerrainGrid::loadCell(int x, int y)
 {
     if (mGrid.find(std::make_pair(x, y)) != mGrid.end())
@@ -114,6 +152,23 @@ void TerrainGrid::unloadCell(int x, int y)
     updateWaterCulling();
 }
 
+void TerrainGrid::loadCell(const ESM4::Cell* cell, const ESM4::Cell** chunkNeighbors)
+{
+    if (mTES4Grid.find(std::make_pair(cell->mParent, std::make_pair(cell->mX, cell->mY))) != mTES4Grid.end())
+        return; // already loaded
+
+    osg::ref_ptr<osg::Node> terrainNode = buildTerrain(nullptr, 1.f, cell, chunkNeighbors);
+    if (!terrainNode)
+        return; // no terrain defined
+
+    TerrainGrid::World::loadCell(cell, chunkNeighbors);
+
+    mTerrainRoot->addChild(terrainNode);
+
+    mTES4Grid[std::make_pair(cell->mParent, std::make_pair(cell->mX, cell->mY))] = terrainNode;
+    updateWaterCulling();
+}
+
 void TerrainGrid::updateWaterCulling()
 {
     if (!mHeightCullCallback) return;
@@ -124,7 +179,22 @@ void TerrainGrid::updateWaterCulling()
     mHeightCullCallback->setLowZ(lowZ);
 }
 
-View *TerrainGrid::createView()
+void TerrainGrid::unloadCell(uint32_t wrldId, int x, int y)
+{
+    auto it = mTES4Grid.find(std::make_pair(wrldId, std::make_pair(x, y)));
+    if (it == mTES4Grid.end())
+        return;
+
+    Terrain::World::unloadCell(wrldId, x, y);
+
+    osg::ref_ptr<osg::Node> terrainNode = it->second;
+    mTerrainRoot->removeChild(terrainNode);
+
+    mTES4Grid.erase(it);
+    updateWaterCulling();
+}
+
+View* TerrainGrid::createView()
 {
     return new MyView;
 }

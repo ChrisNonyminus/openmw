@@ -3,6 +3,7 @@
 #include "../mwbase/world.hpp"
 #include "../mwbase/environment.hpp"
 #include "../mwworld/esmstore.hpp"
+#include "../mwworld/cellstore.hpp"
 
 #include "landmanager.hpp"
 
@@ -83,6 +84,13 @@ namespace MWRender
     osg::ref_ptr<const ESMTerrain::TES4LandObject> TerrainStorage::getTes4Land(ESM4::FormId id)
     {
         return mTES4LandManager->getLand(id);
+    }
+
+    osg::ref_ptr<const ESMTerrain::TES4LandObject> TerrainStorage::getTes4Land(int cellX, int cellY, ESM4::FormId id)
+    {
+        const MWWorld::ESMStore& esmStore = MWBase::Environment::get().getWorld()->getStore();
+        MWWorld::CellStore* cell = MWBase::Environment::get().getWorld()->getExterior(cellX, cellY, id);
+        return mTES4LandManager->getLand(cell->getLandId());
     }
 
     const ESM::LandTexture* TerrainStorage::getLandTexture(int index, short plugin)

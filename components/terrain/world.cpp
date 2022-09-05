@@ -6,6 +6,8 @@
 #include <components/resource/resourcesystem.hpp>
 #include <components/resource/scenemanager.hpp>
 
+#include <components/esm4/loadcell.hpp>
+
 #include "storage.hpp"
 #include "texturemanager.hpp"
 #include "chunkmanager.hpp"
@@ -112,6 +114,24 @@ void World::unloadCell(int x, int y)
         mCellBorder->destroyCellBorderGeometry(x,y);
 
     mLoadedCells.erase(std::pair<int,int>(x,y));
+}
+
+void World::loadCell(const ESM4::Cell* cell, const ESM4::Cell** chunkNeighbors)
+{
+    int x = cell->mX;
+    int y = cell->mY;
+    if (mBorderVisible)
+        mCellBorder->createCellBorderGeometry(x, y);
+
+    mLoadedCells.insert(std::pair<int, int>(x, y));
+}
+
+void World::unloadCell(uint32_t wrldId, int x, int y)
+{
+    if (mBorderVisible)
+        mCellBorder->destroyCellBorderGeometry(x, y);
+
+    mLoadedCells.erase(std::pair<int, int>(x, y));
 }
 
 void World::setTargetFrameRate(float rate)
