@@ -131,7 +131,7 @@ namespace ESMTerrain
         {
             for (int col= 0; col < ESM4::Land::VERTS_PER_SIDE; ++col)
             {
-                for (int row = 1; row < ESM4::Land::VERTS_PER_SIDE; ++row)
+                for (int row = 0; row < ESM4::Land::VERTS_PER_SIDE; ++row)
                 {
                     float h = data->mHeightMapF[col * ESM4::Land::VERTS_PER_SIDE + row];
                     if (h > max)
@@ -448,7 +448,7 @@ namespace ESMTerrain
 
         TES4LandCache cache;
 
-        size_t numVerts = static_cast<size_t>(size * (ESM4::Land::VERTS_PER_SIDE - 1) / increment + 1);
+        size_t numVerts = (ESM4::Land::VERTS_PER_SIDE);
 
         int startCellX = startCell->mX;
         int startCellY = startCell->mY;

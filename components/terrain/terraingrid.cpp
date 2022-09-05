@@ -109,9 +109,10 @@ osg::ref_ptr<osg::Node> TerrainGrid::buildTerrain(osg::Group* parent, float chun
         if (!node)
             return nullptr;
 
+        osg::Vec2f center(chunkCenter->mX + .5f, chunkCenter->mY + .5f);
         const float cellWorldSize = 4096.f;
         osg::ref_ptr<SceneUtil::PositionAttitudeTransform> pat = new SceneUtil::PositionAttitudeTransform;
-        pat->setPosition(osg::Vec3f(chunkCenter->mX * cellWorldSize, chunkCenter->mY * cellWorldSize, 0.f));
+        pat->setPosition(osg::Vec3f(center.x() * cellWorldSize, center.y() * cellWorldSize, 0.f));
         pat->addChild(node);
         if (parent)
             parent->addChild(pat);
