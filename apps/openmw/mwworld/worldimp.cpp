@@ -1445,7 +1445,7 @@ namespace MWWorld
             std::string_view cell;
             if (!actor.getCell()->isExterior())
                 cell = actor.getCell()->isTes4() ? actor.getCell()->getCell4()->mEditorId : actor.getCell()->getCell()->mName;
-            MWWorld::ActionTeleport(cell, esmPos, 0 /*todo: get worldspace id*/, false).execute(actor);
+            MWWorld::ActionTeleport(cell, esmPos, actor.getCell()->isTes4() ? actor.getCell()->getCell4()->mParent : 0, false).execute(actor);
         }
     }
 
@@ -3503,12 +3503,12 @@ namespace MWWorld
     void World::updateWeather(float duration, bool paused)
     {
         bool isExterior = isCellExterior() || isCellQuasiExterior();
-        if (getPlayerPtr().getCell()->isTes4())
+        // todo: update weather for tes4
+        if (/*getPlayerPtr().getCell()->isTes4()*/false)
         {
-            // todo: update weather for tes4
             return;
         }
-        if (mPlayer->wasTeleported())
+        if (mPlayer->wasTeleported() && !getPlayerPtr().getCell()->isTes4() /*todo*/)
         {
             mPlayer->setTeleported(false);
 

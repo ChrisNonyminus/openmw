@@ -190,6 +190,7 @@ add_component_dir (esm4
     loadtxst
     loadweap
     loadwrld
+    loadwthr
     reader
     reference
     script

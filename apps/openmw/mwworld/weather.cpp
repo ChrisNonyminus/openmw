@@ -704,7 +704,7 @@ namespace
         if(!paused || mFastForward)
         {
             // Add new transitions when either the player's current external region changes.
-            std::string playerRegion = Misc::StringUtils::lowerCase(player.getCell()->getCell()->mRegion);
+            std::string playerRegion = Misc::StringUtils::lowerCase(!player.getCell()->isTes4() ? player.getCell()->getCell()->mRegion : "wilderness" /*todo*/);
             if(updateWeatherTime() || updateWeatherRegion(playerRegion))
             {
                 std::map<std::string, RegionWeather>::iterator it = mRegions.find(mCurrentRegion);
