@@ -454,8 +454,8 @@ namespace MWWorld
     {
         if (cell->isTes4())
         {
-            if ((getCurrentCell() == nullptr && mWorld.getStore().getDummyCell(cell->getCell4()->mParent) != cell->getCell4()->mFormId) || (getCurrentCell() != nullptr && getCurrentCell()->isTes4() && getCurrentCell()->getCell4()->mParent != cell->getCell4()->mParent 
-                && mWorld.getStore().getDummyCell(cell->getCell4()->mParent) != cell->getCell4()->mFormId))
+            if (cell->isExterior() && ((getCurrentCell() == nullptr && mWorld.getStore().getDummyCell(cell->getCell4()->mParent) != cell->getCell4()->mFormId) || (getCurrentCell() != nullptr && getCurrentCell()->isTes4() && getCurrentCell()->getCell4()->mParent != cell->getCell4()->mParent 
+                && mWorld.getStore().getDummyCell(cell->getCell4()->mParent) != cell->getCell4()->mFormId)))
             {
                 if (mActiveCells.find(mWorld.getWorldspaceDummyCell(cell->getCell4()->mParent)) != mActiveCells.end())
                 {

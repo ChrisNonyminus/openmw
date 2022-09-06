@@ -821,6 +821,11 @@ struct ESM4Reading
     }
     static bool readItem(ESMStore& store, ESM4::Reader& reader, ESM4::Dialogue* dialogue)
     {
+        if (reader.getFileOffset() == 0xB0CFF04 && reader.getFileName().find("FalloutNV.esm") != std::string::npos) // hack for weirdness with one particular record in FalloutNV.esm (it's a land record that doesn't like being decompressed)
+        { // TODO: fix the issue so I don't have to do this
+            reader.skipRecordData();
+            return true;
+        }
         if (!reader.getRecordHeader() || !reader.hasMoreRecs())
             return false;
 
