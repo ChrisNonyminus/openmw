@@ -4131,4 +4131,8 @@ namespace MWWorld
         if (MWPhysics::Actor* const actor = mPhysics->getActor(ptr))
             actor->setActive(value);
     }
+    MWWorld::CellStore* World::getWorldspaceDummyCell(uint32_t wrldId)
+    {
+        return mCells.getDummy(wrldId);
+    }
 }

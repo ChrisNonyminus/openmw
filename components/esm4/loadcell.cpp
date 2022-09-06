@@ -52,6 +52,8 @@ void ESM4::Cell::load(ESM4::Reader& reader)
     reader.adjustFormId(mFormId);
     mFlags  = reader.hdr().record.flags;
     mParent = reader.currWorld();
+    if (reader.wrldDummyCells().find(mParent) == reader.wrldDummyCells().end())
+        reader.wrldDummyCells()[mParent] = mFormId;
 
     reader.clearCellGrid(); // clear until XCLC FIXME: somehow do this automatically?
 

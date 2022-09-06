@@ -40,7 +40,7 @@ namespace ESM4 {
     //                                                     |
     //                                                     v
     typedef std::vector<std::pair<ESM4::GroupTypeHeader, std::uint32_t> > GroupStack;
-
+    typedef std::map<ESM4::FormId, ESM4::FormId> RecRefMap;
     struct ReaderContext
     {
         std::string filename;         // in case we need to reopen to restore the context
@@ -71,6 +71,8 @@ namespace ESM4 {
         // FIXME: try to get rid of these two members, seem like massive hacks
         CellGrid currCellGrid;     // TODO: should keep a map of cell formids
         bool cellGridValid;
+
+        RecRefMap worldDummyCells; // key: worldspace form id | value: form id of dummy cell
 
         ReaderContext();
     };
@@ -229,6 +231,8 @@ namespace ESM4 {
         inline void setCurrWorld(FormId formId) { mCtx.currWorld = formId; }
 
         inline FormId currWorld() const { return mCtx.currWorld; }
+
+        inline RecRefMap& wrldDummyCells() { return mCtx.worldDummyCells; }
 
         // Get the data part of a record
         // Note: assumes the header was read correctly and nothing else was read

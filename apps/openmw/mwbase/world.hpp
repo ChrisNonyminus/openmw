@@ -141,6 +141,8 @@ namespace MWBase
 
             virtual MWWorld::CellStore *getCell (const ESM::CellId& id) = 0;
 
+            virtual MWWorld::CellStore* getWorldspaceDummyCell(uint32_t wrldId) = 0;
+
             virtual bool isCellActive(MWWorld::CellStore* cell) const = 0;
 
             virtual void testExteriorCells() = 0;

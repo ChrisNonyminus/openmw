@@ -722,6 +722,8 @@ namespace MWWorld
 
     void CellStore::listRefs()
     {
+        if (isTes4())
+            return;
         assert (mCell);
 
         if (mCell->mContextList.empty())

@@ -101,6 +101,7 @@ namespace MWWorld
             ESM::LuaScriptsCfg,  // data from an omwaddon
             std::string>;  // path to an omwscripts file
         std::vector<LuaContent> mLuaContent;
+        std::map<uint32_t, uint32_t> mTES4DummyCells;
 
     public:
         void addOMWScripts(std::string filePath) { mLuaContent.push_back(std::move(filePath)); }
@@ -195,6 +196,8 @@ namespace MWWorld
         std::pair<std::shared_ptr<MWMechanics::SpellList>, bool> getSpellList(const std::string& id) const;
 
         const std::string& getFormName(uint32_t formId) const;
+
+        uint32_t getDummyCell(uint32_t wrldId) const;
 
         template <>
         const Store<ESM::Attribute>& get<ESM::Attribute>() const;

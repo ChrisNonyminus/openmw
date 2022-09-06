@@ -765,6 +765,8 @@ namespace MWWorld
             MWRender::PostProcessor* getPostProcessor() override;
 
             void setActorActive(const MWWorld::Ptr& ptr, bool value) override;
+
+            MWWorld::CellStore* getWorldspaceDummyCell(uint32_t wrldId) override;
     };
 }
 

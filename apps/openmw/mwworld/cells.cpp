@@ -114,6 +114,8 @@ void MWWorld::Cells::clear()
 {
     mInteriors.clear();
     mExteriors.clear();
+    mDummyCells.clear();
+    mExteriorsByWorldSpace.clear();
     std::fill(mIdCache.begin(), mIdCache.end(), std::make_pair("", (MWWorld::CellStore*)nullptr));
     mIdCacheIndex = 0;
 }
@@ -293,6 +295,16 @@ MWWorld::CellStore* MWWorld::Cells::getCell(const std::string& id)
     return getInterior(id);
 }
 
+MWWorld::CellStore* MWWorld::Cells::getDummy(uint32_t wrldid)
+{
+    auto it = mDummyCells.find(wrldid);
+    if (it != mDummyCells.end())
+        return &(*it).second;
+    CellStore newDummy(mStore.get<ESM4::Cell>().find(mStore.getDummyCell(wrldid)), mStore, mReaders);
+    auto newit = mDummyCells.insert(std::make_pair(wrldid, std::move(newDummy)));
+    return &(*newit.first).second;
+}
+
 MWWorld::Ptr MWWorld::Cells::getPtr(std::string_view name, CellStore& cell,
     bool searchInContainers)
 {
@@ -344,6 +356,14 @@ MWWorld::Ptr MWWorld::Cells::getPtr (const std::string& name)
 
     for (std::map<Store<ESM4::Cell>::ExtLocation, CellStore>::reverse_iterator iter = mExteriorsByWorldSpace.rbegin();
          iter != mExteriorsByWorldSpace.rend(); ++iter)
+    {
+        Ptr ptr = getPtrAndCache(name, iter->second);
+        if (!ptr.isEmpty())
+            return ptr;
+    }
+
+    for (auto iter = mDummyCells.rbegin();
+         iter != mDummyCells.rend(); ++iter)
     {
         Ptr ptr = getPtrAndCache(name, iter->second);
         if (!ptr.isEmpty())
@@ -423,6 +443,12 @@ MWWorld::Ptr MWWorld::Cells::getPtr (const std::string& id, const ESM::RefNum& r
             return ptr;
     }
     for (auto& pair : mExteriorsByWorldSpace)
+    {
+        Ptr ptr = getPtr(pair.second, id, refNum);
+        if (!ptr.isEmpty())
+            return ptr;
+    }
+    for (auto& pair : mDummyCells)
     {
         Ptr ptr = getPtr(pair.second, id, refNum);
         if (!ptr.isEmpty())

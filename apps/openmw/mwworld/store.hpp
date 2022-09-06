@@ -335,6 +335,8 @@ namespace MWWorld
         std::vector<ESM4::Cell*> mSharedInt;
         std::vector<ESM4::Cell*> mSharedExt;
 
+        std::vector<ESM4::Cell> mDummy;
+
         DynamicInt mDynamicInt;
         DynamicExt mDynamicExt;
 
@@ -352,6 +354,7 @@ namespace MWWorld
 
         const ESM4::Cell* find(std::string_view id) const;
         const ESM4::Cell* find(ExtLocation id) const;
+        const ESM4::Cell* find(uint32_t formId) const;
 
         void clearDynamic() override;
         void setUp() override;

@@ -480,97 +480,170 @@ namespace ESMTerrain
                 if (land)
                 {
                     data = land->getData(0);
-                }
+                    int rowStart = 0;
+                    int colStart = 0;
+                    // Skip the first row / column unless we're at a chunk edge,
+                    // since this row / column is already contained in a previous cell
+                    // This is only relevant if we're creating a chunk spanning multiple cells
+                    if (vertY_ != 0)
+                        colStart += increment;
+                    if (vertX_ != 0)
+                        rowStart += increment;
 
-                int rowStart = 0;
-                int colStart = 0;
-                // Skip the first row / column unless we're at a chunk edge,
-                // since this row / column is already contained in a previous cell
-                // This is only relevant if we're creating a chunk spanning multiple cells
-                if (vertY_ != 0)
-                    colStart += increment;
-                if (vertX_ != 0)
-                    rowStart += increment;
+                    // Only relevant for chunks smaller than (contained in) one cell
+                    rowStart += (origin.x() - startCellX) * ESM4::Land::VERTS_PER_SIDE;
+                    colStart += (origin.y() - startCellY) * ESM4::Land::VERTS_PER_SIDE;
+                    int rowEnd = std::min(static_cast<int>(rowStart + std::min(1.f, size) * (ESM4::Land::VERTS_PER_SIDE - 1) + 1), static_cast<int>(ESM4::Land::VERTS_PER_SIDE));
+                    int colEnd = std::min(static_cast<int>(colStart + std::min(1.f, size) * (ESM4::Land::VERTS_PER_SIDE - 1) + 1), static_cast<int>(ESM4::Land::VERTS_PER_SIDE));
 
-                // Only relevant for chunks smaller than (contained in) one cell
-                rowStart += (origin.x() - startCellX)*ESM4::Land::VERTS_PER_SIDE;
-                colStart += (origin.y() - startCellY) * ESM4::Land::VERTS_PER_SIDE;
-                int rowEnd = std::min(static_cast<int>(rowStart + std::min(1.f, size) * (ESM4::Land::VERTS_PER_SIDE - 1) + 1), static_cast<int>(ESM4::Land::VERTS_PER_SIDE));
-                int colEnd = std::min(static_cast<int>(colStart + std::min(1.f, size) * (ESM4::Land::VERTS_PER_SIDE - 1) + 1), static_cast<int>(ESM4::Land::VERTS_PER_SIDE));
-
-                vertY = vertY_;
-                for (int col = colStart; col < colEnd; col += increment)
-                {
-                    vertX = vertX_;
-                    for (int row = rowStart; row < rowEnd; row += increment)
+                    vertY = vertY_;
+                    for (int col = colStart; col < colEnd; col += increment)
                     {
-
-                        assert(row >= 0 && row < ESM4::Land::VERTS_PER_SIDE);
-                        assert(col >= 0 && col < ESM4::Land::VERTS_PER_SIDE);
-
-                        assert(vertX < numVerts);
-                        assert(vertY < numVerts);
-
-                        float height = -1024.f;
-                        if (data)
-                            height = data->mHeightMapF[col * ESM4::Land::VERTS_PER_SIDE + row];
-                        if (alteration)
-                            height += getAlteredHeight(col, row);
-                        (*positions)[static_cast<unsigned int>(vertX * numVerts + vertY)]
-                            = osg::Vec3f((vertX / float(numVerts - 1) - 0.5f) * size * ESM4::Land::REAL_SIZE,
-                                (vertY / float(numVerts - 1) - 0.5f) * size * ESM4::Land::REAL_SIZE,
-                                height);
-
-                        if (data)
+                        vertX = vertX_;
+                        for (int row = rowStart; row < rowEnd; row += increment)
                         {
-                            normal.x() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3];
-                            normal.y() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1];
-                            normal.z() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2];
 
-                            normal.normalize();
+                            assert(row >= 0 && row < ESM4::Land::VERTS_PER_SIDE);
+                            assert(col >= 0 && col < ESM4::Land::VERTS_PER_SIDE);
+
+                            assert(vertX < numVerts);
+                            assert(vertY < numVerts);
+
+                            float height = -1024.f;
+                            if (data)
+                                height = data->mHeightMapF[col * ESM4::Land::VERTS_PER_SIDE + row];
+                            if (alteration)
+                                height += getAlteredHeight(col, row);
+                            (*positions)[static_cast<unsigned int>(vertX * numVerts + vertY)]
+                                = osg::Vec3f((vertX / float(numVerts - 1) - 0.5f) * size * ESM4::Land::REAL_SIZE,
+                                    (vertY / float(numVerts - 1) - 0.5f) * size * ESM4::Land::REAL_SIZE,
+                                    height);
+
+                            if (data)
+                            {
+                                normal.x() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3];
+                                normal.y() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1];
+                                normal.z() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2];
+
+                                normal.normalize();
+                            }
+                            else
+                                normal = osg::Vec3f(0, 0, 1);
+
+                            // Normals apparently don't connect seamlessly between cells
+                            if (col == ESM4::Land::VERTS_PER_SIDE - 1 || row == ESM4::Land::VERTS_PER_SIDE - 1)
+                                fixNormal(normal, data->mFormId, cellX, cellY, col, row, cache);
+
+                            // some corner normals appear to be complete garbage (z < 0)
+                            if ((row == 0 || row == ESM4::Land::VERTS_PER_SIDE - 1) && (col == 0 || col == ESM4::Land::VERTS_PER_SIDE - 1))
+                                averageNormal(normal, data->mFormId, cellX, cellY, col, row, cache);
+
+                            //assert(normal.z() > 0);
+                            normal.z() = 0;
+
+                            (*normals)[static_cast<unsigned int>(vertX * numVerts + vertY)] = normal;
+
+                            if (data)
+                            {
+                                color[0] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3] / 255.f;
+                                color[1] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1] / 255.f;
+                                color[2] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2] / 255.f;
+                            }
+                            else
+                            {
+                                color.r() = 255;
+                                color.g() = 255;
+                                color.b() = 255;
+                            }
+                            if (alteration)
+                                adjustColor(col, row, data, color); //Does nothing by default, override in OpenMW-CS
+
+                            // Unlike normals, colors mostly connect seamlessly between cells, but not always...
+                            if (col == ESM4::Land::VERTS_PER_SIDE - 1 || ESM4::Land::VERTS_PER_SIDE - 1)
+                                fixColour(color, data->mFormId, cellX, cellY, col, row, cache);
+
+                            color.a() = 255;
+
+                            (*colours)[static_cast<unsigned int>(vertX * numVerts + vertY)] = color;
+
+                            ++vertX;
                         }
-                        else
-                            normal = osg::Vec3f(0, 0, 1);
-
-                        // Normals apparently don't connect seamlessly between cells
-                        if (col == ESM4::Land::VERTS_PER_SIDE - 1 || row == ESM4::Land::VERTS_PER_SIDE - 1)
-                            fixNormal(normal, data->mFormId, cellX, cellY, col, row, cache);
-
-                        // some corner normals appear to be complete garbage (z < 0)
-                        if ((row == 0 || row == ESM4::Land::VERTS_PER_SIDE - 1) && (col == 0 || col == ESM4::Land::VERTS_PER_SIDE - 1))
-                            averageNormal(normal, data->mFormId, cellX, cellY, col, row, cache);
-
-                        assert(normal.z() > 0);
-
-                        (*normals)[static_cast<unsigned int>(vertX * numVerts + vertY)] = normal;
-
-                        if (data)
-                        {
-                            color[0] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3] / 255.f;
-                            color[1] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1] / 255.f;
-                            color[2] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2] / 255.f;
-                        }
-                        else
-                        {
-                            color.r() = 255;
-                            color.g() = 255;
-                            color.b() = 255;
-                        }
-                        if (alteration)
-                            adjustColor(col, row, data, color); //Does nothing by default, override in OpenMW-CS
-
-                        // Unlike normals, colors mostly connect seamlessly between cells, but not always...
-                        if (col == ESM4::Land::VERTS_PER_SIDE - 1 || ESM4::Land::VERTS_PER_SIDE - 1)
-                            fixColour(color, data->mFormId, cellX, cellY, col, row, cache);
-
-                        color.a() = 255;
-
-                        (*colours)[static_cast<unsigned int>(vertX * numVerts + vertY)] = color;
-
-                        ++vertX;
+                        ++vertY;
                     }
-                    ++vertY;
+                
                 }
+                else
+                {
+                    int rowStart = 0;
+                    int colStart = 0;
+                    // Skip the first row / column unless we're at a chunk edge,
+                    // since this row / column is already contained in a previous cell
+                    // This is only relevant if we're creating a chunk spanning multiple cells
+                    if (vertY_ != 0)
+                        colStart += increment;
+                    if (vertX_ != 0)
+                        rowStart += increment;
+
+                    // Only relevant for chunks smaller than (contained in) one cell
+                    rowStart += (origin.x() - startCellX) * ESM4::Land::VERTS_PER_SIDE;
+                    colStart += (origin.y() - startCellY) * ESM4::Land::VERTS_PER_SIDE;
+                    int rowEnd = std::min(static_cast<int>(rowStart + std::min(1.f, size) * (ESM4::Land::VERTS_PER_SIDE - 1) + 1), static_cast<int>(ESM4::Land::VERTS_PER_SIDE));
+                    int colEnd = std::min(static_cast<int>(colStart + std::min(1.f, size) * (ESM4::Land::VERTS_PER_SIDE - 1) + 1), static_cast<int>(ESM4::Land::VERTS_PER_SIDE));
+
+                    vertY = vertY_;
+                    for (int col = colStart; col < colEnd; col += increment)
+                    {
+                        vertX = vertX_;
+                        for (int row = rowStart; row < rowEnd; row += increment)
+                        {
+
+                            assert(row >= 0 && row < ESM4::Land::VERTS_PER_SIDE);
+                            assert(col >= 0 && col < ESM4::Land::VERTS_PER_SIDE);
+
+                            assert(vertX < numVerts);
+                            assert(vertY < numVerts);
+
+                            float height = -1024.f;
+                            if (alteration)
+                                height += getAlteredHeight(col, row);
+                            (*positions)[static_cast<unsigned int>(vertX * numVerts + vertY)]
+                                = osg::Vec3f((vertX / float(numVerts - 1) - 0.5f) * size * ESM4::Land::REAL_SIZE,
+                                    (vertY / float(numVerts - 1) - 0.5f) * size * ESM4::Land::REAL_SIZE,
+                                    height);
+
+                            if (data)
+                            {
+                                normal.x() = 0;
+                                normal.y() = 0;
+                                normal.z() = 0;
+
+                                normal.normalize();
+                            }
+                            else
+                                normal = osg::Vec3f(0, 0, 1);
+
+                            //assert(normal.z() > 0);
+                            normal.z() = 0;
+
+                            (*normals)[static_cast<unsigned int>(vertX * numVerts + vertY)] = normal;
+
+                            {
+                                color.r() = 255;
+                                color.g() = 255;
+                                color.b() = 255;
+                            }
+
+                            color.a() = 255;
+
+                            (*colours)[static_cast<unsigned int>(vertX * numVerts + vertY)] = color;
+
+                            ++vertX;
+                        }
+                        ++vertY;
+                    }
+                
+                }
+
                 vertX_ = vertX;
             }
             vertY_ = vertY;
@@ -944,7 +1017,10 @@ namespace ESMTerrain
                 return it->second;
         }
         const auto& land = getTes4Land(cellX, cellY, wrldId);
-        assert(land.get());
+        if (!land.get())
+        {
+            return nullptr; // for some reason megaton has a cell with no landscape???
+        }
         TES4LandCache::Map::iterator found = cache.mMap.insert(std::make_pair(land->getData(0)->mFormId, land)).first;
         return found->second;
     }

@@ -454,6 +454,21 @@ namespace MWWorld
     {
         if (cell->isTes4())
         {
+            if ((getCurrentCell() == nullptr && mWorld.getStore().getDummyCell(cell->getCell4()->mParent) != cell->getCell4()->mFormId) || (getCurrentCell() != nullptr && getCurrentCell()->isTes4() && getCurrentCell()->getCell4()->mParent != cell->getCell4()->mParent 
+                && mWorld.getStore().getDummyCell(cell->getCell4()->mParent) != cell->getCell4()->mFormId))
+            {
+                if (mActiveCells.find(mWorld.getWorldspaceDummyCell(cell->getCell4()->mParent)) != mActiveCells.end())
+                {
+                } // prevent loading the dummy cell more than once
+                else
+                {
+                    // we're switching to a new worldspace
+                    // todo: do more stuff here
+                    if (getCurrentCell() != nullptr)
+                        unloadCell(mWorld.getWorldspaceDummyCell(getCurrentCell()->getCell4()->mParent));
+                    loadCell(mWorld.getWorldspaceDummyCell(cell->getCell4()->mParent), loadingListener, respawn, position);
+                }
+            }
             using DetourNavigator::HeightfieldShape;
 
             assert(mActiveCells.find(cell) == mActiveCells.end());
@@ -787,7 +802,8 @@ namespace MWWorld
             if (!isCellInCollection(coords.first, coords.second, mActiveCells))
             {
                 CellStore *cell = mWorld.getExterior(coords.first, coords.second, wrld);
-                loadCell(cell, loadingListener, changeEvent, pos);
+                if (cell)
+                    loadCell(cell, loadingListener, changeEvent, pos);
             }
         }
 

@@ -1429,6 +1429,17 @@ namespace MWWorld
         }
         return ptr;
     }
+    const ESM4::Cell* Store<ESM4::Cell>::find(uint32_t formId) const
+    {
+        for (auto& ext : mSharedExt)
+        {
+            if (ext->mFormId == formId)
+            {
+                return ext;
+            }
+        }
+        return nullptr;
+    }
     void Store<ESM4::Cell>::clearDynamic()
     {
         setUp();
@@ -1445,6 +1456,8 @@ namespace MWWorld
         mSharedExt.reserve(mExt.size());
         for (auto& [_, cell] : mExt)
             mSharedExt.push_back(&cell);
+        for (auto& cell : mDummy)
+            mSharedExt.push_back(&cell);
     }
     RecordId Store<ESM4::Cell>::load(ESM4::Reader& esm)
     {
@@ -1457,9 +1470,13 @@ namespace MWWorld
         {
             mInt[cell.mEditorId] = cell;
         }
-        else
+        else if ((cell.mFlags & ESM4::Rec_Persistent) == 0)
         {
             mExt[std::make_pair(cell.mParent, std::make_pair(cell.mX, cell.mY))] = cell;
+        }
+        else
+        {
+            mDummy.push_back(std::move(cell));
         }
         return RecordId(cell.mEditorId, isDeleted);
     }

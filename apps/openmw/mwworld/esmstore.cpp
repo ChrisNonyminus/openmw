@@ -855,6 +855,7 @@ void ESMStore::load(ESM4::Reader& esm, Loading::Listener* listener, ESM4::Dialog
         if (listener != nullptr)
             listener->setProgress(::EsmLoader::fileProgress * esm.getFileOffset() / esm.getFileSize());
     }
+    mTES4DummyCells = esm.wrldDummyCells();
     Log(Debug::Debug) << "Loaded ESM4 " << esm.getFileName();
 }
 
@@ -1314,6 +1315,11 @@ const T* ESMStore::insertStatic(const T& x)
     const std::string& ESMStore::getFormName(uint32_t formId) const
     {
         return mImpl->mTES4RecordIds[formId];
+    }
+
+    uint32_t ESMStore::getDummyCell(uint32_t wrldId) const
+    {
+        return mTES4DummyCells.at(wrldId);
     }
 
     template <>

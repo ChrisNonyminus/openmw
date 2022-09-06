@@ -42,6 +42,7 @@ namespace MWWorld
             ESM::ReadersCache& mReaders;
             mutable std::map<std::string, CellStore> mInteriors;
             mutable std::map<std::pair<int, int>, CellStore> mExteriors;
+            mutable std::map<uint32_t, CellStore> mDummyCells; // TODO: unload any referenced objects that aren't in a currently loaded cell
             mutable std::map<Store<ESM4::Cell>::ExtLocation, CellStore> mExteriorsByWorldSpace;
             IdCache mIdCache;
             std::size_t mIdCacheIndex;
@@ -72,6 +73,8 @@ namespace MWWorld
             CellStore *getCell (const ESM::CellId& id);
 
             CellStore *getCell (const std::string& id);
+
+            CellStore* getDummy(uint32_t wrldid); // retrieves the dummy cell for a tes4 worldspace
 
             Ptr getPtr(std::string_view name, CellStore& cellStore, bool searchInContainers = false);
             ///< \param searchInContainers Only affect loaded cells.
