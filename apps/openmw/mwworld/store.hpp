@@ -193,6 +193,7 @@ namespace MWWorld
         void setUp() override;
 
         const T* search(std::string_view id) const;
+        const T* search(ESM4::FormId id) const;
         const T* searchStatic(std::string_view id) const;
 
         /**

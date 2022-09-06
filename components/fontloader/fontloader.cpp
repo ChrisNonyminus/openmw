@@ -229,6 +229,8 @@ namespace Gui
     {
         if (mVFS->exists("fonts/" + fileName + ".fnt"))
             loadBitmapFont(fileName + ".fnt", fontId);
+        else if (mVFS->exists("textures/fonts/" + fileName + ".fnt")) // load tes4 fonts
+            loadBitmapFont(fileName + ".fnt", fontId);
         else if (mVFS->exists("fonts/" + fileName + ".omwfont"))
             loadTrueTypeFont(fileName + ".omwfont", fontId);
         else
@@ -334,7 +336,10 @@ namespace Gui
     {
         Log(Debug::Info) << "Loading font file " << fileName;
 
-        Files::IStreamPtr file = mVFS->get("fonts/" + fileName);
+        Files::IStreamPtr file;
+        if (mVFS->exists("fonts/" + fileName))
+            file = mVFS->get("fonts/" + fileName);
+        else file = mVFS->get("textures/fonts/" + fileName);
 
         float fontSize;
         file->read((char*)&fontSize, sizeof(fontSize));
@@ -371,6 +376,8 @@ namespace Gui
 
         // Create the font texture
         std::string bitmapFilename = "fonts/" + std::string(name) + ".tex";
+        if (!mVFS->exists(bitmapFilename))
+            bitmapFilename = "textures/" + bitmapFilename;
 
         Files::IStreamPtr bitmapFile = mVFS->get(bitmapFilename);
 

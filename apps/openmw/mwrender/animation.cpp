@@ -1799,6 +1799,11 @@ namespace MWRender
             mInsert->removeChild(mObjectRoot);
     }
 
+    bool Animation::hasSkeleton() const
+    {
+        return mSkeleton != nullptr;
+    }
+
     // ------------------------------------------------------
 
     float Animation::AnimationTime::getValue(osg::NodeVisitor*)

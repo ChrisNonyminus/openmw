@@ -57,8 +57,10 @@ public:
 
 class Objects
 {
+public:
     using PtrAnimationMap = std::map<const MWWorld::LiveCellRefBase*, osg::ref_ptr<Animation>>;
 
+private:
     typedef std::map<const MWWorld::CellStore*, osg::ref_ptr<osg::Group> > CellMap;
     CellMap mCellSceneNodes;
     PtrAnimationMap mObjects;
@@ -90,6 +92,8 @@ public:
 
     /// Updates containing cell for object rendering data
     void updatePtr(const MWWorld::Ptr &old, const MWWorld::Ptr &cur);
+
+    const PtrAnimationMap& getObjects() const { return mObjects; }
 
 private:
     void operator = (const Objects&);

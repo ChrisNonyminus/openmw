@@ -126,6 +126,24 @@ namespace MWWorld
 
         return nullptr;
     }
+    template <class T>
+    const T* Store<T>::search(ESM4::FormId id) const
+    {
+        if constexpr (requires(T & obj) { obj.mFormId; })
+        {
+            for (typename Static::const_iterator it = mStatic.begin(); it != mStatic.end(); ++it)
+            {
+                if ((it->second).mFormId == id)
+                    return &(it->second);
+            }
+            for (typename Dynamic::const_iterator it = mDynamic.begin(); it != mDynamic.end(); ++it)
+            {
+                if ((it->second).mFormId == id)
+                    return &(it->second);
+            }
+        }
+        return nullptr;
+    }
     template<typename T>
     const T* Store<T>::searchStatic(std::string_view id) const
     {

@@ -508,6 +508,8 @@ public:
 
     virtual void removeFromScene();
 
+    bool hasSkeleton() const;
+
 private:
     Animation(const Animation&);
     void operator=(Animation&);

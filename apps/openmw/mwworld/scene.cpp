@@ -464,7 +464,7 @@ namespace MWWorld
                 {
                     // we're switching to a new worldspace
                     // todo: do more stuff here
-                    if (getCurrentCell() != nullptr)
+                    if (getCurrentCell() != nullptr && getCurrentCell()->isExterior())
                         unloadCell(mWorld.getWorldspaceDummyCell(getCurrentCell()->getCell4()->mParent));
                     loadCell(mWorld.getWorldspaceDummyCell(cell->getCell4()->mParent), loadingListener, respawn, position);
                 }
