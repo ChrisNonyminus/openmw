@@ -61,6 +61,8 @@ namespace OBRender
         for (size_t i = 0; i < ref->mBase->mNif.size(); ++i)
         {
             std::string meshName = path + ref->mBase->mNif[i];
+            if (ref->mBase->mNif[i].empty())
+                continue;
 
             
             mObjectParts.push_back(std::make_unique<MWRender::PartHolder>(this->attach(meshName, false)));

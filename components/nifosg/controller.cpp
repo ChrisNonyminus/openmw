@@ -629,22 +629,32 @@ SequenceController::SequenceController(const Nif::NiMultiTargetTransformControll
 
 if (!block.mInterpolator.empty())
 {
-    const Nif::NiTransformInterpolator* interp = static_cast<const Nif::NiTransformInterpolator*>(block.mInterpolator.getPtr());
-    if (!interp->data.empty())
+    if (block.mInterpolator->recType == Nif::RC_NiTransformInterpolator)
     {
-        mRotations= (QuaternionInterpolator(interp->data->mRotations, interp->defaultRot));
-        mXRotations=(FloatInterpolator(interp->data->mXRotations));
-        mYRotations=(FloatInterpolator(interp->data->mXRotations));
-        mZRotations=(FloatInterpolator(interp->data->mZRotations));
-        mTranslations=(Vec3Interpolator(interp->data->mTranslations, interp->defaultPos));
-        mScales=(FloatInterpolator(interp->data->mScales, interp->defaultScale));
-        mAxisOrder=(interp->data->mAxisOrder);
+        const Nif::NiTransformInterpolator* interp = static_cast<const Nif::NiTransformInterpolator*>(block.mInterpolator.getPtr());
+        if (!interp->data.empty())
+        {
+            mRotations = (QuaternionInterpolator(interp->data->mRotations, interp->defaultRot));
+            mXRotations = (FloatInterpolator(interp->data->mXRotations));
+            mYRotations = (FloatInterpolator(interp->data->mXRotations));
+            mZRotations = (FloatInterpolator(interp->data->mZRotations));
+            mTranslations = (Vec3Interpolator(interp->data->mTranslations, interp->defaultPos));
+            mScales = (FloatInterpolator(interp->data->mScales, interp->defaultScale));
+            mAxisOrder = (interp->data->mAxisOrder);
+        }
+        else
+        {
+            mRotations = QuaternionInterpolator(Nif::QuaternionKeyMapPtr(), interp->defaultRot);
+            mTranslations = Vec3Interpolator(Nif::Vector3KeyMapPtr(), interp->defaultPos);
+            mScales = FloatInterpolator(Nif::FloatKeyMapPtr(), interp->defaultScale);
+        }
     }
-    else
+    else if (block.mInterpolator->recType == Nif::RC_NiBSplineCompTransformInterpolator)
     {
-        mRotations = QuaternionInterpolator(Nif::QuaternionKeyMapPtr(), interp->defaultRot);
-        mTranslations = Vec3Interpolator(Nif::Vector3KeyMapPtr(), interp->defaultPos);
-        mScales = FloatInterpolator(Nif::FloatKeyMapPtr(), interp->defaultScale);
+        const Nif::NiBSplineCompTransformInterpolator* interp = static_cast<const Nif::NiBSplineCompTransformInterpolator*>(block.mInterpolator.getPtr());
+        mRotations = QuaternionInterpolator(Nif::QuaternionKeyMapPtr(), interp->mRotation);
+        mTranslations = Vec3Interpolator(Nif::Vector3KeyMapPtr(), interp->mTranslation);
+        mScales = FloatInterpolator(Nif::FloatKeyMapPtr(), interp->mScale);
     }
 }
 }

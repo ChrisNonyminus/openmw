@@ -48,6 +48,7 @@
 #include <components/sceneutil/skeleton.hpp>
 #include <components/sceneutil/riggeometry.hpp>
 #include <components/sceneutil/morphgeometry.hpp>
+#include <components/sceneutil/attach.hpp>
 
 #include "matrixtransform.hpp"
 #include "particle.hpp"
@@ -339,11 +340,11 @@ namespace NifOsg
                 // todo: other controller types
                 if (ctrlType == "NiTransformController")
                 {
-                    if (block.mInterpolator->recType != Nif::RC_NiTransformInterpolator)
+                    /*if (block.mInterpolator->recType != Nif::RC_NiTransformInterpolator)
                     {
                         Log(Debug::Warning) << "Unsupported interpolator in '" << kf->getFilename() << "': " << block.mInterpolator->recName;
                         continue;
-                    }
+                    }*/
 
                     if (block.mNodeNameIndex == -1 || block.mNodeName == "")
                         continue;
@@ -445,7 +446,7 @@ namespace NifOsg
             created->setDataVariance(osg::Object::STATIC);
             for (const Nif::Node* root : roots)
             {
-                auto node = handleNode(root, nullptr, nullptr, imageManager, std::vector<unsigned int>(), 0, false, false, false, &textkeys->mTextKeys);
+                auto node = handleNode(root, nullptr, nullptr, imageManager, std::vector<unsigned int>(), 0, false, false, false, &textkeys->mTextKeys, nullptr, objSkeleton);
                 created->addChild(node);
             }
             if (mHasNightDayLabel)
@@ -704,7 +705,7 @@ namespace NifOsg
         osg::ref_ptr<osg::Node> handleNode(const Nif::Node* nifNode, const Nif::Parent* parent, osg::Group* parentNode,
             Resource::ImageManager* imageManager, std::vector<unsigned int> boundTextures, int animflags,
             bool skipMeshes, bool hasMarkers, bool hasAnimatedParents, SceneUtil::TextKeyMap* textKeys,
-            osg::Node* rootNode=nullptr)
+            osg::Node* rootNode = nullptr, osg::ref_ptr<SceneUtil::Skeleton> existingSkel = nullptr)
         {
             if (rootNode != nullptr && Misc::StringUtils::ciEqual(nifNode->name, "Bounding Box"))
                 return nullptr;
@@ -849,12 +850,12 @@ namespace NifOsg
                     {
                         if (skin->recName == "BSDismemberSkinInstance")
                         {
-                            handleSkinnedGeometry(nifNode, parent, node, composite, boundTextures, animflags);
-                            if (Misc::StringUtils::lowerCase(nifNode->name).find("gorecap") != std::string::npos || Misc::StringUtils::lowerCase(nifNode->name).find("meatcap") != std::string::npos)
+                            handleSkinnedGeometry(nifNode, parent, node, composite, boundTextures, animflags, existingSkel);
+                            if (Misc::StringUtils::lowerCase(nifNode->name).find("cap") != std::string::npos || Misc::StringUtils::lowerCase(nifNode->name).find("meat") != std::string::npos)
                                 node->setNodeMask(0); // don't render dismember caps for now
                         }
                         else
-                            handleSkinnedGeometry(nifNode, parent, node, composite, boundTextures, animflags);
+                            handleSkinnedGeometry(nifNode, parent, node, composite, boundTextures, animflags, existingSkel);
                     }
 
                     if (!nifNode->controller.empty())
@@ -929,7 +930,7 @@ namespace NifOsg
                 for(size_t i = 0;i < children.length();++i)
                 {
                     if(!children[i].empty())
-                        handleNode(children[i].getPtr(), &currentParent, currentNode, imageManager, boundTextures, animflags, skipMeshes, hasMarkers, hasAnimatedParents, textKeys, rootNode);
+                        handleNode(children[i].getPtr(), &currentParent, currentNode, imageManager, boundTextures, animflags, skipMeshes, hasMarkers, hasAnimatedParents, textKeys, rootNode, existingSkel);
                 }
             }
 
@@ -1514,7 +1515,7 @@ namespace NifOsg
         }
 
         void handleSkinnedGeometry(const Nif::Node *nifNode, const Nif::Parent* parent, osg::Group *parentNode,
-            SceneUtil::CompositeStateSetUpdater* composite, const std::vector<unsigned int>& boundTextures, int animflags)
+            SceneUtil::CompositeStateSetUpdater* composite, const std::vector<unsigned int>& boundTextures, int animflags, osg::ref_ptr<SceneUtil::Skeleton> existingSkel = nullptr)
         {
             assert(isTypeGeometry(nifNode->recType));
             osg::ref_ptr<osg::Geometry> geometry (new osg::Geometry);
@@ -1547,6 +1548,11 @@ namespace NifOsg
                 map->mData.emplace_back(boneName, influence);
             }
             rig->setInfluenceMap(map);
+
+            if (existingSkel.get())
+            {
+                rig->initFromParentSkeleton(existingSkel.get());
+            }
 
             parentNode->addChild(rig);
         }

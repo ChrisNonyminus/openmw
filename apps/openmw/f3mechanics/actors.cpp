@@ -1330,8 +1330,8 @@ namespace F3Mechanics
                 world->setActorActive(actor.getPtr(), true);
 
                 const bool isDead = actor.getPtr().getClass().getFOStats(actor.getPtr()).mDead;
-                if (!isDead && (!godmode || !isPlayer))
-                    ctrl.skipAnim();
+                /*if (!isDead && (!godmode || !isPlayer))
+                    ctrl.skipAnim();*/
 
                 // Handle player last, in case a cell transition occurs by casting a teleportation spell
                 // (would invalidate the iterator)

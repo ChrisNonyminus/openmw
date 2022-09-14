@@ -124,9 +124,10 @@ void ESM4::Creature::load(ESM4::Reader& reader)
             case ESM4::SUB_NAM1: reader.getZString(mBloodDecal); break;
             case ESM4::SUB_NIFZ:
             {
-                std::string str;
-                if (!reader.getZString(str))
-                    throw std::runtime_error ("CREA NIFZ data read error");
+                std::string str(subHdr.dataSize, '\0');
+                reader.get(str.data(), subHdr.dataSize);
+                /*if (!reader.getZString(str))
+                    throw std::runtime_error ("CREA NIFZ data read error");*/
 
                 std::stringstream ss(str);
                 std::string file;

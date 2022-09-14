@@ -53,6 +53,8 @@
 #include "spellcasting.hpp"
 #include "weapontype.hpp"
 
+#include "../f3mechanics/stats.hpp"
+
 namespace
 {
 
@@ -1764,9 +1766,11 @@ void CharacterController::update(float duration)
         scale *= weight;
     }
 
+    bool isTes4 = cls.hasFormId();
+
     if(!cls.isActor())
         updateAnimQueue();
-    else if(!cls.getCreatureStats(mPtr).isDead())
+    else if(isTes4 ? !cls.getFOStats(mPtr).mDead : !cls.getCreatureStats(mPtr).isDead())
     {
         bool onground = world->isOnGround(mPtr);
         bool incapacitated = ((!godmode && cls.getCreatureStats(mPtr).isParalyzed()) || cls.getCreatureStats(mPtr).getKnockedDown());
@@ -2233,7 +2237,7 @@ void CharacterController::update(float duration)
         if (!mSkipAnim)
             updateHeadTracking(duration);
     }
-    else if(cls.getCreatureStats(mPtr).isDead())
+    else if(isTes4 ? cls.getFOStats(mPtr).mDead : cls.getCreatureStats(mPtr).isDead())
     {
         // initial start of death animation for actors that started the game as dead
         // not done in constructor since we need to give scripts a chance to set the mSkipAnim flag

@@ -71,6 +71,8 @@ namespace SceneUtil
             osg::BoundingSphere computeBound(const osg::Node&) const override { return boundingSphere; }
         };
 
+        bool initFromParentSkeleton(Skeleton* skel);
+
     private:
         void cull(osg::NodeVisitor* nv);
         void updateBounds(osg::NodeVisitor* nv);

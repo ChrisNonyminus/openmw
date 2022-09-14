@@ -183,6 +183,58 @@ bool RigGeometry::initFromParentSkeleton(osg::NodeVisitor* nv)
     return true;
 }
 
+bool RigGeometry::initFromParentSkeleton(Skeleton* skel)
+{
+    assert(skel);
+    mSkeleton = skel;
+
+    if (!mSkeleton)
+    {
+        Log(Debug::Error) << "Error: A RigGeometry did not find its parent skeleton";
+        return false;
+    }
+
+    if (!mInfluenceMap)
+    {
+        Log(Debug::Error) << "Error: No InfluenceMap set on RigGeometry";
+        return false;
+    }
+
+    mBoneNodesVector.clear();
+    for (auto& bonePair : mBoneSphereVector->mData)
+    {
+        const std::string& boneName = bonePair.first;
+        Bone* bone = mSkeleton->getBone(boneName);
+        if (!bone)
+        {
+            mBoneNodesVector.push_back(nullptr);
+            Log(Debug::Error) << "Error: RigGeometry did not find bone " << boneName;
+            continue;
+        }
+
+        mBoneNodesVector.push_back(bone);
+    }
+
+    for (auto& pair : mBone2VertexVector->mData)
+    {
+        for (auto& weight : pair.first)
+        {
+            const std::string& boneName = weight.first.first;
+            Bone* bone = mSkeleton->getBone(boneName);
+            if (!bone)
+            {
+                mBoneNodesVector.push_back(nullptr);
+                Log(Debug::Error) << "Error: RigGeometry did not find bone " << boneName;
+                continue;
+            }
+
+            mBoneNodesVector.push_back(bone);
+        }
+    }
+
+    return true;
+}
+
 void RigGeometry::cull(osg::NodeVisitor* nv)
 {
     if (!mSkeleton)
