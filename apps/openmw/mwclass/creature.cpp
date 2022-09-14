@@ -35,9 +35,14 @@
 #include "../mwworld/localscripts.hpp"
 #include "../mwworld/inventorystore.hpp"
 #include "../mwworld/esmstore.hpp"
+#include "../mwworld/manualref.hpp"
 
 #include "../mwrender/renderinginterface.hpp"
 #include "../mwrender/objects.hpp"
+
+#include "../obrender/creatureanimation.hpp"
+
+#include "../f3mechanics/stats.hpp"
 
 #include "../mwgui/tooltips.hpp"
 #include "../mwgui/ustring.hpp"
@@ -926,4 +931,330 @@ namespace MWClass
 
         return getSwimSpeedImpl(ptr, getGmst(), mageffects, getWalkSpeed(ptr));
     }
+
+    struct ESM4CreatureCustomData : public MWWorld::CustomData
+    {
+        MWMechanics::CreatureStats mCreatureStats;
+        F3Mechanics::Stats mFOStats;
+        MWMechanics::Movement mMovement;
+        std::unique_ptr<MWWorld::InventoryStore> mInventoryStore;
+        std::unique_ptr<MWWorld::ContainerStore> mContainerStore;
+
+        MWWorld::Ptr mPlaced;
+
+        ESM4CreatureCustomData() : mPlaced(MWWorld::Ptr()) {}
+        ESM4CreatureCustomData(ESM4CreatureCustomData& data);
+        ~ESM4CreatureCustomData() {}
+
+        virtual std::unique_ptr<MWWorld::CustomData> clone() const
+        {
+            throw std::runtime_error("Cloning tes4 creatures not yet implemented");
+        }
+    };
+
+    ESM4Creature::ESM4Creature()
+        : MWWorld::RegisteredClass<ESM4Creature, Actor>(ESM4::Creature::sRecordId)
+    {
+    }
+
+    const ESM4::LevelledCreature* getLeveledCreature(const ESM4::Creature* creature)
+    {
+        auto base = MWBase::Environment::get().getWorld()->getStore().get<ESM4::Creature>().search(creature->mBaseTemplate);
+        if (!base)
+        {
+            auto lvlc = MWBase::Environment::get().getWorld()->getStore().get<ESM4::LevelledCreature>().search(creature->mBaseTemplate);
+            if (!lvlc)
+            {
+                throw std::runtime_error("Creature '" + creature->mFullName + "' has no base template to be found");
+            }
+            return lvlc;
+        }
+        else
+        {
+            return getLeveledCreature(base);
+        }
+    }
+    void ESM4Creature::insertObjectRendering(const MWWorld::Ptr& ptr, const std::string& model, MWRender::RenderingInterface& renderingInterface) const
+    {
+        const ESM4::Creature* creature = ptr.get<ESM4::Creature>()->mBase;
+        if (creature && creature->mBaseTemplate != 0 && (creature->mModel.empty() || creature->mModel == "marker_creature.nif"))
+        {
+            const ESM4::LevelledCreature* baseTemplate = getLeveledCreature(creature);
+            const auto& esmStore = MWBase::Environment::get().getWorld()->getStore();
+            MWWorld::ManualRef ref(esmStore, baseTemplate->mEditorId);
+
+            ref.getPtr().getCellRef().setPosition(ptr.getCellRef().getPosition());
+
+            ensureCustomData(ptr);
+            ESM4CreatureCustomData* data = dynamic_cast<ESM4CreatureCustomData*>(ptr.getRefData().getCustomData());
+
+            if (data->mPlaced.isEmpty())
+            {
+                data->mPlaced = MWBase::Environment::get().getWorld()->placeObject(ref.getPtr(), ptr.getCell(), ptr.getCellRef().getPosition());
+            }
+        }
+        else
+        {
+            MWRender::Objects& actors = renderingInterface.getObjects();
+            actors.insertCreature(ptr, model, false);
+        }
+    }
+
+    std::string ESM4Creature::getModel(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
+        assert(ref->mBase != nullptr);
+
+        const std::string& model = ref->mBase->mModel;
+        if (!model.empty())
+        {
+            return "meshes\\" + Misc::StringUtils::lowerCase(model);
+        }
+        return "";
+    }
+
+    std::string_view ESM4Creature::getName(const MWWorld::ConstPtr& ptr) const
+    {
+        return ptr.get<ESM4::Creature>()->mBase->mFullName;
+    }
+
+    std::string_view ESM4Creature::getId(const MWWorld::Ptr& ptr) const
+    {
+        return ptr.get<ESM4::Creature>()->mBase->mEditorId;
+    }
+
+    ESM4::FormId ESM4Creature::getFormId(const MWWorld::Ptr& ptr) const
+    {
+        return ptr.get<ESM4::Creature>()->mBase->mFormId;
+    }
+
+    bool ESM4Creature::hasToolTip(const MWWorld::ConstPtr& ptr) const
+    {
+        if (!ptr.getRefData().getCustomData() || MWBase::Environment::get().getWindowManager()->isGuiMode())
+            return true;
+
+        const ESM4CreatureCustomData& customData = *static_cast<const ESM4CreatureCustomData*>(ptr.getRefData().getCustomData());
+
+        if (customData.mCreatureStats.isDead() && customData.mCreatureStats.isDeathAnimationFinished())
+            return true;
+
+        return !customData.mCreatureStats.getAiSequence().isInCombat();
+    }
+
+    MWGui::ToolTipInfo ESM4Creature::getToolTipInfo(const MWWorld::ConstPtr& ptr, int count) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
+
+        MWGui::ToolTipInfo info;
+        std::string_view name = getName(ptr);
+        info.caption = MyGUI::TextIterator::toTagsString(MWGui::toUString(name));
+
+        std::string text;
+        if (MWBase::Environment::get().getWindowManager()->getFullHelp())
+            text += MWGui::ToolTips::getMiscString(
+                MWBase::Environment::get().getWorld()->getStore().get<ESM4::Script>().search(
+                    ref->mBase->mScriptId)->mScript.scriptSource, "Script"
+            );
+        info.text = text;
+
+        return info;
+    }
+
+    MWMechanics::CreatureStats& ESM4Creature::getCreatureStats(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+        Log(Debug::Warning) << "Tried to get morrowind creature stats from a fallout character. Later on this will result in errors, once refactoring is done enough that the classes that rely on morrowind creature stats can be abstracted and then implemented in F3Mechanics using fallout stats instead.";
+        return dynamic_cast<ESM4CreatureCustomData&>(*ptr.getRefData().getCustomData()).mCreatureStats;
+    }
+
+    void ESM4Creature::ensureCustomData(const MWWorld::Ptr& ptr) const
+    {
+        if (!ptr.getRefData().getCustomData())
+        {
+            auto tempData = std::make_unique<ESM4CreatureCustomData>();
+            ESM4CreatureCustomData* data = tempData.get();
+            MWMechanics::CreatureCustomDataResetter resetter{ ptr };
+            ptr.getRefData().setCustomData(std::move(tempData));
+
+            // creature stats (todo: only do fallout stats if it's a fallout creature)
+
+            MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
+
+            data->mFOStats.mStats[F3Mechanics::Stat_Strength].setBase(ref->mBase->mFOData.attribs.strength);
+            data->mFOStats.mStats[F3Mechanics::Stat_Perception].setBase(ref->mBase->mFOData.attribs.perception);
+            data->mFOStats.mStats[F3Mechanics::Stat_Endurance].setBase(ref->mBase->mFOData.attribs.endurance);
+            data->mFOStats.mStats[F3Mechanics::Stat_Charisma].setBase(ref->mBase->mFOData.attribs.charisma);
+            data->mFOStats.mStats[F3Mechanics::Stat_Intelligence].setBase(ref->mBase->mFOData.attribs.charisma);
+            data->mFOStats.mStats[F3Mechanics::Stat_Agility].setBase(ref->mBase->mFOData.attribs.charisma);
+            data->mFOStats.mStats[F3Mechanics::Stat_Luck].setBase(ref->mBase->mFOData.attribs.charisma);
+
+            data->mFOStats.mHealth.setBase(ref->mBase->mFOData.health);
+            data->mFOStats.mLevel = ref->mBase->mBaseConfig.fo3.levelOrMult; // todo: level scaling by player
+            data->mFOStats.mCaps = ref->mBase->mBaseConfig.fo3.barterGold;
+
+            data->mFOStats.mActorValues["Fight"] = MWMechanics::Stat<int>(ref->mBase->mFOAIData.aggression, 0);
+            data->mFOStats.mActorValues["Alarm"] = MWMechanics::Stat<int>(1, 0); // todo
+            data->mFOStats.mActorValues["Hello"] = MWMechanics::Stat<int>(1, 0); // todo
+            data->mFOStats.mActorValues["Flee"] = MWMechanics::Stat<int>(1, 0); // todo
+
+
+            data->mCreatureStats.setAttribute(ESM::Attribute::Strength, ref->mBase->mData.attribs.strength);
+            data->mCreatureStats.setAttribute(ESM::Attribute::Intelligence, ref->mBase->mData.attribs.intelligence);
+            data->mCreatureStats.setAttribute(ESM::Attribute::Willpower, ref->mBase->mData.attribs.willpower);
+            data->mCreatureStats.setAttribute(ESM::Attribute::Agility, ref->mBase->mData.attribs.agility);
+            data->mCreatureStats.setAttribute(ESM::Attribute::Speed, ref->mBase->mData.attribs.speed);
+            data->mCreatureStats.setAttribute(ESM::Attribute::Endurance, ref->mBase->mData.attribs.endurance);
+            data->mCreatureStats.setAttribute(ESM::Attribute::Personality, ref->mBase->mData.attribs.personality);
+            data->mCreatureStats.setAttribute(ESM::Attribute::Luck, ref->mBase->mData.attribs.luck);
+            data->mCreatureStats.setHealth(static_cast<float>(ref->mBase->mData.health));
+            data->mCreatureStats.setMagicka(static_cast<float>(ref->mBase->mData.magic));
+            //data->mCreatureStats.setFatigue(static_cast<float>(ref->mBase->mData.)); // TODO
+
+            const auto& esmStore = MWBase::Environment::get().getWorld()->getStore();
+            data->mCreatureStats.setLevel(ref->mBase->mBaseConfig.tes4.levelOrOffset);
+
+            std::vector<ESM4::AIPackage> packages;
+            for (auto& packageId : ref->mBase->mAIPackages)
+            {
+                const auto* aiPackage = MWBase::Environment::get().getWorld()->getStore().get<ESM4::AIPackage>().search(packageId);
+                if (!aiPackage)
+                    continue;
+                packages.push_back(*aiPackage);
+            }
+
+            data->mFOStats.mAiSequence.fill(packages);
+
+            // todo:
+            /*data->mCreatureStats.setAiSetting(MWMechanics::AiSetting::Hello, ref->mBase->mAIData.);
+            data->mCreatureStats.setAiSetting(MWMechanics::AiSetting::Fight, ref->mBase->mAiData.mFight);
+            data->mCreatureStats.setAiSetting(MWMechanics::AiSetting::Flee, ref->mBase->mAiData.mFlee);
+            data->mCreatureStats.setAiSetting(MWMechanics::AiSetting::Alarm, ref->mBase->mAiData.mAlarm);*/
+
+            for (auto& faction : ref->mBase->mFactions)
+            {
+                data->mFOStats.mFactionRanks[faction.faction] = faction.rank;
+            }
+
+            // Persistent actors with 0 health do not play death animation
+            if (data->mFOStats.mDead)
+                data->mFOStats.mDeathAnimationFinished = (isPersistent(ptr));
+
+            // todO: spells
+            /*bool spellsInitialised = data->mCreatureStats.getSpells().setSpells(ref->mBase->mEditorId);
+            if (!spellsInitialised)
+                data->mCreatureStats.getSpells().addAllToInstance(ref->mBase->mSpell);*/
+            data->mInventoryStore = std::make_unique<MWWorld::InventoryStore>();
+            data->mContainerStore = std::make_unique<MWWorld::ContainerStore>();
+
+            // todo: inventory
+            // setting ownership is used to make the NPC auto-equip his initial equipment only, and not bartered items
+            //ESM::InventoryList inventory;
+            //for (unsigned int i = 0; i < ref->mBase->mInventory.size(); ++i)
+            //{
+            //    ESM::ContItem item;
+            //    item.mCount = ref->mBase->mInventory.at(i).count;
+            //    item.mItem.assign(esmStore.getFormName(ref->mBase->mInventory.at(i).item)); // FIXME
+
+            //    inventory.mList.push_back(item);
+            //}
+            //auto& prng = MWBase::Environment::get().getWorld()->getPrng();
+            //data->mInventoryStore->fill(inventory, ref->mBase->mEditorId, prng);
+
+            //data->mCreatureStats.setGoldPool(ref->mBase->mBaseConfig.tes4.barterGold);
+
+            resetter.mPtr = {};
+                
+            getInventoryStore(ptr).autoEquip(ptr);
+        }
+    }
+
+    MWWorld::Ptr ESM4Creature::copyToCellImpl(const MWWorld::ConstPtr& ptr, MWWorld::CellStore& cell) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
+
+        return MWWorld::Ptr(cell.insert(ref), &cell);
+    }
+
+    // FIXME: copied from Creature
+    MWWorld::ContainerStore& ESM4Creature::getContainerStore(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+
+        return *dynamic_cast<ESM4CreatureCustomData&>(*ptr.getRefData().getCustomData()).mContainerStore;
+    }
+
+    MWWorld::InventoryStore& ESM4Creature::getInventoryStore(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+
+        return *dynamic_cast<ESM4CreatureCustomData&>(*ptr.getRefData().getCustomData()).mInventoryStore;
+    }
+
+    bool ESM4Creature::hasInventoryStore(const MWWorld::Ptr& ptr) const
+    {
+        return true;
+    }
+
+    std::string_view ESM4Creature::getScript(const MWWorld::ConstPtr& ptr) const
+    {
+        const auto& esmStore = MWBase::Environment::get().getWorld()->getStore();
+        const MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
+        if (ref->mBase->mScriptId && esmStore.get<ESM4::Script>().search(ref->mBase->mScriptId))
+            return esmStore.get<ESM4::Script>().find(ref->mBase->mScriptId)->mEditorId;
+        return "";
+    }
+
+    F3Mechanics::Stats& ESM4Creature::getFOStats(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+        return dynamic_cast<ESM4CreatureCustomData&>(*ptr.getRefData().getCustomData()).mFOStats;
+    }
+
+    // FIXME: copied from Creature (and copied from old-ogre, which copied from that)
+    float ESM4Creature::getCapacity(const MWWorld::Ptr& ptr) const
+    {
+        const F3Mechanics::Stats& stats = getFOStats(ptr);
+        return static_cast<float>(stats.mStats[F3Mechanics::Stat_Strength].getModified() * 5);
+    }
+
+    bool ESM4Creature::isEssential(const MWWorld::ConstPtr& ptr) const
+    {
+
+        const MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
+        return ref->mBase->mBaseConfig.fo3.flags & ESM4::Creature::FO3_Essential;
+    }
+
+    // FIXME: copied from Creature
+    float ESM4Creature::getSkill(const MWWorld::Ptr& ptr, int skill) const
+    {
+        MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
+        return 15; //todo
+    }
+
+    int ESM4Creature::getServices(const MWWorld::ConstPtr& actor) const
+    {
+        return 0; // todo
+    }
+
+    bool ESM4Creature::isPersistent(const MWWorld::ConstPtr& ptr) const
+    {
+
+        const MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
+        return (ref->mBase->mFlags& ESM4::Rec_Persistent) != 0;
+    }
+
+    bool ESM4Creature::isNpc() const
+    {
+        // todo: tes4
+        // todo (fo3/nv): check if an individual creature ptr is a robot or super mutant. if so, return true
+        return false;
+    }
+
+    MWMechanics::Movement& ESM4Creature::getMovementSettings(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+
+        return dynamic_cast<ESM4CreatureCustomData&>(*ptr.getRefData().getCustomData()).mMovement;
+    }
+
 }

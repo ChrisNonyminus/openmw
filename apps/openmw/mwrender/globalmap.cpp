@@ -241,6 +241,149 @@ namespace MWRender
         osg::ref_ptr<osg::Texture2D> mOverlayTexture;
     };
 
+    
+    class TES4CreateMapWorkItem : public SceneUtil::WorkItem
+    {
+    public:
+        TES4CreateMapWorkItem(int width, int height, int minX, int minY, int maxX, int maxY, int cellSize, const MWWorld::Store<ESM4::Land>& landStore,
+                              const MWWorld::Store<ESM4::Cell>& cellStore, uint32_t worldId)
+            : mWidth(width), mHeight(height), mMinX(minX), mMinY(minY), mMaxX(maxX), mMaxY(maxY), mCellSize(cellSize), mLandStore(landStore), mCellStore(cellStore), mWorldId(worldId)
+        {
+        }
+
+        void doWork() override
+        {
+            osg::ref_ptr<osg::Image> image = new osg::Image;
+            image->allocateImage(mWidth, mHeight, 1, GL_RGB, GL_UNSIGNED_BYTE);
+            unsigned char* data = image->data();
+
+            osg::ref_ptr<osg::Image> alphaImage = new osg::Image;
+            alphaImage->allocateImage(mWidth, mHeight, 1, GL_ALPHA, GL_UNSIGNED_BYTE);
+            unsigned char* alphaData = alphaImage->data();
+
+            for (int x = mMinX; x <= mMaxX; ++x)
+            {
+                for (int y = mMinY; y <= mMaxY; ++y)
+                {
+
+                    const ESM4::Cell* cell = nullptr;
+                    for (auto it = mCellStore.extBegin(); it != mCellStore.extEnd(); it++)
+                    {
+                        if (it->mParent == mWorldId && it->mX == x && it->mY == y)
+                            cell = &(*it);
+                    }
+                    if (!cell)
+                    {
+                        continue;
+                    }
+                    const ESM4::Land* land = nullptr;
+                    for (auto it = mLandStore.begin(); it != mLandStore.end(); it++)
+                    {
+                        if (it->mCell == cell->mFormId)
+                            land = &(*it);
+                    }
+
+                    for (int cellY = 0; cellY < mCellSize; ++cellY)
+                    {
+                        for (int cellX = 0; cellX < mCellSize; ++cellX)
+                        {
+                            int vertexX = static_cast<int>(float(cellX) / float(mCellSize) * 9);
+                            int vertexY = static_cast<int>(float(cellY) / float(mCellSize) * 9);
+
+                            int texelX = (x - mMinX) * mCellSize + cellX;
+                            int texelY = (y - mMinY) * mCellSize + cellY;
+
+                            unsigned char r, g, b;
+
+                            float y2 = 0;
+                            if (land)
+                                y2 = land->mVertColr[vertexY * 9 + vertexX] / 128.f;
+                            else
+                                y2 = SCHAR_MIN / 128.f;
+                            if (y2 < 0)
+                            {
+                                r = static_cast<unsigned char>(14 * y2 + 38);
+                                g = static_cast<unsigned char>(20 * y2 + 56);
+                                b = static_cast<unsigned char>(18 * y2 + 51);
+                            }
+                            else if (y2 < 0.3f)
+                            {
+                                if (y2 < 0.1f)
+                                    y2 *= 8.f;
+                                else
+                                {
+                                    y2 -= 0.1f;
+                                    y2 += 0.8f;
+                                }
+                                r = static_cast<unsigned char>(66 - 32 * y2);
+                                g = static_cast<unsigned char>(48 - 23 * y2);
+                                b = static_cast<unsigned char>(33 - 16 * y2);
+                            }
+                            else
+                            {
+                                y2 -= 0.3f;
+                                y2 *= 1.428f;
+                                r = static_cast<unsigned char>(34 - 29 * y2);
+                                g = static_cast<unsigned char>(25 - 20 * y2);
+                                b = static_cast<unsigned char>(17 - 12 * y2);
+                            }
+
+                            data[texelY * mWidth * 3 + texelX * 3] = r;
+                            data[texelY * mWidth * 3 + texelX * 3 + 1] = g;
+                            data[texelY * mWidth * 3 + texelX * 3 + 2] = b;
+
+                            alphaData[texelY * mWidth + texelX] = (y2 < 0) ? static_cast<unsigned char>(0) : static_cast<unsigned char>(255);
+                        }
+                    }
+                }
+            }
+
+            mBaseTexture = new osg::Texture2D;
+            mBaseTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+            mBaseTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+            mBaseTexture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+            mBaseTexture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+            mBaseTexture->setImage(image);
+            mBaseTexture->setResizeNonPowerOfTwoHint(false);
+
+            mAlphaTexture = new osg::Texture2D;
+            mAlphaTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+            mAlphaTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+            mAlphaTexture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+            mAlphaTexture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+            mAlphaTexture->setImage(alphaImage);
+            mAlphaTexture->setResizeNonPowerOfTwoHint(false);
+
+            mOverlayImage = new osg::Image;
+            mOverlayImage->allocateImage(mWidth, mHeight, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+            assert(mOverlayImage->isDataContiguous());
+
+            memset(mOverlayImage->data(), 0, mOverlayImage->getTotalSizeInBytes());
+
+            mOverlayTexture = new osg::Texture2D;
+            mOverlayTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+            mOverlayTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+            mOverlayTexture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+            mOverlayTexture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+            mOverlayTexture->setResizeNonPowerOfTwoHint(false);
+            mOverlayTexture->setInternalFormat(GL_RGBA);
+            mOverlayTexture->setTextureSize(mWidth, mHeight);
+        }
+
+        int mWidth, mHeight;
+        int mMinX, mMinY, mMaxX, mMaxY;
+        int mCellSize;
+        const MWWorld::Store<ESM4::Land>& mLandStore;
+        const MWWorld::Store<ESM4::Cell>& mCellStore;
+        ESM4::FormId mWorldId;
+
+        osg::ref_ptr<osg::Texture2D> mBaseTexture;
+        osg::ref_ptr<osg::Texture2D> mAlphaTexture;
+
+        osg::ref_ptr<osg::Image> mOverlayImage;
+        osg::ref_ptr<osg::Texture2D> mOverlayTexture;
+    };
+
     struct GlobalMap::WritePng final : public SceneUtil::WorkItem
     {
         osg::ref_ptr<const osg::Image> mOverlayImage;
@@ -261,7 +404,7 @@ namespace MWRender
         , mWidth(0)
         , mHeight(0)
         , mMinX(0), mMaxX(0)
-        , mMinY(0), mMaxY(0)
+        , mMinY(0), mMaxY(0), mIsTes4(false)
 
     {
         mCellSize = Settings::Manager::getInt("global map cell size", "Map");
@@ -304,11 +447,39 @@ namespace MWRender
         mWorkQueue->addWorkItem(mWorkItem);
     }
 
+    void GlobalMap::renderTES4(uint32_t wrldId)
+    {
+        const MWWorld::ESMStore& esmStore = MWBase::Environment::get().getWorld()->getStore();
+        // get the size of the world
+        MWWorld::Store<ESM4::Cell>::iterator it = esmStore.get<ESM4::Cell>().extBegin();
+        for (; it != esmStore.get<ESM4::Cell>().extEnd(); ++it)
+        {
+            if (it->mParent == wrldId)
+            {
+                if (it->mX < mMinX)
+                    mMinX = it->mX;
+                if (it->mX > mMaxX)
+                    mMaxX = it->mX;
+                if (it->mY < mMinY)
+                    mMinY = it->mY;
+                if (it->mY > mMaxY)
+                    mMaxY = it->mY;
+            }
+        }
+
+        mWidth = mCellSize * (mMaxX - mMinX + 1);
+        mHeight = mCellSize * (mMaxY - mMinY + 1);
+
+        mTES4WorkItem = new TES4CreateMapWorkItem(mWidth, mHeight, mMinX, mMinY, mMaxX, mMaxY, mCellSize, esmStore.get<ESM4::Land>(), esmStore.get<ESM4::Cell>(), wrldId);
+        mWorkQueue->addWorkItem(mTES4WorkItem);
+        mIsTes4 = true;
+    }
+
     void GlobalMap::worldPosToImageSpace(float x, float z, float& imageX, float& imageY)
     {
-        imageX = (float(x / float(Constants::CellSizeInUnits) - mMinX) / (mMaxX - mMinX + 1)) * getWidth();
+        imageX = (float(x / float(mIsTes4 ? Constants::CellSizeInUnits : 4096) - mMinX) / (mMaxX - mMinX + 1)) * getWidth();
 
-        imageY = (1.f-float(z / float(Constants::CellSizeInUnits) - mMinY) / (mMaxY - mMinY + 1)) * getHeight();
+        imageY = (1.f-float(z / float(mIsTes4 ? Constants::CellSizeInUnits : 4096) - mMinY) / (mMaxY - mMinY + 1)) * getHeight();
     }
 
     void GlobalMap::requestOverlayTextureUpdate(int x, int y, int width, int height, osg::ref_ptr<osg::Texture2D> texture, bool clear, bool cpuCopy,

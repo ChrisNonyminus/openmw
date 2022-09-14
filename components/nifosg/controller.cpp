@@ -605,4 +605,116 @@ void PathController::operator() (NifOsg::MatrixTransform* node, osg::NodeVisitor
     traverse(node, nv);
 }
 
+
+SequenceController::SequenceController()
+{
+}
+
+SequenceController::SequenceController(const SequenceController& copy, const osg::CopyOp& copyop)
+    : osg::Object(copy, copyop)
+    , SceneUtil::KeyframeController(copy)
+    , SceneUtil::NodeCallback<SequenceController, NifOsg::MatrixTransform*>(copy, copyop)
+    , mRotations(copy.mRotations)
+    , mXRotations(copy.mXRotations)
+    , mYRotations(copy.mYRotations)
+    , mZRotations(copy.mZRotations)
+    , mTranslations(copy.mTranslations)
+    , mScales(copy.mScales)
+    , mAxisOrder(copy.mAxisOrder)
+{
+}
+
+SequenceController::SequenceController(const Nif::NiMultiTargetTransformController* mt, const Nif::NiControllerSequence::ControlledBlock& block)
+{
+
+if (!block.mInterpolator.empty())
+{
+    const Nif::NiTransformInterpolator* interp = static_cast<const Nif::NiTransformInterpolator*>(block.mInterpolator.getPtr());
+    if (!interp->data.empty())
+    {
+        mRotations= (QuaternionInterpolator(interp->data->mRotations, interp->defaultRot));
+        mXRotations=(FloatInterpolator(interp->data->mXRotations));
+        mYRotations=(FloatInterpolator(interp->data->mXRotations));
+        mZRotations=(FloatInterpolator(interp->data->mZRotations));
+        mTranslations=(Vec3Interpolator(interp->data->mTranslations, interp->defaultPos));
+        mScales=(FloatInterpolator(interp->data->mScales, interp->defaultScale));
+        mAxisOrder=(interp->data->mAxisOrder);
+    }
+    else
+    {
+        mRotations = QuaternionInterpolator(Nif::QuaternionKeyMapPtr(), interp->defaultRot);
+        mTranslations = Vec3Interpolator(Nif::Vector3KeyMapPtr(), interp->defaultPos);
+        mScales = FloatInterpolator(Nif::FloatKeyMapPtr(), interp->defaultScale);
+    }
+}
+}
+
+osg::Vec3f SequenceController::getTranslation(float time) const
+{
+    if (!mTranslations.empty())
+        return mTranslations.interpKey(time);
+    return osg::Vec3f();
+}
+
+void SequenceController::operator()(NifOsg::MatrixTransform* node, osg::NodeVisitor* nv)
+{
+    if (hasInput())
+    {
+        float time = getInputValue(nv);
+
+        if (!mRotations.empty())
+            node->setRotation(mRotations.interpKey(time));
+        else if (!mXRotations.empty() || !mYRotations.empty() || !mZRotations.empty())
+            node->setRotation(getXYZRotation(time));
+        else
+            node->setRotation(node->mRotationScale);
+
+        if (!mScales.empty())
+            node->setScale(mScales.interpKey(time));
+
+        if (!mTranslations.empty())
+            node->setTranslation(mTranslations.interpKey(time));
+    }
+
+    traverse(node, nv);
+}
+
+osg::Quat SequenceController::getXYZRotation(float time) const
+{
+    float xrot = 0, yrot = 0, zrot = 0;
+    if (!mXRotations.empty())
+        xrot = mXRotations.interpKey(time);
+    if (!mYRotations.empty())
+        yrot = mYRotations.interpKey(time);
+    if (!mZRotations.empty())
+        zrot = mZRotations.interpKey(time);
+    osg::Quat xr(xrot, osg::X_AXIS);
+    osg::Quat yr(yrot, osg::Y_AXIS);
+    osg::Quat zr(zrot, osg::Z_AXIS);
+    switch (mAxisOrder)
+    {
+        case Nif::NiKeyframeData::AxisOrder::Order_XYZ:
+            return xr * yr * zr;
+        case Nif::NiKeyframeData::AxisOrder::Order_XZY:
+            return xr * zr * yr;
+        case Nif::NiKeyframeData::AxisOrder::Order_YZX:
+            return yr * zr * xr;
+        case Nif::NiKeyframeData::AxisOrder::Order_YXZ:
+            return yr * xr * zr;
+        case Nif::NiKeyframeData::AxisOrder::Order_ZXY:
+            return zr * xr * yr;
+        case Nif::NiKeyframeData::AxisOrder::Order_ZYX:
+            return zr * yr * xr;
+        case Nif::NiKeyframeData::AxisOrder::Order_XYX:
+            return xr * yr * xr;
+        case Nif::NiKeyframeData::AxisOrder::Order_YZY:
+            return yr * zr * yr;
+        case Nif::NiKeyframeData::AxisOrder::Order_ZXZ:
+            return zr * xr * zr;
+    }
+    return xr * yr * zr;
+}
+
+
+
 }

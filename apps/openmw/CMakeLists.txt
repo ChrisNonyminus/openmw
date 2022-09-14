@@ -109,6 +109,35 @@ add_openmw_dir (mwbase
     inputmanager windowmanager statemanager
     )
 
+add_openmw_dir(obrender
+    creatureanimation
+)
+
+add_openmw_dir(f3mechanics
+    stats
+    actors
+    pathfinding
+    aiactions
+    aipackage
+    aisequence
+    fomechanicsmanager
+    
+)
+
+add_openmw_dir(f3dialogue
+    dialutils dialoguemanagerimp
+    quest fojournal
+)
+
+add_openmw_dir(f3script
+    extensions
+    globalscripts
+    guiextensions
+    interpretercontext
+    locals
+    scriptmanagerimp
+)
+
 # Main executable
 
 if (NOT ANDROID)

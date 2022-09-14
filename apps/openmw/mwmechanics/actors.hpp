@@ -9,27 +9,7 @@
 
 #include "actor.hpp"
 
-namespace ESM
-{
-    class ESMReader;
-    class ESMWriter;
-}
-
-namespace osg
-{
-    class Vec3f;
-}
-
-namespace Loading
-{
-    class Listener;
-}
-
-namespace MWWorld
-{
-    class Ptr;
-    class CellStore;
-}
+#include "../basemechanics/actors.hpp"
 
 namespace MWMechanics
 {
@@ -37,7 +17,7 @@ namespace MWMechanics
     class CharacterController;
     class CreatureStats;
 
-    class Actors
+    class Actors : public Mechanics::Actors
     {
         public:
 
@@ -47,176 +27,157 @@ namespace MWMechanics
             std::list<Actor>::const_iterator end() const { return mActors.end(); }
             std::size_t size() const { return mActors.size(); }
 
-            void notifyDied(const MWWorld::Ptr &actor);
+            void notifyDied(const MWWorld::Ptr &actor) override;
 
             /// Check if the target actor was detected by an observer
             /// If the observer is a non-NPC, check all actors in AI processing distance as observers
-            bool isActorDetected(const MWWorld::Ptr& actor, const MWWorld::Ptr& observer) const;
+            bool isActorDetected(const MWWorld::Ptr& actor, const MWWorld::Ptr& observer) const override;
 
             /// Update magic effects for an actor. Usually done automatically once per frame, but if we're currently
             /// paused we may want to do it manually (after equipping permanent enchantment)
-            void updateMagicEffects(const MWWorld::Ptr& ptr) const;
+            void updateMagicEffects(const MWWorld::Ptr& ptr) const override;
 
-            void updateProcessingRange();
-            float getProcessingRange() const;
+            void updateProcessingRange() override;
+            float getProcessingRange() const override;
 
-            void addActor (const MWWorld::Ptr& ptr, bool updateImmediately=false);
+            void addActor (const MWWorld::Ptr& ptr, bool updateImmediately=false) override;
             ///< Register an actor for stats management
             ///
             /// \note Dead actors are ignored.
 
-            void removeActor (const MWWorld::Ptr& ptr, bool keepActive);
+            void removeActor (const MWWorld::Ptr& ptr, bool keepActive) override;
             ///< Deregister an actor for stats management
             ///
             /// \note Ignored, if \a ptr is not a registered actor.
 
-            void resurrect(const MWWorld::Ptr& ptr) const;
+            void resurrect(const MWWorld::Ptr& ptr) const override;
 
-            void castSpell(const MWWorld::Ptr& ptr, const std::string& spellId, bool manualSpell = false) const;
+            void castSpell(const MWWorld::Ptr& ptr, const std::string& spellId, bool manualSpell = false) const override;
 
-            void updateActor(const MWWorld::Ptr &old, const MWWorld::Ptr& ptr) const;
+            void updateActor(const MWWorld::Ptr &old, const MWWorld::Ptr& ptr) const override;
             ///< Updates an actor with a new Ptr
 
-            void dropActors (const MWWorld::CellStore *cellStore, const MWWorld::Ptr& ignore);
+            void dropActors (const MWWorld::CellStore *cellStore, const MWWorld::Ptr& ignore) override;
             ///< Deregister all actors (except for \a ignore) in the given cell.
 
-            void updateCombatMusic();
+            void updateCombatMusic() override;
             ///< Update combat music state
 
-            void update (float duration, bool paused);
+            void update (float duration, bool paused) override;
             ///< Update actor stats and store desired velocity vectors in \a movement
 
-            void updateActor(const MWWorld::Ptr& ptr, float duration) const;
+            void updateActor(const MWWorld::Ptr& ptr, float duration) const override;
             ///< This function is normally called automatically during the update process, but it can
             /// also be called explicitly at any time to force an update.
 
             /// Removes an actor from combat and makes all of their allies stop fighting the actor's targets
-            void stopCombat(const MWWorld::Ptr& ptr) const;
+            void stopCombat(const MWWorld::Ptr& ptr) const override;
 
-            void playIdleDialogue(const MWWorld::Ptr& actor) const;
-            void updateMovementSpeed(const MWWorld::Ptr& actor) const;
-            void updateGreetingState(const MWWorld::Ptr& actor, Actor& actorState, bool turnOnly);
-            void turnActorToFacePlayer(const MWWorld::Ptr& actor, Actor& actorState, const osg::Vec3f& dir) const;
+            void playIdleDialogue(const MWWorld::Ptr& actor) const override;
+            void updateMovementSpeed(const MWWorld::Ptr& actor) const override;
+            void updateGreetingState(const MWWorld::Ptr& actor, Actor& actorState, bool turnOnly) override;
+            void turnActorToFacePlayer(const MWWorld::Ptr& actor, Actor& actorState, const osg::Vec3f& dir) const override;
 
-            void rest(double hours, bool sleep) const;
+            void rest(double hours, bool sleep) const override;
             ///< Update actors while the player is waiting or sleeping.
 
-            void updateSneaking(CharacterController* ctrl, float duration);
+            void updateSneaking(CharacterController* ctrl, float duration) override;
             ///< Update the sneaking indicator state according to the given player character controller.
 
-            void restoreDynamicStats(const MWWorld::Ptr& actor, double hours, bool sleep) const;
+            void restoreDynamicStats(const MWWorld::Ptr& actor, double hours, bool sleep) const override;
 
-            int getHoursToRest(const MWWorld::Ptr& ptr) const;
+            int getHoursToRest(const MWWorld::Ptr& ptr) const override;
             ///< Calculate how many hours the given actor needs to rest in order to be fully healed
 
-            void fastForwardAi() const;
+            void fastForwardAi() const override;
             ///< Simulate the passing of time
 
-            int countDeaths (const std::string& id) const;
+            int countDeaths (const std::string& id) const override;
             ///< Return the number of deaths for actors with the given ID.
 
-            bool isAttackPreparing(const MWWorld::Ptr& ptr) const;
-            bool isRunning(const MWWorld::Ptr& ptr) const;
-            bool isSneaking(const MWWorld::Ptr& ptr) const;
+            bool isAttackPreparing(const MWWorld::Ptr& ptr) const override;
+            bool isRunning(const MWWorld::Ptr& ptr) const override;
+            bool isSneaking(const MWWorld::Ptr& ptr) const override;
 
-            void forceStateUpdate(const MWWorld::Ptr &ptr) const;
+            void forceStateUpdate(const MWWorld::Ptr &ptr) const override;
 
             bool playAnimationGroup(const MWWorld::Ptr& ptr, std::string_view groupName, int mode,
-                int number, bool persist = false) const;
-            void skipAnimation(const MWWorld::Ptr& ptr) const;
-            bool checkAnimationPlaying(const MWWorld::Ptr& ptr, const std::string& groupName) const;
-            void persistAnimationStates() const;
+                int number, bool persist = false) const override;
+            void skipAnimation(const MWWorld::Ptr& ptr) const override;
+            bool checkAnimationPlaying(const MWWorld::Ptr& ptr, const std::string& groupName) const override;
+            void persistAnimationStates() const override;
 
-            void getObjectsInRange(const osg::Vec3f& position, float radius, std::vector<MWWorld::Ptr>& out) const;
+            void getObjectsInRange(const osg::Vec3f& position, float radius, std::vector<MWWorld::Ptr>& out) const override;
 
-            bool isAnyObjectInRange(const osg::Vec3f& position, float radius) const;
+            bool isAnyObjectInRange(const osg::Vec3f& position, float radius) const override;
 
             void cleanupSummonedCreature(CreatureStats& casterStats, int creatureActorId) const;
 
             ///Returns the list of actors which are siding with the given actor in fights
             /**ie AiFollow or AiEscort is active and the target is the actor **/
             std::vector<MWWorld::Ptr> getActorsSidingWith(const MWWorld::Ptr& actor,
-                bool excludeInfighting = false) const;
-            std::vector<MWWorld::Ptr> getActorsFollowing(const MWWorld::Ptr& actor) const;
+                bool excludeInfighting = false) const override;
+            std::vector<MWWorld::Ptr> getActorsFollowing(const MWWorld::Ptr& actor) const override;
 
             /// Recursive version of getActorsFollowing
-            void getActorsFollowing(const MWWorld::Ptr &actor, std::set<MWWorld::Ptr>& out) const;
+            void getActorsFollowing(const MWWorld::Ptr &actor, std::set<MWWorld::Ptr>& out) const override;
             /// Recursive version of getActorsSidingWith
             void getActorsSidingWith(const MWWorld::Ptr &actor, std::set<MWWorld::Ptr>& out,
-                bool excludeInfighting = false) const;
+                bool excludeInfighting = false) const override;
 
             /// Get the list of AiFollow::mFollowIndex for all actors following this target
-            std::vector<int> getActorsFollowingIndices(const MWWorld::Ptr& actor) const;
-            std::map<int, MWWorld::Ptr> getActorsFollowingByIndex(const MWWorld::Ptr& actor) const;
+            std::vector<int> getActorsFollowingIndices(const MWWorld::Ptr& actor) const override;
+            std::map<int, MWWorld::Ptr> getActorsFollowingByIndex(const MWWorld::Ptr& actor) const override;
 
             ///Returns the list of actors which are fighting the given actor
             /**ie AiCombat is active and the target is the actor **/
-            std::vector<MWWorld::Ptr> getActorsFighting(const MWWorld::Ptr& actor) const;
+            std::vector<MWWorld::Ptr> getActorsFighting(const MWWorld::Ptr& actor) const override;
 
             /// Unlike getActorsFighting, also returns actors that *would* fight the given actor if they saw him.
-            std::vector<MWWorld::Ptr> getEnemiesNearby(const MWWorld::Ptr& actor) const;
+            std::vector<MWWorld::Ptr> getEnemiesNearby(const MWWorld::Ptr& actor) const override;
 
-            void write (ESM::ESMWriter& writer, Loading::Listener& listener) const;
+            void write (ESM::ESMWriter& writer, Loading::Listener& listener) const override;
 
-            void readRecord (ESM::ESMReader& reader, uint32_t type);
+            void readRecord (ESM::ESMReader& reader, uint32_t type) override;
 
             void clear(); // Clear death counter
 
-            bool isCastingSpell(const MWWorld::Ptr& ptr) const;
-            bool isReadyToBlock(const MWWorld::Ptr& ptr) const;
-            bool isAttackingOrSpell(const MWWorld::Ptr& ptr) const;
+            bool isCastingSpell(const MWWorld::Ptr& ptr) const override;
+            bool isReadyToBlock(const MWWorld::Ptr& ptr) const override;
+            bool isAttackingOrSpell(const MWWorld::Ptr& ptr) const override;
 
-            int getGreetingTimer(const MWWorld::Ptr& ptr) const;
-            float getAngleToPlayer(const MWWorld::Ptr& ptr) const;
-            GreetingState getGreetingState(const MWWorld::Ptr& ptr) const;
-            bool isTurningToPlayer(const MWWorld::Ptr& ptr) const;
+            int getGreetingTimer(const MWWorld::Ptr& ptr) const override;
+            float getAngleToPlayer(const MWWorld::Ptr& ptr) const override;
+            GreetingState getGreetingState(const MWWorld::Ptr& ptr) const override;
+            bool isTurningToPlayer(const MWWorld::Ptr& ptr) const override;
 
         private:
-            enum class MusicType
-            {
-                Title,
-                Explore,
-                Battle
-            };
+        
+            void updateVisibility(const MWWorld::Ptr& ptr, CharacterController& ctrl) const override;
 
-            std::map<std::string, int> mDeathCount;
-            std::list<Actor> mActors;
-            std::map<const MWWorld::LiveCellRefBase*, std::list<Actor>::iterator> mIndex;
-            float mTimerDisposeSummonsCorpses;
-            float mTimerUpdateHeadTrack = 0;
-            float mTimerUpdateEquippedLight = 0;
-            float mTimerUpdateHello = 0;
-            float mSneakTimer = 0; // Times update of sneak icon
-            float mSneakSkillTimer = 0; // Times sneak skill progress from "avoid notice"
-            float mActorsProcessingRange;
-            bool mSmoothMovement;
-            MusicType mCurrentMusic = MusicType::Title;
+            void adjustMagicEffects(const MWWorld::Ptr& creature, float duration) const override;
 
-            void updateVisibility(const MWWorld::Ptr& ptr, CharacterController& ctrl) const;
+            void calculateRestoration(const MWWorld::Ptr& ptr, float duration) const override;
 
-            void adjustMagicEffects(const MWWorld::Ptr& creature, float duration) const;
+            void updateCrimePursuit(const MWWorld::Ptr& ptr, float duration) const override;
 
-            void calculateRestoration(const MWWorld::Ptr& ptr, float duration) const;
+            void killDeadActors () override;
 
-            void updateCrimePursuit(const MWWorld::Ptr& ptr, float duration) const;
+            void purgeSpellEffects(int casterActorId) const override;
 
-            void killDeadActors ();
-
-            void purgeSpellEffects(int casterActorId) const;
-
-            void predictAndAvoidCollisions(float duration) const;
+            void predictAndAvoidCollisions(float duration) const override;
 
             /** Start combat between two actors
                 @Notes: If againstPlayer = true then actor2 should be the Player.
                         If one of the combatants is creature it should be actor1.
             */
             void engageCombat(const MWWorld::Ptr& actor1, const MWWorld::Ptr& actor2,
-                std::map<const MWWorld::Ptr, const std::set<MWWorld::Ptr>>& cachedAllies, bool againstPlayer) const;
+                std::map<const MWWorld::Ptr, const std::set<MWWorld::Ptr>>& cachedAllies, bool againstPlayer) const override;
 
             /// Recursive version of getActorsSidingWith that takes, adds to and returns a cache of
             /// actors mapped to their allies. Excludes infighting
             void getActorsSidingWith(const MWWorld::Ptr &actor, std::set<MWWorld::Ptr>& out,
-                std::map<const MWWorld::Ptr, const std::set<MWWorld::Ptr>>& cachedAllies) const;
+                std::map<const MWWorld::Ptr, const std::set<MWWorld::Ptr>>& cachedAllies) const override;
 
     };
 }

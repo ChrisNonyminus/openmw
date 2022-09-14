@@ -36,6 +36,11 @@ namespace MWMechanics
     class CreatureStats;
 }
 
+namespace F3Mechanics
+{
+    struct Stats;
+}
+
 namespace MWGui
 {
     struct ToolTipInfo;
@@ -87,6 +92,8 @@ namespace MWWorld
             virtual std::string_view getName(const ConstPtr& ptr) const = 0;
             ///< \return name or ID; can return an empty string.
 
+            virtual std::string_view getId(const Ptr& ptr) const;
+
             virtual void adjustPosition(const MWWorld::Ptr& ptr, bool force) const;
             ///< Adjust position to stand on ground. Must be called post model load
             /// @param force do this even if the ptr is flying
@@ -94,6 +101,12 @@ namespace MWWorld
             virtual MWMechanics::CreatureStats& getCreatureStats (const Ptr& ptr) const;
             ///< Return creature stats or throw an exception, if class does not have creature stats
             /// (default implementation: throw an exception)
+
+            virtual F3Mechanics::Stats& getFOStats (const Ptr& ptr) const;
+            ///< Return creature stats or throw an exception, if class does not have creature stats
+            /// (default implementation: throw an exception)
+
+            virtual ESM4::FormId getFormId(const MWWorld::Ptr& ptr) const;
 
             virtual bool hasToolTip (const ConstPtr& ptr) const;
             ///< @return true if this object has a tooltip when focused (default implementation: true)
@@ -318,6 +331,11 @@ namespace MWWorld
             }
 
             virtual bool isDoor() const {
+                return false;
+            }
+
+            virtual bool hasFormId() const
+            {
                 return false;
             }
 

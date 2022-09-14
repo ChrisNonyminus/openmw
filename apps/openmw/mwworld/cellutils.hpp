@@ -9,13 +9,7 @@
 
 namespace MWWorld
 {
-    inline osg::Vec2i positionToCellIndex(float x, float y)
-    {
-        return {
-            static_cast<int>(std::floor(x / Constants::CellSizeInUnits)),
-            static_cast<int>(std::floor(y / Constants::CellSizeInUnits))
-        };
-    }
+    osg::Vec2i positionToCellIndex(float x, float y);
 }
 
 #endif

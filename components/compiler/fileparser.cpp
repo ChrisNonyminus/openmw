@@ -60,6 +60,12 @@ namespace Compiler
 
     bool FileParser::parseKeyword (int keyword, const TokenLoc& loc, Scanner& scanner)
     {
+        // in TES4 script name comes after the keyword 'scn' or 'scriptname'
+        if (mState == BeginState && (keyword == Scanner::K_scn || keyword == Scanner::K_scriptname))
+        {
+            mState = NameState;
+            return true;
+        }
         if (mState==BeginState && keyword==Scanner::K_begin)
         {
             mState = NameState;

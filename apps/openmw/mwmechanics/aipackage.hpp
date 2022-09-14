@@ -151,6 +151,8 @@ namespace MWMechanics
 
             DetourNavigator::AreaCosts getAreaCosts(const MWWorld::Ptr& actor) const;
 
+            virtual Game getCurrentGame() { return Game::MORROWIND; }
+
             const AiPackageTypeId mTypeId;
             const Options mOptions;
 

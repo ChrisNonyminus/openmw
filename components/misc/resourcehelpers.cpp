@@ -158,6 +158,11 @@ std::string Misc::ResourceHelpers::correctSoundPath(std::string_view resPath, co
     {
         std::string sound{resPath};
         changeExtension(sound, ".mp3");
+        if (!vfs->exists(sound))
+        {
+            // for some reason, new vegas has oggs referenced as wavs
+            changeExtension(sound, ".ogg");
+        }
         return vfs->normalizeFilename(sound);
     }
     return vfs->normalizeFilename(resPath);

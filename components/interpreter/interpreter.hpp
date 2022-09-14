@@ -42,6 +42,8 @@ namespace Interpreter
 
         public:
 
+            Runtime& getRuntime() { return mRuntime; }
+
             Interpreter();
 
             template<typename T, typename ...TArgs>

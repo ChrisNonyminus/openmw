@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -39,6 +41,7 @@ namespace ESM4
 
     struct Ammunition
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_AMMO4;
         struct Data // FIXME: TES5 projectile, damage (float)
         {
             float         speed;
@@ -75,6 +78,8 @@ namespace ESM4
         //void save(ESM4::Writer& writer) const;
 
         //void blank();
+
+        static std::string getRecordType() { return "Ammo (TES4)"; }
     };
 }
 

@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 #include "script.hpp" // TargetCondition
 #include "dialogue.hpp" // DialType
@@ -55,10 +57,15 @@ namespace ESM4
 
     struct DialogInfo
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_INFO4;
+        static std::string getRecordType() { return "Dialog Info (TES4)"; }
         FormId mFormId;       // from the header
         std::uint32_t mFlags; // from the header, see enum type RecordFlag for details
+        std::string mSrcEsm; // the esm this form is in
 
         std::string mEditorId; // FIXME: no such record for INFO, but keep here to avoid extra work for now
+
+        FormId mParentTopic;
 
         FormId mQuest;
         FormId mSound; // unused?
@@ -68,11 +75,15 @@ namespace ESM4
         std::string mNotes;
         std::string mEdits;
 
+        std::vector<FormId> mChoices;
+
         std::uint8_t  mDialType;  // DialType
         std::uint8_t  mNextSpeaker;
         std::uint16_t mInfoFlags; // see above enum
 
-        TargetCondition mTargetCondition;
+        FormId mSpeaker; // FO3 only?
+
+        std::vector<TargetCondition> mTargetConditions;
         FormId mParam3; // TES5 only
 
         ScriptDefinition mScript; // FIXME: ignoring the second one after the NEXT sub-record

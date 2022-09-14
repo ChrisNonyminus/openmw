@@ -186,6 +186,7 @@ struct bhkSerializable : public bhkRefObject {};
 // Abstract narrowphase collision detection object
 struct bhkShape : public bhkSerializable {};
 
+
 // Abstract bhkShape collection
 struct bhkShapeCollection : public bhkShape {};
 
@@ -219,6 +220,16 @@ struct bhkCollisionObject : public NiCollisionObject
     }
 };
 
+struct bhkBlendCollisionObject : public bhkCollisionObject
+{
+    float mHeirGain;
+    float mVelGain;
+    float mUnknown1;
+    float mUnknown2;
+
+    void read(NIFStream* nif) override;
+};
+
 // Abstract Havok shape info record
 struct bhkWorldObject : public bhkSerializable
 {
@@ -234,6 +245,190 @@ struct bhkEntity : public bhkWorldObject
 {
     bhkEntityCInfo mInfo;
     void read(NIFStream *nif) override;
+};
+
+
+struct bhkConstraint : public bhkSerializable
+{
+    struct bhkConstraintCInfo
+    {
+        unsigned int mNumEntities; // always 2
+        RecordPtrT<bhkEntity> mEntityA;
+        RecordPtrT<bhkEntity> mEntityB;
+        unsigned int mPriority;
+
+        void read(NIFStream* nif);
+        void post(NIFFile* nif);
+    };
+    bhkConstraintCInfo mCInfo;
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
+};
+
+struct bhkConstraintMotorCInfo
+{
+    unsigned char mType;
+
+    struct bhkPositionConstraintMotor
+    {
+        float mMinForce;
+        float mMaxForce;
+        float mTau;
+        float mDamping;
+        float mProportionalRecoveryVelocity;
+        float mConstantRecoveryVelocity;
+        bool mMotorEnabled;
+    }; // if type == 1
+    struct bhkVelocityConstraintMotor
+    {
+        float mMinForce;
+        float mMaxForce;
+        float mTau;
+        float mTargetVelocity;
+        bool mUseVelocityTarget;
+        bool mMotorEnabled;
+    }; // if type == 2
+    struct bhkSpringDamperConstraintMotor
+    {
+        float mMinForce;
+        float mMaxForce;
+        float mSpringConstant;
+        float mSpringDamping;
+        bool mMotorEnabled;
+    }; // if type == 3;
+
+    union
+    {
+        bhkPositionConstraintMotor mPosition;
+        bhkVelocityConstraintMotor mVelocity;
+        bhkSpringDamperConstraintMotor mSpringDamping;
+    } mMotor;
+    void read(NIFStream* nif);
+};
+
+struct bhkLimitedHingeConstraint : public bhkConstraint
+{
+    struct bhkLimitedHingeConstraintCInfo
+    {
+        osg::Vec4f mPivotA;
+        osg::Vec4f mAxisA;
+        osg::Vec4f mPerpAxisInA1;
+        osg::Vec4f mPerpAxisInA2;
+        osg::Vec4f mPivotB;
+        osg::Vec4f mAxisB;
+        osg::Vec4f mPerpAxisInB1; // only in fallout 3 and later
+        osg::Vec4f mPerpAxisInB2;
+
+        float mMinAngle;
+        float mMaxAngle;
+        float mMaxFriction;
+
+        bhkConstraintMotorCInfo mMotor; // fallout 3 and later only
+
+        void read(NIFStream* nif);
+    };
+    bhkLimitedHingeConstraintCInfo mHingeCInfo;
+    void read(NIFStream* nif) override;
+};
+
+struct bhkRagdollConstraint : public bhkConstraint
+{
+    struct bhkRagdollConstraintCInfo
+    {
+        osg::Vec4f mPivotA;
+        osg::Vec4f mPlaneA;
+        osg::Vec4f mTwistA;
+        osg::Vec4f mPivotB;
+        osg::Vec4f mPlaneB;
+        osg::Vec4f mTwistB;
+        osg::Vec4f mMotorA; // fallout 3 and later
+        osg::Vec4f mMotorB; // fallout 3 and later
+
+        float mConeMaxAngle;
+        float mPlaneMinAngle;
+        float mPlaneMaxAngle;
+        float mTwistMinAngle;
+        float mTwistMaxAngle;
+        float mMaxFriction;
+
+        bhkConstraintMotorCInfo mMotor; // fallout 3 and later
+        void read(NIFStream* nif);
+    };
+    bhkRagdollConstraintCInfo mRagdollCInfo;
+    void read(NIFStream* nif) override;
+};
+
+struct bhkPrismaticConstraint : public bhkConstraint
+{
+    struct bhkPrismaticConstraintCInfo
+    {
+        osg::Vec4f mPivotA;
+        osg::Vec4f mRotationA;
+        osg::Vec4f mPlaneA;
+        osg::Vec4f mSlidingA;
+        osg::Vec4f mSlidingB;
+        osg::Vec4f mPivotB;
+        osg::Vec4f mRotationB;
+        osg::Vec4f mPlaneB;
+
+        float mMinAngle;
+        float mMaxAngle;
+        float mMaxFriction;
+
+        bhkConstraintMotorCInfo mMotor; // fallout 3 and later only
+        void read(NIFStream* nif);
+    };
+    bhkPrismaticConstraintCInfo mPrismaticCInfo;
+    void read(NIFStream* nif) override;
+};
+
+struct bhkMalleableConstraint : public bhkConstraint
+{
+    struct bhkMalleableConstraintCInfo
+    {
+        unsigned int mType; // hkConstraintType
+        bhkConstraint::bhkConstraintCInfo mCInfo;
+        // todo: implement commented out constraint info
+        // bhkBallAndSocketConstraintCInfo mBallAndSocket; // if type == 0
+        // bhkHingeConstraintCInfo mHinge; // if type == 1
+        bhkLimitedHingeConstraint::bhkLimitedHingeConstraintCInfo mLimitedHinge; // if type == 2
+        bhkPrismaticConstraint::bhkPrismaticConstraintCInfo mPrismatic; // if type == 6
+        bhkRagdollConstraint::bhkRagdollConstraintCInfo mRagdoll; // if type == 7
+        // bhkStiffSpringConstraintCInfo if type == 8
+        float mTau;
+        float mDamping;
+        float mStrength;
+        void read(NIFStream* nif);
+        void post(NIFFile* nif);
+    };
+    bhkMalleableConstraintCInfo mData;
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
+};
+
+struct bhkWrappedConstraintData
+{
+    unsigned int mType; // hkConstraintType
+    bhkConstraint::bhkConstraintCInfo mCInfo;
+    // todo: implement commented out constraint info
+    // bhkBallAndSocketConstraintCInfo mBallAndSocket; // if type == 0
+    // bhkHingeConstraintCInfo mHinge; // if type == 1
+    bhkLimitedHingeConstraint::bhkLimitedHingeConstraintCInfo mLimitedHinge; // if type == 2
+    bhkPrismaticConstraint::bhkPrismaticConstraintCInfo mPrismatic; // if type == 6
+    bhkRagdollConstraint::bhkRagdollConstraintCInfo mRagdoll; // if type == 7
+    // bhkStiffSpringConstraintCInfo if type == 8
+    bhkMalleableConstraint::bhkMalleableConstraintCInfo mMalleable; //if type == 13
+    void read(NIFStream* nif);
+    void post(NIFFile* nif);
+};
+
+struct bhkBreakableConstraint : public bhkConstraint
+{
+    bhkWrappedConstraintData mConstraintData;
+    float mThreshold;
+    bool mRemoveWhenBroken;
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
 };
 
 // Bethesda extension of hkpBvTreeShape
@@ -317,6 +512,20 @@ struct bhkBoxShape : public bhkConvexShape
 {
     osg::Vec3f mExtents;
     void read(NIFStream *nif) override;
+};
+
+// a capsule
+struct bhkCapsuleShape : public bhkConvexShape
+{
+    osg::Vec3f mFirstPoint;
+    float mRadius1;
+    osg::Vec3f mSecondPoint;
+    float mRadius2;
+    void read(NIFStream* nif);
+};
+
+struct bhkSphereShape : public bhkConvexShape
+{
 };
 
 // A list of shapes

@@ -7,6 +7,8 @@
 #include "../mwscript/locals.hpp"
 #include "../mwworld/customdata.hpp"
 
+#include "../f3script/locals.hpp"
+
 #include <osg/ref_ptr>
 
 #include <string>
@@ -26,7 +28,14 @@ namespace ESM
 
 namespace ESM4
 {
+    struct Script;
+}
+
+namespace ESM4
+{
     struct Reference;
+    struct Npc;
+    struct Class;
 }
 
 namespace MWLua
@@ -38,12 +47,16 @@ namespace MWWorld
 {
 
     class CustomData;
-
+    enum TES4RefFlags : uint32_t // custom flags enum implementing various states of the refdata for tes4 actors/objects
+    {
+        Ref_IsQuestItem = 1 << 0, // if this is applied to an item it cannot be sold or dropped. if this is applied to an npc/creature it has priority being updated.
+    };
     class RefData
     {
             osg::ref_ptr<SceneUtil::PositionAttitudeTransform> mBaseNode;
 
             MWScript::Locals mLocals;
+            FOScript::Locals mTes4Locals;
             std::shared_ptr<MWLua::LocalScripts> mLuaScripts;
 
             /// separate delete flag used for deletion by a content file
@@ -71,6 +84,8 @@ namespace MWWorld
             bool mChanged;
 
             unsigned int mFlags;
+
+            uint32_t mTES4Flags;
 
         public:
             RefData();
@@ -110,6 +125,8 @@ namespace MWWorld
 
             void setLocals (const ESM::Script& script);
 
+            void setLocals (const ESM4::Script& script);
+
             MWLua::LocalScripts* getLuaScripts() { return mLuaScripts.get(); }
             void setLuaScripts(std::shared_ptr<MWLua::LocalScripts>&&);
 
@@ -130,6 +147,8 @@ namespace MWWorld
             bool isDeletedByContentFile() const;
 
             MWScript::Locals& getLocals();
+
+            FOScript::Locals& getFOLocals();
 
             bool isEnabled() const;
 
@@ -154,6 +173,10 @@ namespace MWWorld
             bool onActivate();
 
             bool activateByScript();
+
+            bool isQuestItem();
+
+            void setIsQuestItem(bool value);
 
             bool hasChanged() const;
             ///< Has this RefData changed since it was originally loaded?

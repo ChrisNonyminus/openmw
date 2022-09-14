@@ -52,6 +52,10 @@ namespace DetourNavigator
 
         void wait(Loading::Listener& /*listener*/, WaitConditionType /*waitConditionType*/) override {}
 
+        void addESM4Navmesh(const ESM4::Cell& cell, const ESM4::NavMesh& navm) override {}
+
+        void removeESM4Navmesh(const ESM4::NavMesh& navm) override {}
+
         SharedNavMeshCacheItem getNavMesh(const AgentBounds& /*agentBounds*/) const override
         {
             return mEmptyNavMeshCacheItem;

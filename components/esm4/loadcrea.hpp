@@ -31,6 +31,8 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "actor.hpp"
 #include "inventory.hpp"
 
@@ -101,7 +103,31 @@ namespace ESM4
             std::uint16_t damage;
             AttributeValues attribs;
         };
+        struct FOData
+        {
+            enum Type : uint8_t
+            {
+                Animal,
+                MutatedAnimal,
+                MutatedInsect,
+                Abomination,
+                SuperMutant,
+                FeralGhoul,
+                Robot,
+                Giant
+            };
+            Type type;
+            uint8_t combatSkill;
+            uint8_t magicSkill;
+            uint8_t stealthSkill;
+            int16_t health;
+            uint8_t unused[2];
+            int16_t damage;
+            FOAttributeValues attribs;
+        };
 #pragma pack(pop)
+
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_CREA4;
 
         FormId mFormId;       // from the header
         std::uint32_t mFlags; // from the header, see enum type RecordFlag for details
@@ -115,13 +141,16 @@ namespace ESM4
         FormId mScriptId;
 
         AIData mAIData;
+        FOAIData mFOAIData;
         std::vector<FormId> mAIPackages;
         ActorBaseConfig mBaseConfig;
-        ActorFaction mFaction;
+        std::vector<ActorFaction> mFactions;
         Data   mData;
+        FOData mFOData;
         FormId mCombatStyle;
         FormId mSoundBase;
         FormId mSound;
+        FormId mVoice;
         std::uint8_t mSoundChance;
         float mBaseScale;
         float mTurningSpeed;
@@ -142,6 +171,8 @@ namespace ESM4
         //void save(ESM4::Writer& writer) const;
 
         //void blank();
+
+        static std::string getRecordType() { return "Creature (TES4)"; }
     };
 }
 

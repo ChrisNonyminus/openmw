@@ -64,6 +64,10 @@ namespace DetourNavigator
 
         float getMaxNavmeshAreaRealRadius() const override;
 
+        void addESM4Navmesh(const ESM4::Cell& cell, const ESM4::NavMesh& navm) override;
+
+        void removeESM4Navmesh(const ESM4::NavMesh& navm) override;
+
     private:
         Settings mSettings;
         NavMeshManager mNavMeshManager;

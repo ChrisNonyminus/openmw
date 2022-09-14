@@ -110,6 +110,29 @@ void MWWorld::LocalScripts::add(std::string_view scriptName, const Ptr& ptr)
                 << " because an exception has been thrown: " << exception.what();
         }
     }
+    else if (const ESM4::Script* script = mStore.get<ESM4::Script>().search(scriptName))
+    {
+        try
+        {
+            ptr.getRefData().setLocals(*script);
+
+            for (std::list<std::pair<std::string, Ptr>>::iterator iter = mScripts.begin(); iter != mScripts.end(); ++iter)
+                if (iter->second == ptr)
+                {
+                    Log(Debug::Warning) << "Error: tried to add local script twice for " << ptr.getCellRef().getRefId();
+                    remove(ptr);
+                    break;
+                }
+
+            mScripts.emplace_back(scriptName, ptr);
+        }
+        catch (const std::exception& exception)
+        {
+            Log(Debug::Error)
+                << "failed to add local script " << scriptName
+                << " because an exception has been thrown: " << exception.what();
+        }
+    }
     else
         Log(Debug::Warning)
             << "failed to add local script " << scriptName

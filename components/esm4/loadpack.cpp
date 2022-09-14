@@ -39,6 +39,7 @@ void ESM4::AIPackage::load(ESM4::Reader& reader)
     reader.adjustFormId(mFormId);
     mFlags  = reader.hdr().record.flags;
 
+    mSrcGame = Game::TES4;
     while (reader.getSubRecordHeader())
     {
         const ESM4::SubRecordHeader& subHdr = reader.subRecordHeader();
@@ -53,8 +54,11 @@ void ESM4::AIPackage::load(ESM4::Reader& reader)
                     reader.get(mData.flags);
                     mData.type = 0; // FIXME
                 }
-                else if (subHdr.dataSize != sizeof(mData))
-                    reader.skipSubRecordData(); // FIXME: FO3
+                else if (subHdr.dataSize == sizeof(mDataFO))
+                {
+                    reader.get(mDataFO);
+                    mSrcGame = Game::FO;
+                }
                 else
                     reader.get(mData);
 
@@ -85,7 +89,10 @@ void ESM4::AIPackage::load(ESM4::Reader& reader)
             case ESM4::SUB_PTDT:
             {
                 if (subHdr.dataSize != sizeof(mTarget))
-                    reader.skipSubRecordData(); // FIXME: FO3
+                {
+                    reader.get(mFO3Target1);
+                    break;
+                }
                 else
                 {
                     reader.get(mTarget); // TES4
@@ -97,13 +104,13 @@ void ESM4::AIPackage::load(ESM4::Reader& reader)
             }
             case ESM4::SUB_CTDA:
             {
-                if (subHdr.dataSize != sizeof(CTDA))
+                if (subHdr.dataSize != sizeof(TargetCondition))
                 {
                     reader.skipSubRecordData(); // FIXME: FO3
                     break;
                 }
 
-                static CTDA condition;
+                static TargetCondition condition;
                 reader.get(condition);
                 // FIXME: how to "unadjust" if not FormId?
                 //adjustFormId(condition.param1);
@@ -123,20 +130,74 @@ void ESM4::AIPackage::load(ESM4::Reader& reader)
             case ESM4::SUB_SCTX: // FO3
             case ESM4::SUB_SCDA: // FO3
             case ESM4::SUB_SCRO: // FO3
+            {
+                //std::cout << "PACK " << ESM::printName(subHdr.typeId) << " skipping..."
+                        //<< subHdr.dataSize << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_IDLA: // FO3
+            {
+                if (mIdleCount.animCount == 0) // FIXME: idle count wasn't retrieved, this shouldn't happen
+                {
+                    reader.skipSubRecordData();
+                    break;
+                }
+                uint8_t numAnims = mIdleCount.animCount;
+                for (uint8_t i = 0; i < numAnims; i++)
+                {
+                    FormId id;
+                    reader.get(id);
+                    mIdleAnims.push_back(id);
+                }
+                break;
+            }
             case ESM4::SUB_IDLC: // FO3
+            {
+                if (subHdr.dataSize == 1)
+                {
+                    reader.get(mIdleCount.animCount);
+                    break;
+                }
+                reader.get(mIdleCount);
+                break;
+            }
             case ESM4::SUB_IDLF: // FO3
             case ESM4::SUB_IDLT: // FO3
             case ESM4::SUB_PKDD: // FO3
             case ESM4::SUB_PKD2: // FO3
+            {
+                //std::cout << "PACK " << ESM::printName(subHdr.typeId) << " skipping..."
+                        //<< subHdr.dataSize << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_PKPT: // FO3
+            /*{
+                reader.get(mPatrolFlags);
+                break;
+            }*/
             case ESM4::SUB_PKED: // FO3
             case ESM4::SUB_PKE2: // FO3
             case ESM4::SUB_PKAM: // FO3
             case ESM4::SUB_PUID: // FO3
             case ESM4::SUB_PKW3: // FO3
+            {
+                //std::cout << "PACK " << ESM::printName(subHdr.typeId) << " skipping..."
+                //<< subHdr.dataSize << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_PTD2: // FO3
+            {
+                reader.get(mFO3Target2);
+                break;
+            }
             case ESM4::SUB_PLD2: // FO3
+            {
+                reader.get(mLocation2);
+                break;
+            }
             case ESM4::SUB_PKFD: // FO3
             case ESM4::SUB_SLSD: // FO3
             case ESM4::SUB_SCVR: // FO3

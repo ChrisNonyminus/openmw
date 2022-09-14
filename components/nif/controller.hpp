@@ -25,9 +25,29 @@
 #define OPENMW_COMPONENTS_NIF_CONTROLLER_HPP
 
 #include "base.hpp"
+#include "extra.hpp"
+#include "data.hpp"
 
 namespace Nif
 {
+
+    struct NiBoneLODController : public Controller
+    {
+        struct NodeSet
+        {
+            std::vector<NodePtr> mNodes;
+        };
+        unsigned int mLOD;
+        std::vector<NodeSet> mNodeGroups;
+        // todo: NISTREAM (non-bethesda)-only members
+
+        void read(NIFStream* nif) override;
+        void post(NIFFile* nif) override;
+        
+    };
+    struct NiBSBoneLODController : public NiBoneLODController
+    {
+    };
 
 struct NiParticleSystemController : public Controller
 {
@@ -200,12 +220,74 @@ struct bhkBlendController : public Controller
 {
     void read(NIFStream *nif) override;
 };
+struct Interpolator;
+struct NiSequence : public Record
+{
+    struct ControlledBlock
+    {
+        // up to 10.1.0.0
+        std::string mTargetName;
+        ControllerPtr mController;
+
+        // from 10.1.0.106
+        RecordPtrT<Interpolator> mInterpolator;
+        ControllerPtr mController2;
+        unsigned char mPriority;
+
+        // 10.1.0.106 and 20.1.0.3 onwards index from header string
+        // 10.2.0.0 to 20.0.0.5 offset from string palette (can be -1)
+        std::string mNodeName; // target node name
+        std::string mPropertyType;
+        std::string mControllerType;
+        std::string mVariable1;
+        std::string mVariable2;
+        std::uint32_t mNodeNameIndex; // target node name
+        std::uint32_t mPropertyTypeIndex;
+        std::uint32_t mControllerTypeIndex;
+        std::uint32_t mVariable1Index;
+        std::uint32_t mVariable2Index;
+
+        RecordPtrT<NiStringPalette> mStringPalette;
+        void read(NIFStream* nif);
+        void post(NIFFile* nif);
+
+    };
+    std::string mName;
+    std::string mAccumRootName;
+    RecordPtrT<NiTextKeyExtraData> mTextKeys;
+    unsigned int mArrayGrowBy;
+    std::vector<ControlledBlock> mControlledBlocks;
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
+};
+struct NiControllerManager;
+struct NiControllerSequence : public NiSequence
+{
+    float mWeight;
+    RecordPtrT<NiTextKeyExtraData> mTextKeys2;
+    uint32_t mCycleType;
+    uint32_t mUnknown0;
+    float mFrequency;
+    float mStartTime;
+    float mUnknownFloat2;
+    float mStopTime;
+    char mUnknownByte;
+    RecordPtrT<NiControllerManager> mManager;
+    std::string mTargetName;
+    uint32_t mTargetNameIndex;
+    RecordPtrT<NiStringPalette> mStringPalette;
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
+};
 
 struct NiControllerManager : public Controller
 {
     bool mCumulative;
-    void read(NIFStream *nif) override;
+    std::vector<NiControllerSequence> mSequences;
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
 };
+
 
 struct Interpolator : public Record { };
 
@@ -242,6 +324,54 @@ struct NiTransformInterpolator : public Interpolator
 
     void read(NIFStream *nif) override;
     void post(NIFFile *nif) override;
+};
+
+struct NiBSplineData : public Record
+{
+    std::vector<float> mFloats;
+    std::vector<unsigned int> mCompacts;
+    void read(NIFStream* nif) override;
+};
+struct NiBSplineBasisData : public Record
+{
+    unsigned int mNumControlPoints;
+    void read(NIFStream* nif) override;
+};
+
+struct NiBSplineInterpolator : public Interpolator
+{
+    float mStartTime;
+    float mStopTime;
+    RecordPtrT<NiBSplineData> mSplineData;
+    RecordPtrT<NiBSplineBasisData> mBasisData;
+
+    void read(NIFStream* nif) override;
+    void post(NIFFile* nif) override;
+};
+
+struct NiBSplineTransformInterpolator : public NiBSplineInterpolator
+{
+    osg::Vec3f mTranslation;
+    osg::Quat mRotation;
+    float mScale;
+    unsigned int mTranslationHandle;
+    unsigned int mRotationHandle;
+    unsigned int mScaleHandle;
+
+    void read(NIFStream* nif) override;
+};
+
+
+struct NiBSplineCompTransformInterpolator : public NiBSplineTransformInterpolator
+{
+    float mTranslationOffset;
+    float mTranslationHalfRange;
+    float mRotationOffset;
+    float mRotationHalfRange;
+    float mScaleOffset;
+    float mScaleHalfRange;
+
+    void read(NIFStream* nif) override;
 };
 
 struct NiColorInterpolator : public Interpolator

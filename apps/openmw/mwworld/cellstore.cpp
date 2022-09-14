@@ -288,7 +288,14 @@ namespace MWWorld
         TypeGetter<ESM4::Activator>,
         TypeGetter<ESM4::Static>,
         TypeGetter<ESM4::Light>,
-        TypeGetter<ESM4::Sound>
+        TypeGetter<ESM4::Sound>,
+        TypeGetter<ESM4::Creature>,
+        TypeGetter<ESM4::LevelledCreature>,
+        TypeGetter<ESM4::AIPackage>,
+        TypeGetter<ESM4::Armor>,
+        TypeGetter<ESM4::Weapon>,
+        TypeGetter<ESM4::LevelledItem>,
+        TypeGetter<ESM4::Ammunition>
         >;
 
     template <>
@@ -317,7 +324,14 @@ namespace MWWorld
         TypeGetter<ESM4::Activator>,
         TypeGetter<ESM4::Static>,
         TypeGetter<ESM4::Light>,
-        TypeGetter<ESM4::Sound>>
+        TypeGetter<ESM4::Sound>,
+        TypeGetter<ESM4::Creature>,
+        TypeGetter<ESM4::LevelledCreature>,
+        TypeGetter<ESM4::AIPackage>,
+        TypeGetter<ESM4::Armor>,
+        TypeGetter<ESM4::Weapon>,
+        TypeGetter<ESM4::LevelledItem>,
+        TypeGetter<ESM4::Ammunition>>
         CellStoreTypes::sAll = std::make_tuple(
             
         TypeGetter<ESM::Activator>(),
@@ -344,7 +358,14 @@ namespace MWWorld
         TypeGetter<ESM4::Activator>(),
         TypeGetter<ESM4::Static>(),
         TypeGetter<ESM4::Light>(),
-        TypeGetter<ESM4::Sound>());
+        TypeGetter<ESM4::Sound>(),
+        TypeGetter<ESM4::Creature>(),
+        TypeGetter<ESM4::LevelledCreature>(),
+        TypeGetter<ESM4::AIPackage>(),
+        TypeGetter<ESM4::Armor>(),
+        TypeGetter<ESM4::Weapon>(),
+        TypeGetter<ESM4::LevelledItem>(),
+        TypeGetter<ESM4::Ammunition>());
     template <typename X>
     void CellRefList<X>::load(ESM::CellRef &ref, bool deleted, const MWWorld::ESMStore &esmStore)
     {
@@ -378,7 +399,7 @@ namespace MWWorld
     {
         const MWWorld::Store<X>& store = esmStore.get<X>();
 
-        if (const X* ptr = store.search(esmStore.getFormName(ref.mBaseObj)))
+        if (const X* ptr = store.search(ref.mBaseObj))
         {
             //typename std::list<LiveRef>::iterator iter = std::find(mList.begin(), mList.end(), ref.);
 
@@ -649,6 +670,36 @@ namespace MWWorld
             if (!actor.getClass().isActor())
                 continue;
             if (actor.getClass().getCreatureStats (actor).matchesActorId (id) && actor.getRefData().getCount() > 0)
+                return actor;
+        }
+
+        return Ptr();
+    }
+
+    Ptr CellStore::searchViaFormId(uint32_t id)
+    {
+
+        for (const auto& [base, _] : mMovedHere)
+        {
+            MWWorld::Ptr actor(base, this);
+            if (!actor.getClass().isActor())
+                continue;
+            if (actor.getClass().hasFormId() && actor.getCellRef().getRefr().mFormId == id)
+                return actor;
+        }
+
+        return Ptr();
+    }
+
+    Ptr CellStore::searchViaEditorId(const std::string& id)
+    {
+
+        for (const auto& [base, _] : mMovedHere)
+        {
+            MWWorld::Ptr actor(base, this);
+            if (!actor.getClass().isActor())
+                continue;
+            if (actor.getClass().hasFormId() && actor.getClass().getId(actor) == id)
                 return actor;
         }
 

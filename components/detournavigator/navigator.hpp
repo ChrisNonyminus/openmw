@@ -18,6 +18,12 @@ namespace ESM
     struct Pathgrid;
 }
 
+namespace ESM4
+{
+    struct Cell;
+    struct NavMesh;
+}
+
 namespace Loading
 {
     class Listener;
@@ -150,6 +156,10 @@ namespace DetourNavigator
         virtual void addPathgrid(const ESM::Cell& cell, const ESM::Pathgrid& pathgrid) = 0;
 
         virtual void removePathgrid(const ESM::Pathgrid& pathgrid) = 0;
+
+        virtual void addESM4Navmesh(const ESM4::Cell& cell, const ESM4::NavMesh& navm) = 0;
+
+        virtual void removeESM4Navmesh(const ESM4::NavMesh& navm) = 0;
 
         /**
          * @brief update starts background navmesh update using current scene state.

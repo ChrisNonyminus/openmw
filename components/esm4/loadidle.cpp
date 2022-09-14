@@ -51,6 +51,15 @@ void ESM4::IdleAnimation::load(ESM4::Reader& reader)
                 reader.get(mPrevious);
                 break;
             }
+            case ESM4::SUB_MODL:
+            {
+                reader.getZString(mMODL);
+                break;
+            }
+            case ESM4::SUB_MODB: // unknown
+            case ESM4::SUB_MODT:
+            case ESM4::SUB_MODS: // alternate textures struct
+            case ESM4::SUB_MODD: // facegen model flags
             case ESM4::SUB_CTDA: // formId
             case ESM4::SUB_DATA: // formId
             {

@@ -16,6 +16,7 @@ namespace Compiler
             case 's': return mShorts;
             case 'l': return mLongs;
             case 'f': return mFloats;
+            case 'r': return mRefs;
         }
 
         throw std::logic_error ("Unknown variable type");
@@ -45,6 +46,7 @@ namespace Compiler
             case 's': return mShorts;
             case 'l': return mLongs;
             case 'f': return mFloats;
+            case 'r': return mRefs;
         }
 
         throw std::logic_error ("Unknown variable type");
@@ -60,6 +62,9 @@ namespace Compiler
 
         if (search ('f', name))
             return 'f';
+
+        if (search('r', name))
+            return 'r';
 
         return ' ';
     }

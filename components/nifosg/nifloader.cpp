@@ -246,7 +246,121 @@ namespace NifOsg
         // This is used to queue emitters that weren't attached to their node yet.
         std::vector<std::pair<size_t, osg::ref_ptr<Emitter>>> mEmitterQueue;
 
-        static void loadKf(Nif::NIFFilePtr nif, SceneUtil::KeyframeHolder& target)
+        static void loadKfGamebryo(Nif::NIFFilePtr kf, Nif::NIFFilePtr skeleton, SceneUtil::KeyframeHolder& target)
+        {
+            Nif::NiControllerSequence* seq = nullptr;
+            size_t numRoots = kf->numRoots();
+            for (size_t i = 0; i < numRoots; ++i)
+            {
+                Nif::Record* r = kf->getRoot(i);
+                if (r && r->recType == Nif::RC_NiControllerSequence)
+                {
+                    seq = static_cast<Nif::NiControllerSequence*>(r);
+                    break;
+                }
+            }
+            Nif::NiControllerManager* cm = nullptr;
+            Nif::NiMultiTargetTransformController* mt = nullptr;
+            Nif::NiBoneLODController* boneLod = nullptr;
+            numRoots = skeleton->numRecords();
+            for (size_t i = 0; i < numRoots; ++i)
+            {
+                Nif::Record* r = skeleton->getRecord(i);
+                if (r && r->recType == Nif::RC_NiControllerManager)
+                {
+                    cm = static_cast<Nif::NiControllerManager*>(r);
+                }
+                if (r && r->recType == Nif::RC_NiMultiTargetTransformController)
+                {
+                    mt = static_cast<Nif::NiMultiTargetTransformController*>(r);
+                }
+                if (r && r->recType == Nif::RC_NiBSBoneLODController)
+                {
+                    boneLod = static_cast<Nif::NiBoneLODController*>(r);
+                }
+            }
+
+            if (!seq)
+            {
+                kf->warn("Found no NiControllerSequence record.");
+                return;
+            }
+
+            auto& extra = kf->getVersion() <= 0x0a010000 ? seq->mTextKeys : seq->mTextKeys2;
+
+            if (extra.empty())
+            {
+                kf->warn("Found no text keys.");
+                return;
+            }
+
+            std::string animName = seq->mName;
+            extractTextKeys(extra.getPtr(), target.mTextKeys);
+            target.mTextKeys.emplace(0, Misc::StringUtils::lowerCase(animName) + ": "); // test: add group name
+            Nif::ExtraPtr nextExtra = extra->next;
+
+            Nif::NiMultiTargetTransformController backupMt;
+            Nif::NiControllerManager backupCm;
+            if (!mt)
+            {
+                // make our own
+                backupMt.frequency = 1.0f;
+                backupMt.flags = 8; // todo/fixme/hacky/etc
+                backupMt.phase = 0.f;
+                for (size_t i = 0; i < extra->list.size(); i++)
+                {
+                    if (extra->list[i].text == "start")
+                        backupMt.timeStart = extra->list[i].time;
+                    if (extra->list[i].text == "end")
+                        backupMt.timeStop = extra->list[i].time;
+                }
+                mt = &backupMt;
+            }
+
+            if (!cm)
+            {
+                // make our own
+                backupCm.frequency = 1.0f;
+                backupCm.flags = 8; // todo/fixme/hacky/etc
+                backupCm.phase = 0.f;
+                for (size_t i = 0; i < extra->list.size(); i++)
+                {
+                    if (extra->list[i].text == "start")
+                        backupCm.timeStart = extra->list[i].time;
+                    if (extra->list[i].text == "end")
+                        backupCm.timeStop = extra->list[i].time;
+                }
+                backupCm.mSequences.push_back(*seq);
+                cm = &backupCm;
+            }
+            for (auto& block : seq->mControlledBlocks)
+            {
+                auto& ctrlType = block.mControllerType;
+                // todo: other controller types
+                if (ctrlType == "NiTransformController")
+                {
+                    if (block.mInterpolator->recType != Nif::RC_NiTransformInterpolator)
+                    {
+                        Log(Debug::Warning) << "Unsupported interpolator in '" << kf->getFilename() << "': " << block.mInterpolator->recName;
+                        continue;
+                    }
+
+                    if (block.mNodeNameIndex == -1 || block.mNodeName == "")
+                        continue;
+
+                    if (!mt)
+                        continue;
+
+                    osg::ref_ptr<SceneUtil::KeyframeController> callback = new NifOsg::SequenceController(mt, block);
+                    setupController(mt, callback, /*animflags*/ 0);
+
+                    if (!target.mKeyframeControllers.emplace(Misc::StringUtils::lowerCase(block.mNodeName), callback).second)
+                        Log(Debug::Verbose) << "Bone " << block.mNodeName << " present more than once in " << skeleton->getFilename() << ", ignoring later version";
+                }
+            }
+        }
+
+        static void loadKf(Nif::NIFFilePtr nif, SceneUtil::KeyframeHolder& target, Nif::NIFFilePtr skeleton = nullptr)
         {
             const Nif::NiSequenceStreamHelper *seq = nullptr;
             const size_t numRoots = nif->numRoots();
@@ -262,7 +376,13 @@ namespace NifOsg
 
             if (!seq)
             {
-                nif->warn("Found no NiSequenceStreamHelper root record");
+                if (skeleton)
+                {
+                    nif->warn("Found no NiSequenceStreamHelper root record, assuming gamebryo.");
+                    loadKfGamebryo(nif, skeleton, target);
+                    return;
+                }
+                nif->warn("Found no NiSequenceStreamHelper root record.");
                 return;
             }
 
@@ -303,7 +423,7 @@ namespace NifOsg
             }
         }
 
-        osg::ref_ptr<osg::Node> load(Nif::NIFFilePtr nif, Resource::ImageManager* imageManager)
+        osg::ref_ptr<osg::Node> load(Nif::NIFFilePtr nif, Resource::ImageManager* imageManager, osg::ref_ptr<SceneUtil::Skeleton> objSkeleton)
         {
             const size_t numRoots = nif->numRoots();
             std::vector<const Nif::Node*> roots;
@@ -338,13 +458,22 @@ namespace NifOsg
 
             if (nif->getUseSkinning())
             {
-                osg::ref_ptr<SceneUtil::Skeleton> skel = new SceneUtil::Skeleton;
-                skel->setStateSet(created->getStateSet());
-                skel->setName(created->getName());
-                for (unsigned int i=0; i < created->getNumChildren(); ++i)
-                    skel->addChild(created->getChild(i));
-                created->removeChildren(0, created->getNumChildren());
-                created = skel;
+                osg::ref_ptr<SceneUtil::Skeleton> skel = objSkeleton.get() ? objSkeleton : nullptr;
+                if (skel == nullptr)
+                {
+                    skel = new SceneUtil::Skeleton;
+                    skel->setStateSet(created->getStateSet());
+                    skel->setName(created->getName());
+                    for (unsigned int i = 0; i < created->getNumChildren(); ++i)
+                        skel->addChild(created->getChild(i));
+                    created->removeChildren(0, created->getNumChildren());
+                    created = skel;
+                }
+                else
+                {
+                    skel->addChild(created);
+                    return created;
+                }
             }
 
             if (!textkeys->mTextKeys.empty())
@@ -434,6 +563,11 @@ namespace NifOsg
             switchNode->setNewChildDefaultValue(false);
             switchNode->setSingleChildOn(niSwitchNode->initialIndex);
             return switchNode;
+        }
+
+        static osg::ref_ptr<osg::Sequence> prepareControllerSequence(const Nif::NiControllerSequence* seq)
+        {
+            return nullptr;
         }
 
         static osg::ref_ptr<osg::Sequence> prepareSequenceNode(const Nif::Node* nifNode)
@@ -636,6 +770,10 @@ namespace NifOsg
                     {
                         node->setUserValue(Misc::OsgUserValues::sExtraData, sd->string.substr(extraDataIdentifer.length()));
                     }
+                    else if (sd->name == "Prn") // parent bone (for fo3/nv meshes)
+                    {
+                        node->setUserValue("Bone", Misc::StringUtils::lowerCase(sd->string)); // fixme: for some reason this value isn't being set? or the node visitor I'm using in actoranimation.cpp can't find it
+                    }
                 }
             }
 
@@ -704,10 +842,20 @@ namespace NifOsg
                 {
                     Nif::NiSkinInstancePtr skin = static_cast<const Nif::NiGeometry*>(nifNode)->skin;
 
+
                     if (skin.empty())
                         handleGeometry(nifNode, parent, node, composite, boundTextures, animflags);
                     else
-                        handleSkinnedGeometry(nifNode, parent, node, composite, boundTextures, animflags);
+                    {
+                        if (skin->recName == "BSDismemberSkinInstance")
+                        {
+                            handleSkinnedGeometry(nifNode, parent, node, composite, boundTextures, animflags);
+                            if (Misc::StringUtils::lowerCase(nifNode->name).find("gorecap") != std::string::npos || Misc::StringUtils::lowerCase(nifNode->name).find("meatcap") != std::string::npos)
+                                node->setNodeMask(0); // don't render dismember caps for now
+                        }
+                        else
+                            handleSkinnedGeometry(nifNode, parent, node, composite, boundTextures, animflags);
+                    }
 
                     if (!nifNode->controller.empty())
                         handleMeshControllers(nifNode, node, composite, boundTextures, animflags);
@@ -2332,16 +2480,16 @@ namespace NifOsg
 
     };
 
-    osg::ref_ptr<osg::Node> Loader::load(Nif::NIFFilePtr file, Resource::ImageManager* imageManager)
+    osg::ref_ptr<osg::Node> Loader::load(Nif::NIFFilePtr file, Resource::ImageManager* imageManager, osg::ref_ptr<SceneUtil::Skeleton> existingSkel)
     {
         LoaderImpl impl(file->getFilename(), file->getVersion(), file->getUserVersion(), file->getBethVersion());
-        return impl.load(file, imageManager);
+        return impl.load(file, imageManager, existingSkel);
     }
 
-    void Loader::loadKf(Nif::NIFFilePtr kf, SceneUtil::KeyframeHolder& target)
+    void Loader::loadKf(Nif::NIFFilePtr kf, SceneUtil::KeyframeHolder& target, Nif::NIFFilePtr skeletonNif)
     {
         LoaderImpl impl(kf->getFilename(), kf->getVersion(), kf->getUserVersion(), kf->getBethVersion());
-        impl.loadKf(kf, target);
+        impl.loadKf(kf, target, skeletonNif);
     }
 
 }

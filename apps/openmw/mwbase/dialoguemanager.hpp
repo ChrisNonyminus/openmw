@@ -41,7 +41,8 @@ namespace MWBase
             {
             public:
                 virtual ~ResponseCallback() = default;
-                virtual void addResponse(const std::string& title, const std::string& text) = 0;
+                virtual void addResponse(const std::string& title, const std::string& text) {}
+                virtual void addResponse(uint32_t dialogFormId, uint32_t responseFormId) {}
             };
 
             DialogueManager() {}
@@ -66,6 +67,7 @@ namespace MWBase
             virtual void goodbye() = 0;
 
             virtual void say(const MWWorld::Ptr &actor, const std::string &topic) = 0;
+            virtual void sayTo(const MWWorld::Ptr &actor, const MWWorld::Ptr& target, const std::string &topic) = 0;
 
             virtual void keywordSelected (const std::string& keyword, ResponseCallback* callback) = 0;
             virtual void goodbyeSelected() = 0;

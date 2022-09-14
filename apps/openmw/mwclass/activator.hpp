@@ -59,6 +59,13 @@ namespace MWClass
         static int getSndGenTypeFromName(std::string_view name);
 
     public:
+
+        bool hasFormId() const override { return true; }
+
+        std::string_view getId(const MWWorld::Ptr& ptr) const override;
+
+        ESM4::FormId getFormId(const MWWorld::Ptr& ptr) const override;
+
         void insertObjectRendering(const MWWorld::Ptr& ptr, const std::string& model, MWRender::RenderingInterface& renderingInterface) const override;
         ///< Add reference into a cell for rendering
 

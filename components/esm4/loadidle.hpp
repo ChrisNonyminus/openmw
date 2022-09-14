@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -39,12 +41,16 @@ namespace ESM4
 
     struct IdleAnimation
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_IDLE4;
+        static std::string getRecordType() { return "Idle Animation (TES4)"; }
         FormId mFormId;       // from the header
         std::uint32_t mFlags; // from the header, see enum type RecordFlag for details
 
         std::string mEditorId;
         std::string mCollision;
         std::string mEvent;
+        std::string mMODL;
+
 
         FormId      mParent;  // IDLE or AACT
         FormId      mPrevious;

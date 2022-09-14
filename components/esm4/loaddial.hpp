@@ -31,6 +31,8 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 #include "dialogue.hpp" // DialType
 
@@ -41,6 +43,8 @@ namespace ESM4
 
     struct Dialogue
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_DIAL4;
+        static std::string getRecordType() { return "Dialogue (TES4)"; }
         FormId mFormId;       // from the header
         std::uint32_t mFlags; // from the header, see enum type RecordFlag for details
 

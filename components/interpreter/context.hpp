@@ -80,6 +80,8 @@ namespace Interpreter
 
             virtual std::string_view getCurrentCellName() const = 0;
 
+            virtual float getDistanceToRef(const std::string& name, const std::string& id = "") const = 0;
+
             virtual int getMemberShort(std::string_view id, std::string_view name, bool global) const = 0;
 
             virtual int getMemberLong(std::string_view id, std::string_view name, bool global) const = 0;
@@ -92,6 +94,26 @@ namespace Interpreter
 
             virtual void setMemberFloat(std::string_view id, std::string_view name, float value, bool global)
                 = 0;
+
+            virtual int getScriptMemberShort(const std::string& id, const std::string& name, bool global) const = 0;
+
+            virtual int getScriptMemberLong(const std::string& id, const std::string& name, bool global) const = 0;
+
+            virtual float getScriptMemberFloat(const std::string& id, const std::string& name, bool global) const = 0;
+
+            virtual uint32_t getScriptMemberRef(const std::string& id, const std::string& name, bool global) const = 0;
+
+            virtual void setScriptMemberShort(const std::string& id, const std::string& name, int value, bool global) = 0;
+
+            virtual void setScriptMemberLong(const std::string& id, const std::string& name, int value, bool global) = 0;
+
+            virtual void setScriptMemberFloat(const std::string& id, const std::string& name, float value, bool global)
+                = 0;
+
+            virtual void setScriptMemberRef(const std::string& id, const std::string& name, uint32_t value, bool global)
+                = 0;
+
+            virtual std::string getTargetId() const = 0;
     };
 }
 

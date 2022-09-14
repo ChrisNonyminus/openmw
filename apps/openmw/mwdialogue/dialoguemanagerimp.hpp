@@ -99,6 +99,7 @@ namespace MWDialogue
             bool checkServiceRefused (ResponseCallback* callback, ServiceType service = ServiceType::Any) override;
 
             void say(const MWWorld::Ptr &actor, const std::string &topic) override;
+            void sayTo(const MWWorld::Ptr& actor, const MWWorld::Ptr& target, const std::string& topic) override;
 
             //calbacks for the GUI
             void keywordSelected (const std::string& keyword, ResponseCallback* callback) override;

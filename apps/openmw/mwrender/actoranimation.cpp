@@ -95,6 +95,50 @@ osg::ref_ptr<osg::Node> ActorAnimation::attach(const std::string& model, std::st
     return SceneUtil::attach(templateNode, mObjectRoot, bonefilter, found->second, mResourceSystem->getSceneManager());
 }
 
+class BoneRetriever : public osg::NodeVisitor
+{
+public:
+    BoneRetriever()
+        : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
+    {
+    }
+
+    void apply(osg::Node& node) override
+    {
+        std::string bonename;
+        if (node.getUserValue("Bone", bonename))
+            mBoneName = bonename;
+        traverse(node);
+    }
+    std::string mBoneName;
+    Resource::ResourceSystem* mResourcesystem;
+};
+
+osg::ref_ptr<osg::Node> ActorAnimation::attach(const std::string& model, bool isLight)
+{
+    osg::ref_ptr<const osg::Node> templateNode = mResourceSystem->getSceneManager()->getTemplate(model, true, mSkeleton);
+    const NodeMap& nodeMap = getNodeMap();
+    std::string bonename = "Bip01";
+    if (mSkeleton != nullptr && mSkeleton->containsNode(templateNode))
+    {
+        return mSkeleton->getChild(mSkeleton->getChildIndex(templateNode));
+    }
+    BoneRetriever visitor;
+    const_cast<osg::Node*>(templateNode.get())->accept(visitor);
+    if (!visitor.mBoneName.empty())
+        bonename = visitor.mBoneName;
+
+    auto found = nodeMap.find(bonename);
+    if (found == nodeMap.end())
+        throw std::runtime_error("Can't find attachment node " + std::string{ bonename });
+    if (isLight)
+    {
+        osg::Quat rotation(osg::DegreesToRadians(-90.f), osg::Vec3f(1, 0, 0));
+        return SceneUtil::attach(templateNode, mObjectRoot, bonename, found->second, mResourceSystem->getSceneManager(), &rotation);
+    }
+    return SceneUtil::attach(templateNode, mObjectRoot, bonename, found->second, mResourceSystem->getSceneManager());
+}
+
 std::string ActorAnimation::getShieldMesh(const MWWorld::ConstPtr& shield, bool female) const
 {
     const ESM::Armor *armor = shield.get<ESM::Armor>()->mBase;

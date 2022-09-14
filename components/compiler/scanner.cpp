@@ -106,6 +106,29 @@ namespace Compiler
 
             return parser.parseComment (comment, loc, *this);
         }
+        else if (c=='/' && mStream.peek() == '/') // new vegas devs used '//' for script comments
+        {
+            get(c);
+            std::string comment;
+
+            c.appendTo(comment);
+
+            while (get (c))
+            {
+                if (c=='\n')
+                {
+                    putback (c);
+                    break;
+                }
+                else
+                    c.appendTo(comment);
+            }
+
+            TokenLoc loc (mLoc);
+            mLoc.mLiteral.clear();
+
+            return parser.parseComment (comment, loc, *this);
+        }
         else if (c.isWhitespace())
         {
             mLoc.mLiteral.clear();
@@ -249,6 +272,8 @@ namespace Compiler
         "return",
         "messagebox",
         "set", "to",
+        // tes4 script stuff
+        "scriptname", "scn",
         nullptr
     };
 
@@ -410,8 +435,7 @@ namespace Compiler
                 if (next.isDigit())
                     return scanFloat ("", parser, cont);
             }
-
-            special = S_member;
+            special = mIsTes4 ? S_ref : S_member;
         }
         else if (c=='=')
         {
@@ -580,10 +604,10 @@ namespace Compiler
     // constructor
 
     Scanner::Scanner (ErrorHandler& errorHandler, std::istream& inputStream,
-        const Extensions *extensions)
+        const Extensions *extensions, bool isTes4)
     : mErrorHandler (errorHandler), mStream (inputStream), mExtensions (extensions),
       mPutback (Putback_None), mPutbackCode(0), mPutbackInteger(0), mPutbackFloat(0),
-      mStrictKeywords (false), mTolerantNames (false), mIgnoreNewline(false), mExpectName(false)
+          mStrictKeywords(false), mTolerantNames(false), mIgnoreNewline(false), mExpectName(false), mIsTes4(isTes4)
     {
     }
 

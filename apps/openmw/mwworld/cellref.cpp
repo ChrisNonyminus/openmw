@@ -5,6 +5,8 @@
 #include <components/debug/debuglog.hpp>
 #include <components/esm3/objectstate.hpp>
 
+#include <components/esm4/records.hpp>
+
 #include "../mwbase/world.hpp"
 #include "../mwbase/environment.hpp"
 #include "esmstore.hpp"
@@ -39,9 +41,7 @@ namespace MWWorld
 
     const std::string& CellRef::getRefId() const
     {
-        if (mIsTes4)
-            return MWBase::Environment::get().getWorld()->getStore().getFormName(mRefr.mBaseObj);
-        else return mCellRef.mRefID;
+        return mCellRef.mRefID;
     }
 
     void CellRef::setScale(float scale)
@@ -58,6 +58,7 @@ namespace MWWorld
     {
         mChanged = true;
         mCellRef.mPos = position;
+        mRefrPos = position;
         mRefr.mPlacement.pos = { position.pos[0], position.pos[1], position.pos[2] };
         mRefr.mPlacement.rot = { position.rot[0], position.rot[1], position.rot[2] };
     }
@@ -169,9 +170,31 @@ namespace MWWorld
         }
     }
 
-    void CellRef::setFaction(const std::string &faction)
+    const std::string& CellRef::getFaction() const
     {
-        if (faction != mCellRef.mFaction)
+        if (mIsTes4)
+        {
+            if (const auto* owner = MWBase::Environment::get().getWorld()->getStore().get<ESM4::Faction>().search(mRefr.mOwner))
+                return owner->mEditorId;
+            return "";
+        }
+        return mCellRef.mFaction;
+    }
+
+    void CellRef::setFaction(const std::string& faction)
+    {
+        if (mIsTes4)
+        {
+            if (faction != getFaction())
+            {
+                if (const auto* owner = MWBase::Environment::get().getWorld()->getStore().get<ESM4::Faction>().search(faction))
+                {
+                    mChanged = true;
+                    mRefr.mOwner = owner->mFormId;
+                }
+            }
+        }
+        else if (faction != mCellRef.mFaction)
         {
             mChanged = true;
             mCellRef.mFaction = faction;

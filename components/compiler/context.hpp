@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include <components/esm4/formid.hpp>
+
 namespace Compiler
 {
     class Extensions;
@@ -42,6 +44,12 @@ namespace Compiler
 
             virtual bool isId (const std::string& name) const = 0;
             ///< Does \a name match an ID, that can be referenced?
+
+            virtual ESM4::FormId getReference (const std::string& editorId) const = 0;
+            ///< Return the \a FormId of an object reference, identified by its reference
+            /// \a EditorId, in currently active cells.  Return 0 if none found.
+
+            virtual int32_t getAIPackage (const std::string& lowerEditorId) const = 0;
     };
 }
 

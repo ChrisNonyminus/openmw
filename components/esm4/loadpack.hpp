@@ -31,7 +31,10 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
+#include "script.hpp"
 
 namespace ESM4
 {
@@ -40,6 +43,7 @@ namespace ESM4
 
     struct AIPackage
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_PACK4;
 #pragma pack(push, 1)
         struct PKDT // data
         {
@@ -47,10 +51,20 @@ namespace ESM4
             std::int32_t  type;
         };
 
+        struct FO_PKDT // data (fo3/nv)
+        {
+            std::uint32_t flags;
+            std::uint8_t type;
+            unsigned char unused;
+            unsigned short behaviorflags;
+            unsigned short typespecificflags;
+            unsigned char unused2[2];
+        };
+
         struct PSDT // schedule
         {
             std::uint8_t month;      // Any = 0xff
-            std::uint8_t dayOfWeek;  // Any = 0xff
+            std::uint8_t dayOfWeek;  // Any = 0xff | 0: sunday | 1: monday | 2: tuesday | 3: wednesday | 4: thursday | 5: friday | 6: saturday | 7: weekdays | 8: weekends | 9: mon,wed,fri | 10: tues,thur
             std::uint8_t date;       // Any = 0
             std::uint8_t time;       // Any = 0xff
             std::uint32_t duration;
@@ -59,14 +73,14 @@ namespace ESM4
         struct PLDT // location
         {
             std::int32_t type = 0xff; // 0 = near ref, 1 = in cell, 2 = current loc, 3 = editor loc, 4 = obj id, 5 = obj type, 0xff = no location data
-            FormId location;   // uint32_t if type = 5
+            FormId location;   // can also be uint32_t or uint8_t[]
             std::int32_t radius;
         };
 
         struct PTDT // target
         {
             std::int32_t type = 0xff; // 0 = specific ref, 1 = obj id, 2 = obj type, 0xff = no target data
-            FormId target;   // uint32_t if type = 2
+            FormId target;   // can also be uint32_t or uint8_t[]
             std::int32_t distance;
         };
 
@@ -84,6 +98,24 @@ namespace ESM4
             FormId param2;
             std::uint32_t unknown4; // probably padding
         };
+        struct IDLC
+        {
+            uint8_t animCount;
+            uint8_t unused[3];
+        };
+        struct PKPT
+        {
+            bool repeatable;
+            uint8_t unused;
+        };
+
+        struct PTDT_FO3 // target
+        {
+            int32_t type;
+            uint32_t target;
+            int32_t distance;
+            float unknown;
+        };
 #pragma pack(pop)
 
         FormId mFormId;       // from the header
@@ -92,15 +124,33 @@ namespace ESM4
         std::string mEditorId;
 
         PKDT mData;
+        FO_PKDT mDataFO;
         PSDT mSchedule;
         PLDT mLocation;
+        PLDT mLocation2;
         PTDT mTarget;
-        std::vector<CTDA> mConditions;
+        PTDT_FO3 mFO3Target1;
+        PTDT_FO3 mFO3Target2;
+        std::vector<TargetCondition> mConditions;
+
+        IDLC mIdleCount;
+        std::vector<FormId> mIdleAnims;
+
+        PKPT mPatrolFlags;
+
+        enum Game
+        {
+            TES4,
+            FO
+        };
+        Game mSrcGame;
 
         void load(ESM4::Reader& reader);
         //void save(ESM4::Writer& writer) const;
 
         //void blank();
+
+        static std::string getRecordType() { return "AI Package (TES4)"; }
     };
 }
 

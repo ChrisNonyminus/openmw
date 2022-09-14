@@ -39,6 +39,11 @@ namespace MWScript
 
             bool isId (const std::string& name) const override;
             ///< Does \a name match an ID, that can be referenced?
+            ESM4::FormId getReference (const std::string& editorId) const override;
+            ///< Return the \a FormId of an object reference, identified by its reference
+            /// \a EditorId, in currently active cells.  Return 0 if none found.
+
+            int32_t getAIPackage (const std::string& lowerEditorId) const override;
     };
 }
 

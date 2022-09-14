@@ -284,6 +284,12 @@ namespace MWWorld
             Ptr searchViaActorId (int id);
             ///< Will return an empty Ptr if cell is not loaded.
 
+            Ptr searchViaFormId(uint32_t id);
+            ///< Will return an empty Ptr if cell is not loaded.
+
+            Ptr searchViaEditorId(const std::string& id);
+            ///< Will return an empty Ptr if cell is not loaded.
+
             Ptr searchViaRefNum (const ESM::RefNum& refNum);
             ///< Will return an empty Ptr if cell is not loaded. Does not check references in
             /// containers.

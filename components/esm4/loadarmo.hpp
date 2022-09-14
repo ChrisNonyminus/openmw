@@ -31,6 +31,8 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -40,6 +42,7 @@ namespace ESM4
 
     struct Armor
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_ARMO4;
         // WARN: TES4 Armorflags still has the general flags high bits
         enum ArmorFlags
         {
@@ -187,6 +190,8 @@ namespace ESM4
         //void save(ESM4::Writer& writer) const;
 
         //void blank();
+
+        static std::string getRecordType() { return "Armor (TES4)"; }
     };
 }
 

@@ -255,28 +255,57 @@ namespace MWMechanics
                 .get<ESM::GameSetting>().find("fInteriorHeadTrackMult")->mValue.getFloat();
             float maxDistance = fMaxHeadTrackDistance;
             const ESM::Cell* currentCell = actor.getCell()->getCell();
-            if (!currentCell->isExterior() && !(currentCell->mData.mFlags & ESM::Cell::QuasiEx))
-                maxDistance *= fInteriorHeadTrackMult;
-
-            const osg::Vec3f actor1Pos(actorRefData.getPosition().asVec3());
-            const osg::Vec3f actor2Pos(targetActor.getRefData().getPosition().asVec3());
-            const float sqrDist = (actor1Pos - actor2Pos).length2();
-
-            if (sqrDist > std::min(maxDistance * maxDistance, sqrHeadTrackDistance) && !inCombatOrPursue)
-                return;
-
-            // stop tracking when target is behind the actor
-            osg::Vec3f actorDirection = actorRefData.getBaseNode()->getAttitude() * osg::Vec3f(0,1,0);
-            osg::Vec3f targetDirection(actor2Pos - actor1Pos);
-            actorDirection.z() = 0;
-            targetDirection.z() = 0;
-            if ((actorDirection * targetDirection > 0 || inCombatOrPursue)
-                // check LOS and awareness last as it's the most expensive function
-                && MWBase::Environment::get().getWorld()->getLOS(actor, targetActor)
-                && MWBase::Environment::get().getMechanicsManager()->awarenessCheck(targetActor, actor))
+            if (currentCell)
             {
-                sqrHeadTrackDistance = sqrDist;
-                headTrackTarget = targetActor;
+                if (!currentCell->isExterior() && !(currentCell->mData.mFlags & ESM::Cell::QuasiEx))
+                    maxDistance *= fInteriorHeadTrackMult;
+
+                const osg::Vec3f actor1Pos(actorRefData.getPosition().asVec3());
+                const osg::Vec3f actor2Pos(targetActor.getRefData().getPosition().asVec3());
+                const float sqrDist = (actor1Pos - actor2Pos).length2();
+
+                if (sqrDist > std::min(maxDistance * maxDistance, sqrHeadTrackDistance) && !inCombatOrPursue)
+                    return;
+
+                // stop tracking when target is behind the actor
+                osg::Vec3f actorDirection = actorRefData.getBaseNode()->getAttitude() * osg::Vec3f(0, 1, 0);
+                osg::Vec3f targetDirection(actor2Pos - actor1Pos);
+                actorDirection.z() = 0;
+                targetDirection.z() = 0;
+                if ((actorDirection * targetDirection > 0 || inCombatOrPursue)
+                    // check LOS and awareness last as it's the most expensive function
+                    && MWBase::Environment::get().getWorld()->getLOS(actor, targetActor)
+                    && MWBase::Environment::get().getMechanicsManager()->awarenessCheck(targetActor, actor))
+                {
+                    sqrHeadTrackDistance = sqrDist;
+                    headTrackTarget = targetActor;
+                }
+            }
+            else if (const ESM4::Cell* currentCell4 = actor.getCell()->getCell4())
+            {
+                if (!currentCell4->isExterior() && !(actor.getCell()->isQuasiExterior()))
+                    maxDistance *= fInteriorHeadTrackMult;
+
+                const osg::Vec3f actor1Pos(actorRefData.getPosition().asVec3());
+                const osg::Vec3f actor2Pos(targetActor.getRefData().getPosition().asVec3());
+                const float sqrDist = (actor1Pos - actor2Pos).length2();
+
+                if (sqrDist > std::min(maxDistance * maxDistance, sqrHeadTrackDistance) && !inCombatOrPursue)
+                    return;
+
+                // stop tracking when target is behind the actor
+                osg::Vec3f actorDirection = actorRefData.getBaseNode()->getAttitude() * osg::Vec3f(0, 1, 0);
+                osg::Vec3f targetDirection(actor2Pos - actor1Pos);
+                actorDirection.z() = 0;
+                targetDirection.z() = 0;
+                if ((actorDirection * targetDirection > 0 || inCombatOrPursue)
+                    // check LOS and awareness last as it's the most expensive function
+                    && MWBase::Environment::get().getWorld()->getLOS(actor, targetActor)
+                    && MWBase::Environment::get().getMechanicsManager()->awarenessCheck(targetActor, actor))
+                {
+                    sqrHeadTrackDistance = sqrDist;
+                    headTrackTarget = targetActor;
+                }
             }
         }
 
@@ -1092,8 +1121,9 @@ namespace MWMechanics
         }
     }
 
-    Actors::Actors() : mSmoothMovement(Settings::Manager::getBool("smooth movement", "Game"))
+    Actors::Actors()
     {
+        mSmoothMovement = (Settings::Manager::getBool("smooth movement", "Game"));
         mTimerDisposeSummonsCorpses = 0.2f; // We should add a delay between summoned creature death and its corpse despawning
 
         updateProcessingRange();

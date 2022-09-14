@@ -745,7 +745,14 @@ void CharacterController::refreshIdleAnims(CharacterState idle, bool force)
 
     clearStateAnimation(mCurrentIdle);
     mCurrentIdle = idleGroup;
-    mAnimation->play(mCurrentIdle, priority, MWRender::Animation::BlendMask_All, false, 1.0f, "start", "stop", startPoint, numLoops, true);
+    if (mPtr.getBase()->mClass->getType() == ESM::REC_CREA4)
+    {
+        mAnimation->play(mCurrentIdle, priority, MWRender::Animation::BlendMask_All, false, 1.0f, "start", "end", startPoint, numLoops, true);
+    }
+    else
+    {
+        mAnimation->play(mCurrentIdle, priority, MWRender::Animation::BlendMask_All, false, 1.0f, "start", "stop", startPoint, numLoops, true);
+    }
 }
 
 void CharacterController::refreshCurrentAnims(CharacterState idle, CharacterState movement, JumpingState jump, bool force)

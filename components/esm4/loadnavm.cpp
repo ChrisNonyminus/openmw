@@ -188,6 +188,7 @@ void ESM4::NavMesh::load(ESM4::Reader& reader)
 {
     mFormId = reader.hdr().record.id;
     mFlags  = reader.hdr().record.flags;
+    mEditorId = formIdToString(mFormId);
 
     //std::cout << "NavMesh 0x" << std::hex << this << std::endl; // FIXME
     std::uint32_t subSize = 0; // for XXXX sub record
@@ -233,16 +234,102 @@ void ESM4::NavMesh::load(ESM4::Reader& reader)
                 break;
             }
             case ESM4::SUB_NVER: // FO3
-            case ESM4::SUB_DATA: // FO3
-            case ESM4::SUB_NVVX: // FO3
-            case ESM4::SUB_NVTR: // FO3
-            case ESM4::SUB_NVCA: // FO3
-            case ESM4::SUB_NVDP: // FO3
-            case ESM4::SUB_NVGD: // FO3
-            case ESM4::SUB_NVEX: // FO3
-            case ESM4::SUB_EDID: // FO3
             {
                 reader.skipSubRecordData(); // FIXME:
+                break;
+            }
+            case ESM4::SUB_DATA: // FO3
+            {
+                reader.get(mDataFO3);
+                break;
+            }
+            case ESM4::SUB_NVVX: // FO3
+            {
+                uint32_t count = mDataFO3.vertexCount;
+                for (size_t i = 0; i < count; i++)
+                {
+                    Vertex subData;
+                    reader.get(subData);
+                    mVertices.push_back(subData);
+                }
+                break;
+            }
+            case ESM4::SUB_NVTR: // FO3
+            {
+                uint32_t count = mDataFO3.triangleCount;
+                for (size_t i = 0; i < count; i++)
+                {
+                    TriangleFO3 subData;
+                    reader.get(subData);
+                    mTriangles.push_back(subData);
+                }
+                break;
+            }
+            case ESM4::SUB_NVCA: // FO3
+            {
+                reader.skipSubRecordData(); // FIXME:
+                break;
+            }
+            case ESM4::SUB_NVDP: // FO3
+            {
+                uint32_t count = mDataFO3.doorsCount;
+                for (size_t i = 0; i < count; i++)
+                {
+                    DoorTriangleFO3 subData;
+                    reader.get(subData);
+                    mDoorTriangles.push_back(subData);
+                }
+                break;
+            }
+            case ESM4::SUB_NVGD: // FO3
+            {
+                //reader.get(mGrid.divisor);
+                //reader.get(mGrid.maxXDist);
+                //reader.get(mGrid.maxYDist);
+                //reader.get(mGrid.minX);
+                //reader.get(mGrid.minY);
+                //reader.get(mGrid.minZ);
+                //reader.get(mGrid.maxX);
+                //reader.get(mGrid.maxY);
+                //reader.get(mGrid.maxZ);
+
+                //// FIXME: should check remaining size here
+                //// there are divisor^2 segments, each segment is a vector of triangle indices
+                //for (unsigned int i = 0; i < mGrid.divisor*mGrid.divisor; ++i)
+                //{
+                //    uint32_t count = (reader.subRecordHeader().dataSize - 36);
+                //    count /= (mGrid.divisor * mGrid.divisor);
+                //    count /= 2;
+
+                //    std::vector<std::uint16_t> indices;
+                //    indices.resize(count);
+                //    for (std::vector<std::uint16_t>::iterator it = indices.begin(); it != indices.end(); ++it)
+                //    {
+                //        reader.get(*it);
+                //    }
+                //    mGrid.triSegments.push_back(indices);
+                //}
+                //assert(mGrid.triSegments.size() == mGrid.divisor*mGrid.divisor && "triangle segments size is not the square of divisor");
+                // FIXME
+
+                reader.skipSubRecordData();
+
+                break;
+            }
+            case ESM4::SUB_NVEX: // FO3
+            {
+                uint32_t count = reader.subRecordHeader().dataSize / sizeof(ExtConnection);
+                for (size_t i = 0; i < count; i++)
+                {
+                    ExtConnection subData;
+                    reader.get(subData);
+                    mExtConns.push_back(subData);
+                }
+                break;
+            }
+            case ESM4::SUB_EDID: // FO3
+            {
+                reader.getZString(mEditorId);
                 break;
             }
             default:

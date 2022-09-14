@@ -207,6 +207,9 @@ namespace MWWorld
         // calls `search` and throws an exception if not found
         const T* find(std::string_view id) const;
 
+        // calls `search` and throws an exception if not found
+        const T* find(ESM4::FormId id) const;
+
         iterator begin() const;
         iterator end() const;
 

@@ -38,6 +38,10 @@ void ESM4::DialogInfo::load(ESM4::Reader& reader)
     mFormId = reader.hdr().record.id;
     reader.adjustFormId(mFormId);
     mFlags  = reader.hdr().record.flags;
+    mSrcEsm = reader.getFileName();
+    mSrcEsm = mSrcEsm.substr(mSrcEsm.find_last_of("\\") + 1);
+
+    mParentTopic = reader.currTopic();
 
     mEditorId = formIdToString(mFormId); // FIXME: quick workaround to use existing code
 
@@ -71,6 +75,7 @@ void ESM4::DialogInfo::load(ESM4::Reader& reader)
             case ESM4::SUB_NAM3: reader.getZString(mEdits); break; // not in TES4
             case ESM4::SUB_CTDA: // FIXME: how to detect if 1st/2nd param is a formid?
             {
+                TargetCondition mTargetCondition;
                 if (subHdr.dataSize == 24) // TES4
                     reader.get(&mTargetCondition, 24);
                 else if (subHdr.dataSize == 20) // FO3
@@ -92,7 +97,7 @@ void ESM4::DialogInfo::load(ESM4::Reader& reader)
                         reader.adjustFormId(mTargetCondition.reference);
                     reader.skipSubRecordData(4); // unknown
                 }
-
+                mTargetConditions.push_back(mTargetCondition);
                 break;
             }
             case ESM4::SUB_SCHR:
@@ -158,11 +163,33 @@ void ESM4::DialogInfo::load(ESM4::Reader& reader)
             case ESM4::SUB_NAME: // FormId add topic (not always present)
             case ESM4::SUB_CTDT: // older version of CTDA? 20 bytes
             case ESM4::SUB_SCHD: // 28 bytes
+            {
+                //std::cout << "INFO " << ESM::printName(subHdr.typeId) << " skipping..."
+                //<< subHdr.dataSize << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_TCLT: // FormId choice
+            {
+                FormId id;
+                reader.get(id);
+                mChoices.push_back(id);
+                break;
+            }
             case ESM4::SUB_TCLF: // FormId
             case ESM4::SUB_PNAM: // TES4 DLC
             case ESM4::SUB_TPIC: // TES4 DLC
+            {
+                //std::cout << "INFO " << ESM::printName(subHdr.typeId) << " skipping..."
+                //<< subHdr.dataSize << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_ANAM: // FO3 speaker formid
+            {
+                reader.get(mSpeaker);
+                break;
+            }
             case ESM4::SUB_DNAM: // FO3 speech challenge
             case ESM4::SUB_KNAM: // FO3 formid
             case ESM4::SUB_LNAM: // FONV

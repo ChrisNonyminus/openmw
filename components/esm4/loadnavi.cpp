@@ -178,6 +178,22 @@ void ESM4::Navigation::NavMeshInfo::load(ESM4::Reader& reader)
     }
 }
 
+void ESM4::Navigation::NavMeshInfoFO3::load(ESM4::Reader &reader)
+{
+    reader.get(unknown);
+    reader.get(navMesh);
+    reader.get(location);
+    reader.get(gridX);
+    reader.get(gridY);
+    uint32_t count = reader.subRecordHeader().dataSize - 16;
+    for (size_t i = 0; i < count; i++)
+    {
+        uint8_t u;
+        reader.get(u);
+        unkArray.push_back(u);
+    }
+}
+
 // NVPP data seems to be organised this way (total is 0x64 = 100)
 //
 //  (0) total | 0x1 | formid (index 0) | count | formid's
@@ -237,8 +253,8 @@ void ESM4::Navigation::NavMeshInfo::load(ESM4::Reader& reader)
 //
 void ESM4::Navigation::load(ESM4::Reader& reader)
 {
-    //mFormId = reader.hdr().record.id;
-    //mFlags  = reader.hdr().record.flags;
+    mFormId = reader.hdr().record.id;
+    mFlags  = reader.hdr().record.flags;
     std::uint32_t esmVer = reader.esmVersion();
     bool isFONV = esmVer == ESM::VER_132 || esmVer == ESM::VER_133 || esmVer == ESM::VER_134;
 
@@ -331,7 +347,9 @@ void ESM4::Navigation::load(ESM4::Reader& reader)
             {
                 if (esmVer == ESM::VER_094 || esmVer == ESM::VER_170 || isFONV)
                 {
-                    reader.skipSubRecordData(); // FIXME: FO3/FONV have different form of NavMeshInfo
+                    NavMeshInfoFO3 nvmi;
+                    nvmi.load(reader);
+                    mNavMeshInfoFO3.push_back(nvmi);
                     break;
                 }
 

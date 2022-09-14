@@ -76,6 +76,9 @@ namespace MWWorld
         void abortTerrainPreloadExcept(const PositionCellGrid *exceptPos);
         bool isTerrainLoaded(const CellPreloader::PositionCellGrid &position, double referenceTime) const;
 
+        void setTes4LandManager(MWRender::TES4LandManager* manager); // on scene initialization, the tes4 land manager isn't set, and thus the preloader can't actually get it. so, we set it at runtime if there is no tes4 land manager.
+        MWRender::TES4LandManager* getTes4LandManager();
+
     private:
         Resource::ResourceSystem* mResourceSystem;
         Resource::BulletShapeManager* mBulletShapeManager;

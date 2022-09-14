@@ -16,6 +16,8 @@
 #include "containerstore.hpp"
 #include "cellstore.hpp"
 
+#include "cellutils.hpp"
+
 namespace
 {
     template<class Visitor, class Key>
@@ -631,9 +633,20 @@ bool MWWorld::Cells::readRecord (ESM::ESMReader& reader, uint32_t type,
     }
 
     return false;
-}
 
+}
 bool MWWorld::Cells::readRecord(ESM4::Reader& reader, uint32_t type, const std::map<int, int>& contentFileMap)
 {
     return false;
+}
+
+
+
+osg::Vec2i MWWorld::positionToCellIndex(float x, float y)
+{
+    int cellSize = (MWBase::Environment::get().getWorld()->isTes4() ? 4096 : Constants::CellSizeInUnits);
+    return {
+        static_cast<int>(std::floor(x / cellSize)),
+        static_cast<int>(std::floor(y / cellSize))
+    };
 }

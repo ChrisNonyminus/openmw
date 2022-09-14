@@ -129,6 +129,25 @@ namespace MWScript
 
             void updatePtr(const MWWorld::Ptr& base, const MWWorld::Ptr& updated);
             ///< Update the Ptr stored in mReference, if there is one stored there. Should be called after the reference has been moved to a new cell.
+
+            virtual int getScriptMemberShort(const std::string& id, const std::string& name, bool global) const { return 0; }
+
+            virtual int getScriptMemberLong(const std::string& id, const std::string& name, bool global) const { return 0; }
+
+            virtual float getScriptMemberFloat(const std::string& id, const std::string& name, bool global) const { return 0.0f; }
+
+            virtual uint32_t getScriptMemberRef(const std::string& id, const std::string& name, bool global) const { return 0; }
+
+            virtual void setScriptMemberShort(const std::string& id, const std::string& name, int value, bool global) {}
+
+            virtual void setScriptMemberLong(const std::string& id, const std::string& name, int value, bool global) {}
+
+            virtual void setScriptMemberFloat(const std::string& id, const std::string& name, float value, bool global) {}
+            virtual void setScriptMemberRef(const std::string& id, const std::string& name, uint32_t value, bool global) {}
+
+            float getDistanceToRef(const std::string& name, const std::string& id = "") const override { return 0.0f; }
+
+            virtual std::string getTargetId() const { return ""; }
     };
 }
 

@@ -10,10 +10,10 @@
 namespace MWWorld
 {
 
-EsmLoader::EsmLoader(MWWorld::ESMStore& store, ESM::ReadersCache& readers, ToUTF8::Utf8Encoder* encoder, std::vector<int>& esmVersions)
+EsmLoader::EsmLoader(MWWorld::ESMStore& store, ESM::ReadersCache& readers, ToUTF8::Utf8Encoder* encoder, ToUTF8::StatelessUtf8Encoder* stateless, std::vector<int>& esmVersions)
     : mReaders(readers)
     , mStore(store)
-    , mEncoder(encoder)
+    , mEncoder(encoder), mStatelessEncoder(stateless)
     , mDialogue(nullptr) // A content file containing INFO records without a DIAL record appends them to the previous file's dialogue
     , mESMVersions(esmVersions)
     , mDialogue4(nullptr) // A content file containing INFO records without a DIAL record appends them to the previous file's dialogue
@@ -50,7 +50,7 @@ void EsmLoader::load(const boost::filesystem::path& filepath, int& index, Loadin
         // loading ESM3 failed, it might be an esm4, try again
         ESM4::Reader::sReadersCache[index] = ESM::Reader::getReader(filepath.string());
         ESM4::Reader& esm4 = *(static_cast<ESM4::Reader*>(ESM4::Reader::sReadersCache[index]));
-        esm4.setEncoder(mEncoder);
+        esm4.setEncoder(mStatelessEncoder);
         esm4.setIndex(index);
         esm4.updateModIndices(ESM4::Reader::sFilenames);
 

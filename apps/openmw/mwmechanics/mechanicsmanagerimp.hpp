@@ -41,6 +41,11 @@ namespace MWMechanics
 
             MechanicsManager();
 
+            void setPlayerClass(const ESM4::Class& class_) override
+            {
+                // no esm4
+            }
+
             void add (const MWWorld::Ptr& ptr) override;
             ///< Register an object for management
 
@@ -53,7 +58,7 @@ namespace MWMechanics
             void drop(const MWWorld::CellStore *cellStore) override;
             ///< Deregister all objects in the given cell.
 
-            void update(float duration, bool paused);
+            void update(float duration, bool paused) override;
             ///< Update objects
             ///
             /// \param paused In game type does not currently advance (this usually means some GUI

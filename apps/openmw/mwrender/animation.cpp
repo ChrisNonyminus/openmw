@@ -639,7 +639,7 @@ namespace MWRender
             return;
 
         auto animsrc = std::make_shared<AnimSource>();
-        animsrc->mKeyframes = mResourceSystem->getKeyframeManager()->get(kfname);
+        animsrc->mKeyframes = mResourceSystem->getKeyframeManager()->get(kfname, baseModel);
 
         if (!animsrc->mKeyframes || animsrc->mKeyframes->mTextKeys.empty() || animsrc->mKeyframes->mKeyframeControllers.empty())
             return;
@@ -757,7 +757,54 @@ namespace MWRender
         return -1.f;
     }
 
-    void Animation::handleTextKey(AnimState &state, std::string_view groupname, SceneUtil::TextKeyMap::ConstIterator key,
+    bool Animation::resetForTes4(AnimState& state, const SceneUtil::TextKeyMap& keys, std::string_view groupname, std::string_view start, std::string_view stop, float startpoint, bool loopfallback)
+    {
+        auto startkey = keys.rbegin();
+        while (startkey != keys.rend() && !(startkey->second == start))
+            ++startkey;
+        if (startkey == keys.rend())
+            return false;
+
+        auto stopkey = keys.rbegin();
+        std::size_t checkLength = groupname.size() + 2 + stop.size();
+        while (stopkey != keys.rend()
+            && !(stopkey->second == stop))
+            ++stopkey;
+        if (stopkey == keys.rend())
+            return false;
+
+        if (startkey->first > stopkey->first)
+            return false;
+
+        state.mStartTime = startkey->first;
+        if (loopfallback)
+        {
+            state.mLoopStartTime = startkey->first;
+            state.mLoopStopTime = stopkey->first;
+        }
+        else
+        {
+            state.mLoopStartTime = startkey->first;
+            state.mLoopStopTime = std::numeric_limits<float>::max();
+        }
+        state.mStopTime = stopkey->first;
+
+        state.setTime(state.mStartTime + ((state.mStopTime - state.mStartTime) * startpoint));
+
+        // mLoopStartTime and mLoopStopTime normally get assigned when encountering these keys while playing the animation
+        // (see handleTextKey). But if startpoint is already past these keys, or start time is == stop time, we need to assign them now.
+
+        auto key = keys.rbegin();
+        for (; key != startkey && key != keys.rend(); ++key)
+        {
+            if (key->first > state.getTime())
+                continue;
+        }
+
+        return true;
+    }
+
+    void Animation::handleTextKey(AnimState& state, std::string_view groupname, SceneUtil::TextKeyMap::ConstIterator key,
                        const SceneUtil::TextKeyMap& map)
     {
         std::string_view evt = key->second;
@@ -787,6 +834,7 @@ namespace MWRender
     void Animation::play(std::string_view groupname, const AnimPriority& priority, int blendMask, bool autodisable, float speedmult,
                          std::string_view start, std::string_view stop, float startpoint, size_t loops, bool loopfallback)
     {
+
         if(!mObjectRoot || mAnimSources.empty())
             return;
 
@@ -819,7 +867,7 @@ namespace MWRender
         for(;iter != mAnimSources.rend();++iter)
         {
             const SceneUtil::TextKeyMap &textkeys = (*iter)->getTextKeys();
-            if(reset(state, textkeys, groupname, start, stop, startpoint, loopfallback))
+            if (stop == "end" ? resetForTes4(state, textkeys, groupname, start, stop, startpoint, loopfallback) : reset(state, textkeys, groupname, start, stop, startpoint, loopfallback))
             {
                 state.mSource = *iter;
                 state.mSpeedMult = speedmult;

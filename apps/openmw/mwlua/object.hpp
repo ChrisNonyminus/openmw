@@ -12,6 +12,12 @@
 
 namespace MWLua
 {
+    using FormId = ESM4::FormId;
+    inline const FormId& getRefrId(const MWWorld::Ptr& ptr)
+    {
+        return ptr.getCellRef().getRefr().mFormId;
+    }
+    
     // ObjectId is a unique identifier of a game object.
     // It can change only if the order of content files was change.
     using ObjectId = ESM::RefNum;
@@ -36,6 +42,7 @@ namespace MWLua
         // If local = true, returns non-empty ptr only if it can be used in local scripts
         // (i.e. is active or was active in the previous frame).
         MWWorld::Ptr getPtr(ObjectId id, bool local);
+        MWWorld::Ptr getPtr(FormId id, bool local);
 
         // Needed only for saving/loading.
         const ObjectId& getLastAssignedId() const { return mLastAssignedId; }
@@ -48,6 +55,7 @@ namespace MWLua
         bool mChanged = false;
         int64_t mUpdateCounter = 0;
         std::map<ObjectId, MWWorld::Ptr> mObjectMapping;
+        std::map<FormId, MWWorld::Ptr> mRefrMapping;
         ObjectId mLastAssignedId;
     };
 

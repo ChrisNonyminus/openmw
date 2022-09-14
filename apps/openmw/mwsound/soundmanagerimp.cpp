@@ -363,7 +363,11 @@ namespace MWSound
 
         DecoderPtr decoder = loadVoice(mVFS->normalizeFilename("Sound/" + filename));
         if (!decoder)
-            return;
+        {
+            decoder = loadVoice(mVFS->normalizeFilename(filename)); // f3dialogue has to get the voice filenames with "sound/" already prefixed
+            if (!decoder)
+                return;
+        }
 
         MWBase::World *world = MWBase::Environment::get().getWorld();
         const osg::Vec3f pos = world->getActorHeadTransform(ptr).getTrans();

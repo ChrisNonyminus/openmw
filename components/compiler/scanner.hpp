@@ -194,6 +194,7 @@ namespace Compiler
             bool mTolerantNames;
             bool mIgnoreNewline;
             bool mExpectName;
+            bool mIsTes4;
 
         public:
 
@@ -205,7 +206,8 @@ namespace Compiler
                 K_while, K_endwhile,
                 K_return,
                 K_messagebox,
-                K_set, K_to
+                K_set, K_to,
+                K_scriptname, K_scn
             };
 
             enum special
@@ -247,7 +249,7 @@ namespace Compiler
         public:
 
             Scanner (ErrorHandler& errorHandler, std::istream& inputStream,
-                const Extensions *extensions = nullptr);
+                const Extensions *extensions = nullptr, bool isTes4 = false);
             ///< constructor
 
             void scan (Parser& parser);

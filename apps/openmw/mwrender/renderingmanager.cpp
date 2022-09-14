@@ -61,6 +61,7 @@
 
 #include "../mwgui/loadingscreen.hpp"
 #include "../mwgui/postprocessorhud.hpp"
+#include "../mwgui/mapwindow.hpp"
 
 #include "../mwmechanics/actorutil.hpp"
 
@@ -962,6 +963,12 @@ namespace MWRender
         return mSky.get();
     }
 
+    void RenderingManager::onExteriorChanged()
+    {
+        //if (mWorldSpaceChanged)
+        //    MWBase::Environment::get().getWindowManager()->getMapWindow()->renderGlobalMap(); // TES4: rerender global map to regenerate the global map of the new worldspace
+    }
+
     void RenderingManager::update(float dt, bool paused)
     {
         reportStats();
@@ -1246,6 +1253,7 @@ namespace MWRender
     {
         mEffectManager->clear();
         mWater->clearRipples();
+        mWorldSpaceChanged = true;
     }
 
     void RenderingManager::clear()

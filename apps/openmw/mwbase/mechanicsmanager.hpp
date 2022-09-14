@@ -26,6 +26,11 @@ namespace ESM
     class ESMWriter;
 }
 
+namespace ESM4
+{
+    struct Class;
+}
+
 namespace MWWorld
 {
     class Ptr;
@@ -64,6 +69,8 @@ namespace MWBase
             virtual void updateCell(const MWWorld::Ptr &old, const MWWorld::Ptr &ptr) = 0;
             ///< Moves an object to a new cell
 
+            virtual void update(float duration, bool paused) = 0;
+
             virtual void drop (const MWWorld::CellStore *cellStore) = 0;
             ///< Deregister all objects in the given cell.
 
@@ -81,6 +88,8 @@ namespace MWBase
 
             virtual void setPlayerClass (const ESM::Class& class_) = 0;
             ///< Set player class to custom class.
+
+            virtual void setPlayerClass(const ESM4::Class& class_) = 0;
 
             virtual void restoreDynamicStats(const MWWorld::Ptr& actor, double hours, bool sleep) = 0;
 

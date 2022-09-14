@@ -313,7 +313,16 @@ protected:
      */
     bool reset(AnimState &state, const SceneUtil::TextKeyMap &keys,
                std::string_view groupname, std::string_view start, std::string_view stop,
-               float startpoint, bool loopfallback);
+        float startpoint, bool loopfallback);
+
+    /* Resets the animation to the time of the specified start marker, without
+     * moving anything, and set the end time to the specified stop marker. If
+     * the marker is not found, or if the markers are the same, it returns
+     * false.
+     */
+    bool resetForTes4(AnimState& state, const SceneUtil::TextKeyMap& keys,
+        std::string_view groupname, std::string_view start, std::string_view stop,
+        float startpoint, bool loopfallback);
 
     void handleTextKey(AnimState &state, std::string_view groupname, SceneUtil::TextKeyMap::ConstIterator key,
                        const SceneUtil::TextKeyMap& map);

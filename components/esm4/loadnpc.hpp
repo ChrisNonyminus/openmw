@@ -31,6 +31,8 @@
 #include <string>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "actor.hpp"
 #include "inventory.hpp"
 
@@ -41,6 +43,8 @@ namespace ESM4
 
     struct Npc
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_NPC_4;
+        static std::string getRecordType() { return "Npc (TES4)"; }
         enum ACBS_TES4
         {
             TES4_Female         = 0x000001,
@@ -197,6 +201,7 @@ namespace ESM4
         FormId mCombatStyle;
         FormId mSoundBase;
         FormId mSound;
+        FormId mVoice;
         std::uint8_t mSoundChance;
         float mFootWeight;
 

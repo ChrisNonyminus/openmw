@@ -180,6 +180,7 @@ namespace MWGui
     MWGui::TradeWindow* getTradeWindow() override;
     const std::vector<std::unique_ptr<MWGui::MessageBox>>& getActiveMessageBoxes() const override;
     MWGui::PostProcessorHud* getPostProcessorHud() override;
+    MWGui::MapWindow* getMapWindow() override;
 
     /// Make the player use an item, while updating GUI state accordingly
     void useItem(const MWWorld::Ptr& item, bool bypassBeastRestrictions=false) override;

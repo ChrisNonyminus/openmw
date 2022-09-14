@@ -523,4 +523,14 @@ namespace MWWorld
         return mLoadedTerrainTimestamp + mResourceSystem->getSceneManager()->getExpiryDelay() > referenceTime && contains(mLoadedTerrainPositions, std::array {position}, ESM::Land::REAL_SIZE);
     }
 
+    void CellPreloader::setTes4LandManager(MWRender::TES4LandManager* manager)
+    {
+        mTES4LandManager = manager;
+    }
+
+    MWRender::TES4LandManager* CellPreloader::getTes4LandManager()
+    {
+        return mTES4LandManager;
+    }
+
 }

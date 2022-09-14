@@ -145,7 +145,21 @@ enum RecordType
   RC_NiClusterAccumulator,
   RC_NiAlphaAccumulator,
   RC_NiSortAdjustNode,
-  RC_NiMultiTargetTransformController
+  RC_NiMultiTargetTransformController,
+  RC_NiBSBoneLODController,
+  RC_bhkCapsuleShape,
+  RC_bhkBlendCollisionObject,
+  RC_bhkRagdollConstraint,
+  RC_bhkLimitedHingeConstraint,
+  RC_bhkPrismaticConstraint,
+  RC_bhkBreakableConstraint,
+  RC_bhkSphereShape,
+  RC_bhkMalleableConstraint,
+  RC_NiControllerSequence,
+  RC_NiBSplineInterpolator,
+  RC_NiBSplineData,
+  RC_NiBSplineBasisData,
+  RC_NiBSplineCompTransformInterpolator
 };
 
 /// Base class for all records

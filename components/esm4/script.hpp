@@ -33,6 +33,8 @@
 #include <string>
 #include <vector>
 
+#include "formid.hpp"
+
 namespace ESM4
 {
     enum EmotionType

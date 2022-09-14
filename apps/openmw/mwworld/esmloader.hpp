@@ -8,6 +8,7 @@
 namespace ToUTF8
 {
   class Utf8Encoder;
+    class StatelessUtf8Encoder;
 }
 
 namespace ESM
@@ -28,7 +29,7 @@ class ESMStore;
 
 struct EsmLoader : public ContentLoader
 {
-    explicit EsmLoader(MWWorld::ESMStore& store, ESM::ReadersCache& readers, ToUTF8::Utf8Encoder* encoder, std::vector<int>& esmVersions);
+    explicit EsmLoader(MWWorld::ESMStore& store, ESM::ReadersCache& readers, ToUTF8::Utf8Encoder* encoder, ToUTF8::StatelessUtf8Encoder* stateless, std::vector<int>& esmVersions);
 
     std::optional<int> getMasterFileFormat() const { return mMasterFileFormat; }
 
@@ -38,6 +39,7 @@ struct EsmLoader : public ContentLoader
         ESM::ReadersCache& mReaders;
         MWWorld::ESMStore& mStore;
         ToUTF8::Utf8Encoder* mEncoder;
+        ToUTF8::StatelessUtf8Encoder* mStatelessEncoder;
         ESM::Dialogue* mDialogue;
         ESM4::Dialogue* mDialogue4;
         std::optional<int> mMasterFileFormat;

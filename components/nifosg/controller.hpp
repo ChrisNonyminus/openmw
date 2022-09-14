@@ -261,6 +261,36 @@ namespace NifOsg
 
         osg::Quat getXYZRotation(float time) const;
     };
+    
+
+    class SequenceController : public SceneUtil::KeyframeController, public SceneUtil::NodeCallback<SequenceController, NifOsg::MatrixTransform*>
+    {
+    public:
+        SequenceController();
+        SequenceController(const SequenceController& copy, const osg::CopyOp& copyop);
+        SequenceController(const Nif::NiMultiTargetTransformController* mt, const Nif::NiControllerSequence::ControlledBlock& block);
+
+        META_Object(NifOsg, SequenceController)
+
+        osg::Vec3f getTranslation(float time) const override;
+        osg::Callback* getAsCallback() override { return this; }
+
+        void operator()(NifOsg::MatrixTransform*, osg::NodeVisitor*);
+
+    private:
+        QuaternionInterpolator mRotations;
+
+        FloatInterpolator mXRotations;
+        FloatInterpolator mYRotations;
+        FloatInterpolator mZRotations;
+
+        Vec3Interpolator mTranslations;
+        FloatInterpolator mScales;
+
+        Nif::NiKeyframeData::AxisOrder mAxisOrder{ Nif::NiKeyframeData::AxisOrder::Order_XYZ };
+
+        osg::Quat getXYZRotation(float time) const;
+    };
 #ifdef _MSC_VER
 #pragma warning( pop )
 #endif

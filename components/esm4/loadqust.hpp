@@ -29,6 +29,8 @@
 
 #include <cstdint>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 #include "script.hpp" // TargetCondition, ScriptDefinition
 
@@ -45,10 +47,69 @@ namespace ESM4
         std::uint16_t padding; // FO3
         float questDelay;      // FO3
     };
+    struct QuestTarget
+    {
+        FormId target;
+        uint8_t flags; // 1: compass marker ignores locks
+        uint8_t unused[3];
+    };
 #pragma pack(pop)
+
+    struct QuestStage
+    {
+        int16_t mIndex;
+        struct LogEntry
+        {
+            uint8_t mStageFlags; // 1: completed | 2: failed
+            std::vector<TargetCondition> mConditions;
+            std::string mEntry;
+            ScriptDefinition mEmbeddedScript;
+            FormId mNextQuest;
+            void clear()
+            {
+                mStageFlags = 0;
+                mConditions.clear();
+                mEntry.clear();
+                mEmbeddedScript.scriptSource.clear();
+                mEmbeddedScript.localVarData.clear();
+                mNextQuest = 0;
+            }
+        };
+        std::vector<LogEntry> mEntries;
+        void clear()
+        {
+            mIndex = 0; 
+            mEntries.clear();
+        }
+    };
+
+    struct QuestObjective
+    {
+        int32_t mIndex;
+        std::string mDescription;
+
+        struct Target
+        {
+            QuestTarget mTarget;
+            std::vector<TargetCondition> mConditions;
+            void clear()
+            {
+                mConditions.clear();
+            }
+        };
+        std::vector<Target> mTargets;
+        void clear()
+        {
+            mIndex = 0;
+            mDescription.clear();
+            mTargets.clear();
+        }
+    };
 
     struct Quest
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_QUST4;
+        static std::string getRecordType() { return "Quest (TES4)"; }
         // NOTE: these values are for TES4
         enum Quest_Flags
         {
@@ -68,6 +129,9 @@ namespace ESM4
         QuestData mData;
 
         std::vector<TargetCondition> mTargetConditions;
+
+        std::vector<QuestStage> mStages;
+        std::vector<QuestObjective> mObjectives;
 
         ScriptDefinition mScript;
 

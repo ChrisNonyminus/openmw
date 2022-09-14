@@ -31,6 +31,8 @@
 #include <vector>
 #include <map>
 
+#include <components/esm/defs.hpp>
+
 #include "common.hpp" // CellGrid, Vertex
 
 namespace ESM4
@@ -40,6 +42,8 @@ namespace ESM4
 
     struct Navigation
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_NAVI4;
+        static std::string getRecordType() { return "Navigation (TES4)"; }
 #pragma pack(push,1)
         struct DoorRef
         {
@@ -96,9 +100,25 @@ namespace ESM4
             void load(ESM4::Reader& reader);
         };
 
+        struct NavMeshInfoFO3
+        {
+            uint8_t unknown[4];
+            FormId navMesh;
+            FormId location;
+            int16_t gridX;
+            int16_t gridY;
+            std::vector<uint8_t> unkArray;
+
+            void load(ESM4::Reader& reader);
+        };
+
+        FormId mFormId; // from the header
+        std::uint32_t mFlags; // from the header, see enum type RecordFlag for details
+
         std::string mEditorId;
 
         std::vector<NavMeshInfo> mNavMeshInfo;
+        std::vector<NavMeshInfoFO3> mNavMeshInfoFO3;
 
         std::vector<std::pair<std::uint32_t, std::vector<FormId> > > mPreferredPaths;
 

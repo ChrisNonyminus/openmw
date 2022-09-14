@@ -194,6 +194,10 @@ namespace MWWorld
 
             void testExteriorCells();
             void testInteriorCells();
+
+            Ptr searchPtrViaFormId(uint32_t formid);
+
+            Ptr searchPtrViaEditorId(const std::string& editorId);
     };
 }
 

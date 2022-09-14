@@ -66,7 +66,7 @@ namespace MWScript
 
             void clear() override;
 
-            bool run(std::string_view name, Interpreter::Context& interpreterContext) override;
+            bool run(std::string_view name, Interpreter::Context& interpreterContext, const std::string& blockType = "") override;
             ///< Run the script with the given name (compile first, if not compiled yet)
 
             bool compile(std::string_view name) override;
@@ -83,6 +83,11 @@ namespace MWScript
             GlobalScripts& getGlobalScripts() override;
 
             const Compiler::Extensions& getExtensions() const override;
+
+            FOScript::GlobalScripts& getFOGlobalScripts() override
+            {
+                throw std::runtime_error("Tried to get fo global scripts from mw script manager");
+            }
     };
 }
 

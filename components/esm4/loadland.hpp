@@ -125,8 +125,8 @@ namespace ESM4
 
         float mHeightMapF[33 * 33];
 
-        signed char   mVertNorm[VERTS_PER_SIDE * VERTS_PER_SIDE * 3]; // from VNML subrecord
-        signed char   mVertColr[VERTS_PER_SIDE * VERTS_PER_SIDE * 3]; // from VCLR subrecord
+        unsigned char   mVertNorm[VERTS_PER_SIDE * VERTS_PER_SIDE * 3]; // from VNML subrecord
+        unsigned char   mVertColr[VERTS_PER_SIDE * VERTS_PER_SIDE * 3]; // from VCLR subrecord
 
         VHGT          mHeightMap;
         Texture       mTextures[4]; // 0 = bottom left, 1 = bottom right, 2 = top left, 3 = top right

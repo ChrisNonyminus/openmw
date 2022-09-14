@@ -14,6 +14,8 @@
 #include "creatureanimation.hpp"
 #include "vismask.hpp"
 
+#include "../obrender/creatureanimation.hpp"
+
 
 namespace MWRender
 {
@@ -87,10 +89,22 @@ void Objects::insertCreature(const MWWorld::Ptr &ptr, const std::string &mesh, b
     // CreatureAnimation
     osg::ref_ptr<Animation> anim;
 
-    if (weaponsShields)
-        anim = new CreatureWeaponAnimation(ptr, mesh, mResourceSystem);
+    if (ptr.getType() == ESM::REC_CREA4)
+    {
+
+        /*if (weaponsShields)
+            anim = new OBRender::CreatureWeaponAnimation(ptr, mesh, mResourceSystem); //todo
+        else*/
+            anim = new OBRender::CreatureAnimation(ptr, mesh, mResourceSystem);
+    }
     else
-        anim = new CreatureAnimation(ptr, mesh, mResourceSystem);
+    {
+
+        if (weaponsShields)
+            anim = new CreatureWeaponAnimation(ptr, mesh, mResourceSystem);
+        else
+            anim = new CreatureAnimation(ptr, mesh, mResourceSystem);
+    }
 
     if (mObjects.emplace(ptr.mRef, anim).second)
         ptr.getClass().getContainerStore(ptr).setContListener(static_cast<ActorAnimation*>(anim.get()));

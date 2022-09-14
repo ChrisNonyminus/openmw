@@ -140,6 +140,8 @@ namespace MWWorld
 
             std::vector<int> mESMVersions;  //the versions of esm files
 
+            bool mIsTes4;
+
             // not implemented
             World (const World&);
             World& operator= (const World&);
@@ -175,7 +177,7 @@ namespace MWWorld
             void updateSkyDate();
 
             void loadContentFiles(const Files::Collections& fileCollections, const std::vector<std::string>& content,
-                ToUTF8::Utf8Encoder* encoder, Loading::Listener* listener);
+                ToUTF8::Utf8Encoder* encoder, ToUTF8::StatelessUtf8Encoder* stateless, Loading::Listener* listener);
 
             void loadGroundcoverFiles(const Files::Collections& fileCollections,
                 const std::vector<std::string>& groundcoverFiles, ToUTF8::Utf8Encoder* encoder,
@@ -200,7 +202,7 @@ namespace MWWorld
                 const Files::Collections& fileCollections,
                 const std::vector<std::string>& contentFiles,
                 const std::vector<std::string>& groundcoverFiles,
-                ToUTF8::Utf8Encoder* encoder, int activationDistanceOverride,
+                ToUTF8::Utf8Encoder* encoder, ToUTF8::StatelessUtf8Encoder* stateless, int activationDistanceOverride,
                 const std::string& startCell, const std::string& startupScript,
                 const std::string& resourcePath, const std::string& userDataPath);
 
@@ -450,6 +452,11 @@ namespace MWWorld
             bool toggleRenderMode (MWRender::RenderMode mode) override;
             ///< Toggle a render mode.
             ///< \return Resulting mode
+
+            const ESM4::Npc* createRecord(const ESM4::Npc& record) override;
+
+            const ESM4::Class* createRecord(const ESM4::Class& record) override;
+            const ESM4::Script* createRecord(const ESM4::Script& record) override;
 
             const ESM::Potion *createRecord (const ESM::Potion& record) override;
             ///< Create a new record (of type potion) in the ESM store.
@@ -767,6 +774,17 @@ namespace MWWorld
             void setActorActive(const MWWorld::Ptr& ptr, bool value) override;
 
             MWWorld::CellStore* getWorldspaceDummyCell(uint32_t wrldId) override;
+
+            bool isTes4() override;
+
+            MWWorld::Ptr searchPtrViaFormId(uint32_t formId) override;
+
+            MWWorld::Ptr searchPtrViaEditorId (const std::string& editorId, bool activeOnly) override;
+
+            void updateDummyCell() override;
+
+            void addObjectToScene(const MWWorld::Ptr& ptr) override;
+            void removeObjectFromScene(const MWWorld::Ptr& ptr) override;
     };
 }
 

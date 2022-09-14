@@ -127,6 +127,7 @@ namespace MWMechanics
 
     class SkillValue : public AttributeValue
     {
+    protected:
         float mProgress;
     public:
         SkillValue();

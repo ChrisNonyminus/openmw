@@ -281,7 +281,16 @@ void ESM4::Npc::load(ESM4::Reader& reader)
             case ESM4::SUB_TINI:
             case ESM4::SUB_TINV:
             case ESM4::SUB_VMAD:
+            {
+                //std::cout << "NPC_ " << ESM::printName(subHdr.typeId) << " skipping..." << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_VTCK:
+            {
+                reader.get(mVoice);
+                break;
+            }
             case ESM4::SUB_GNAM:
             case ESM4::SUB_SHRT:
             case ESM4::SUB_SPOR:

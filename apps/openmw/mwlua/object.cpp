@@ -1,5 +1,7 @@
 #include "object.hpp"
 
+#include "../mwworld/registeredclass.hpp"
+
 #include "types/types.hpp"
 
 #include <components/misc/resourcehelpers.hpp>
@@ -89,11 +91,35 @@ namespace MWLua
         return ptr;
     }
 
+    MWWorld::Ptr ObjectRegistry::getPtr(FormId id, bool local)
+    {
+        MWWorld::Ptr ptr;
+        auto it = mRefrMapping.find(id);
+        if (it != mRefrMapping.end())
+            ptr = it->second;
+        if (local)
+        {
+            // TODO: Return ptr only if it is active or was active in the previous frame, otherwise return empty.
+            //     Needed because in multiplayer inactive objects will not be synchronized, so an be out of date.
+        }
+        else
+        {
+            // TODO: If Ptr is empty then try to load the object from esp/esm3.
+            if (ptr.isEmpty())
+            {
+                
+            }
+        }
+        return ptr;
+    }
+
     ObjectId ObjectRegistry::registerPtr(const MWWorld::Ptr& ptr)
     {
         ObjectId id = ptr.getCellRef().getOrAssignRefNum(mLastAssignedId);
         mChanged = true;
         mObjectMapping[id] = ptr;
+        if (ptr.getClass().hasFormId())
+            mRefrMapping[ptr.getCellRef().getRefr().mFormId] = ptr;
         return id;
     }
 
@@ -102,6 +128,11 @@ namespace MWLua
         ObjectId id = getId(ptr);
         mChanged = true;
         mObjectMapping.erase(id);
+        if (ptr.getClass().hasFormId())
+        {
+            FormId formId = ptr.getCellRef().getRefr().mFormId;
+            mRefrMapping.erase(formId);
+        }
         return id;
     }
 

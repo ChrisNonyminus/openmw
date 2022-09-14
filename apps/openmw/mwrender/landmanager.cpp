@@ -60,8 +60,7 @@ osg::ref_ptr<ESMTerrain::TES4LandObject> TES4LandManager::getLand(uint32_t id)
         const auto world = MWBase::Environment::get().getWorld();
         if (!world)
             return nullptr;
-        std::string idStr = ESM4::formIdToString(id);
-        const ESM4::Land* land = world->getStore().get<ESM4::Land>().search(idStr);
+        const ESM4::Land* land = world->getStore().get<ESM4::Land>().search(id);
         if (!land)
             return nullptr;
         osg::ref_ptr<ESMTerrain::TES4LandObject> landObj(new ESMTerrain::TES4LandObject(land, mLoadFlags));

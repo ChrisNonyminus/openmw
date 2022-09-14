@@ -45,6 +45,7 @@ void ESM4::Creature::load(ESM4::Reader& reader)
     mFormId = reader.hdr().record.id;
     reader.adjustFormId(mFormId);
     mFlags  = reader.hdr().record.flags;
+    mScriptId = 0;
 
     while (reader.getSubRecordHeader())
     {
@@ -78,8 +79,10 @@ void ESM4::Creature::load(ESM4::Reader& reader)
             }
             case ESM4::SUB_SNAM:
             {
-                reader.get(mFaction);
-                reader.adjustFormId(mFaction.faction);
+                ActorFaction faction;
+                reader.get(faction);
+                reader.adjustFormId(faction.faction);
+                mFactions.push_back(faction);
                 break;
             }
             case ESM4::SUB_INAM: reader.getFormId(mDeathItem);   break;
@@ -87,7 +90,7 @@ void ESM4::Creature::load(ESM4::Reader& reader)
             case ESM4::SUB_AIDT:
             {
                 if (subHdr.dataSize == 20) // FO3
-                    reader.skipSubRecordData();
+                    reader.get(mFOAIData);
                 else
                     reader.get(mAIData); // 12 bytes
                 break;
@@ -104,7 +107,7 @@ void ESM4::Creature::load(ESM4::Reader& reader)
             case ESM4::SUB_DATA:
             {
                 if (subHdr.dataSize == 17) // FO3
-                    reader.skipSubRecordData();
+                    reader.get(mFOData);
                 else
                     reader.get(mData);
                 break;
@@ -174,7 +177,16 @@ void ESM4::Creature::load(ESM4::Reader& reader)
             case ESM4::SUB_CSDT:
             case ESM4::SUB_OBND: // FO3
             case ESM4::SUB_EAMT: // FO3
+            {
+                //std::cout << "CREA " << ESM::printName(subHdr.typeId) << " skipping..." << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_VTCK: // FO3
+            {
+                reader.get(mVoice);
+                break;
+            }
             case ESM4::SUB_NAM4: // FO3
             case ESM4::SUB_NAM5: // FO3
             case ESM4::SUB_CNAM: // FO3

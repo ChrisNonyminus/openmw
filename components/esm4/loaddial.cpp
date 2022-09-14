@@ -38,6 +38,7 @@ void ESM4::Dialogue::load(ESM4::Reader& reader)
     mFormId = reader.hdr().record.id;
     reader.adjustFormId(mFormId);
     mFlags  = reader.hdr().record.flags;
+    reader.setCurrTopic(mFormId);
 
     while (reader.getSubRecordHeader())
     {

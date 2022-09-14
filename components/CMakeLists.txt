@@ -191,6 +191,10 @@ add_component_dir (esm4
     loadweap
     loadwrld
     loadwthr
+    loadmesg
+    loadvtyp
+    loadfact
+    loadgmst
     reader
     reference
     script
@@ -224,6 +228,25 @@ add_component_dir (compiler
     stringparser tokenloc nullerrorhandler opcodes extensions0 declarationparser
     quickfileparser discardparser junkparser
     )
+
+add_component_dir (focompiler
+    extensions0
+    controlparser
+    declarationparser
+    discardparser
+    exprparser
+    fileparser
+    generator
+    junkparser
+    lineparser
+    output
+    parser
+    quickfileparser
+    scanner
+    scriptparser
+    skipparser
+    stringparser
+)
 
 add_component_dir (interpreter
     context controlopcodes genericopcodes installopcodes interpreter localopcodes mathopcodes

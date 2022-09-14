@@ -49,7 +49,7 @@ namespace Resource
 
         /// Retrieve a read-only keyframe resource by name (case-insensitive).
         /// @note Throws an exception if the resource is not found.
-        osg::ref_ptr<const SceneUtil::KeyframeHolder> get(const std::string& name);
+        osg::ref_ptr<const SceneUtil::KeyframeHolder> get(const std::string& name, const std::string& skeletonName = "");
 
         void reportStats(unsigned int frameNumber, osg::Stats* stats) const override;
     private:

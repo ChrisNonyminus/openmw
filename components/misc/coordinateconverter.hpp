@@ -6,6 +6,9 @@
 #include <components/esm3/loadland.hpp>
 #include <components/esm3/loadpgrd.hpp>
 
+#include <components/esm4/loadcell.hpp>
+#include <components/esm4/loadland.hpp>
+
 namespace Misc
 {
     /// \brief convert coordinates between world and local cell
@@ -20,6 +23,12 @@ namespace Misc
 
             explicit CoordinateConverter(const ESM::Cell* cell)
                 : CoordinateConverter(cell->isExterior(), cell->mData.mX, cell->mData.mY)
+            {
+            }
+
+            explicit CoordinateConverter(const ESM4::Cell* cell)
+                : mCellX(cell->isExterior() ? cell->mX * 4096 : 0),
+                  mCellY(cell->isExterior() ? cell->mY * 4096 : 0)
             {
             }
 
@@ -41,6 +50,18 @@ namespace Misc
             {
                 point.x() += static_cast<float>(mCellX);
                 point.y() += static_cast<float>(mCellY);
+            }
+
+            void toWorld(ESM4::Vertex& point) const
+            {
+                point.x += static_cast<float>(mCellX);
+                point.y += static_cast<float>(mCellY);
+            }
+
+            void toLocal(ESM4::Vertex& point) const
+            {
+                point.x -= static_cast<float>(mCellX);
+                point.y -= static_cast<float>(mCellY);
             }
 
             /// in-place conversion from world to local

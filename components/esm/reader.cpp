@@ -38,7 +38,7 @@ namespace ESM
     }
 
     bool Reader::getStringImpl(std::string& str, std::size_t size,
-        std::istream& stream, ToUTF8::Utf8Encoder* encoder, bool hasNull)
+        std::istream& stream, ToUTF8::StatelessUtf8Encoder* encoder, bool hasNull)
     {
         std::size_t newSize = size;
 
@@ -48,9 +48,13 @@ namespace ESM
             stream.read(input.data(), size);
             if (stream.gcount() == static_cast<std::streamsize>(size))
             {
-                encoder->getUtf8(input);
-                str = input;
-                str.resize(size - 1);
+                const std::string_view result = encoder->getUtf8(input, ToUTF8::BufferAllocationPolicy::FitToRequiredSize, str);
+            if (str.empty() && !result.empty())
+            {
+                str = std::move(input);
+                str.resize(result.size());
+            }
+
                 return true;
             }
         }

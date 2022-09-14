@@ -7,6 +7,9 @@
 #include <components/misc/coordinateconverter.hpp>
 #include <components/misc/convert.hpp>
 
+#include <components/esm4/loadcell.hpp>
+#include <components/esm4/loadnavm.hpp>
+
 namespace DetourNavigator
 {
     NavigatorImpl::NavigatorImpl(const Settings& settings, std::unique_ptr<NavMeshDb>&& db)
@@ -219,5 +222,27 @@ namespace DetourNavigator
     {
         const auto& settings = getSettings();
         return getRealTileSize(settings.mRecast) * getMaxNavmeshAreaRadius(settings);
+    }
+    void NavigatorImpl::addESM4Navmesh(const ESM4::Cell &cell, const ESM4::NavMesh &navm)
+    {
+        Misc::CoordinateConverter converter(&cell);
+        for (const auto& edge : navm.mTriangles)
+        {
+            auto src = osg::Vec3f(navm.mVertices[edge.vertexIndex0].x, navm.mVertices[edge.vertexIndex0].y, navm.mVertices[edge.vertexIndex0].z);
+            auto dst = osg::Vec3f(navm.mVertices[edge.vertexIndex1].x, navm.mVertices[edge.vertexIndex1].y, navm.mVertices[edge.vertexIndex1].z);
+            converter.toWorld(src);
+            converter.toWorld(dst);
+            mNavMeshManager.addOffMeshConnection(
+                ObjectId(&navm),
+                toNavMeshCoordinates(mSettings.mRecast, src),
+                toNavMeshCoordinates(mSettings.mRecast, dst),
+                AreaType_pathgrid
+            );
+        }
+    }
+
+    void NavigatorImpl::removeESM4Navmesh(const ESM4::NavMesh &navm)
+    {
+        mNavMeshManager.removeOffMeshConnections(ObjectId(&navm));
     }
 }

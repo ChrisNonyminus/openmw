@@ -14,6 +14,7 @@
 #include "resourcemanager.hpp"
 
 #include <components/sceneutil/lightmanager.hpp>
+#include <components/sceneutil/skeleton.hpp>
 
 namespace Resource
 {
@@ -133,7 +134,7 @@ namespace Resource
         /// @note If the given filename does not exist or fails to load, an error marker mesh will be used instead.
         ///  If even the error marker mesh can not be found, an exception is thrown.
         /// @note Thread safe.
-        osg::ref_ptr<const osg::Node> getTemplate(const std::string& name, bool compile=true);
+        osg::ref_ptr<const osg::Node> getTemplate(const std::string& name, bool compile = true, osg::ref_ptr<SceneUtil::Skeleton> existingSkeleton=nullptr);
 
         /// Clone osg::Node safely.
         /// @note Thread safe.

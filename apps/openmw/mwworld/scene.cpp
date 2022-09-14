@@ -122,7 +122,12 @@ namespace
         setNodeRotation(ptr, rendering, rotation);
 
         if (ptr.getClass().useAnim())
-            MWBase::Environment::get().getMechanicsManager()->add(ptr);
+        {
+            // todo: add only to certain games, depending on what game the object is from
+            if (!(ptr.getType() & ESM::esm4RecnameFlag))
+                MWBase::Environment::get().getMechanicsManager()->add(ptr);
+            else MWBase::Environment::get().getMechanicsManager("FO3")->add(ptr);
+        }
 
         if (ptr.getClass().isActor())
             rendering.addWaterRippleEmitter(ptr);
@@ -381,6 +386,9 @@ namespace MWWorld
 
             MWBase::Environment::get().getMechanicsManager()->drop(cell);
 
+            // todo: see other references to getMechanicsManager("FO3")
+            MWBase::Environment::get().getMechanicsManager("FO3")->drop(cell);
+
             mRendering.removeCell(cell);
             MWBase::Environment::get().getWindowManager()->removeCell(cell);
 
@@ -467,6 +475,7 @@ namespace MWWorld
                     if (getCurrentCell() != nullptr && getCurrentCell()->isExterior())
                         unloadCell(mWorld.getWorldspaceDummyCell(getCurrentCell()->getCell4()->mParent));
                     loadCell(mWorld.getWorldspaceDummyCell(cell->getCell4()->mParent), loadingListener, respawn, position);
+                    mWorld.getWorldspaceDummyCell(cell->getCell4()->mParent)->load();
                 }
             }
             using DetourNavigator::HeightfieldShape;
@@ -527,6 +536,35 @@ namespace MWWorld
             // TODO
             /*if (const auto pathgrid = mWorld.getStore().get<ESM::Pathgrid>().search(*cell->getCell()))
                 mNavigator.addPathgrid(*cell->getCell(), *pathgrid);*/
+            typedef std::map<ESM4::FormId, const ESM4::NavMesh*> NMCacheMap;
+            static NMCacheMap cache;
+            NMCacheMap::iterator it = cache.find(cell->getCell4()->mFormId);
+            if (it == cache.end())
+            {
+                for (const auto& navi : mWorld.getStore().get<ESM4::Navigation>())
+                {
+                    for (const auto& info : navi.mNavMeshInfoFO3)
+                    {
+                        if (info.location == cell->getCell4()->mFormId ||
+                            info.location == cell->getCell4()->mParent)
+                        {
+                            if (const auto navm = mWorld.getStore().get<ESM4::NavMesh>().search(info.navMesh))
+                            {
+                                if (navm->mDataFO3.cell == cell->getCell4()->mFormId)
+                                {
+                                    mNavigator.addESM4Navmesh(*cell->getCell4(), *navm);
+                                    cache[cell->getCell4()->mFormId] = navm;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                const auto* navm = it->second;
+                mNavigator.addESM4Navmesh(*cell->getCell4(), *navm);
+            }
 
             // register local scripts
             // do this before insertCell, to make sure we don't add scripts from levelled creature spawning twice
@@ -692,7 +730,7 @@ namespace MWWorld
             float centerX, centerY;
             mWorld.indexToPosition(currentGridCenter->x(), currentGridCenter->y(), centerX, centerY, true);
             float distance = std::max(std::abs(centerX-pos.x()), std::abs(centerY-pos.y()));
-            const float maxDistance = Constants::CellSizeInUnits / 2 + mCellLoadingThreshold; // 1/2 cell size + threshold
+            const float maxDistance = (mCurrentCell->isTes4() ? 4096 : Constants::CellSizeInUnits) / 2 + mCellLoadingThreshold; // 1/2 cell size + threshold
             if (distance <= maxDistance)
                 return *currentGridCenter;
         }
@@ -763,7 +801,7 @@ namespace MWWorld
                 {
                     if (!isCellInCollection(x, y, collection))
                     {
-                        refsToLoad += mWorld.getExterior(x, y)->count();
+                        refsToLoad += mWorld.getExterior(x, y, wrldId)->count();
                         cellsPositionsToLoad.emplace_back(std::make_pair(wrldId,std::make_pair(x, y)));
                     }
                 }
@@ -803,12 +841,16 @@ namespace MWWorld
             {
                 CellStore *cell = mWorld.getExterior(coords.first, coords.second, wrld);
                 if (cell)
+                {
                     loadCell(cell, loadingListener, changeEvent, pos);
+                }
             }
         }
 
-        CellStore* current = mWorld.getExterior(playerCellX, playerCellY);
+        CellStore* current = mWorld.getExterior(playerCellX, playerCellY, wrldId);
         MWBase::Environment::get().getWindowManager()->changeCell(current);
+        if (mWorld.getPlayerPtr().isInCell())
+            mWorld.updateDummyCell();
 
         if (changeEvent)
             mCellChanged = true;
@@ -933,6 +975,26 @@ namespace MWWorld
         mRendering.getResourceSystem()->setExpiryDelay(Settings::Manager::getFloat("cache expiry delay", "Cells"));
     }
 
+    Ptr Scene::searchPtrViaFormId(uint32_t formid)
+    {
+        for (CellStoreCollection::const_iterator iter(mActiveCells.begin());
+             iter != mActiveCells.end(); ++iter)
+            if (Ptr ptr = (*iter)->searchViaFormId(formid))
+                return ptr;
+
+        return Ptr();
+    }
+
+    Ptr Scene::searchPtrViaEditorId(const std::string& editorId)
+    {
+        for (CellStoreCollection::const_iterator iter(mActiveCells.begin());
+             iter != mActiveCells.end(); ++iter)
+            if (Ptr ptr = (*iter)->searchViaEditorId(editorId))
+                return ptr;
+
+        return Ptr();
+    }
+
     void Scene::changePlayerCell(CellStore *cell, const ESM::Position &pos, bool adjustPlayerPos)
     {
         mCurrentCell = cell;
@@ -958,8 +1020,12 @@ namespace MWWorld
             player.getClass().adjustPosition(player, true);
         }
 
-        MWBase::Environment::get().getMechanicsManager()->updateCell(old, player);
+        if (cell->isTes4())
+            MWBase::Environment::get().getMechanicsManager("FO3")->updateCell(old, player);
+        else MWBase::Environment::get().getMechanicsManager()->updateCell(old, player);
         MWBase::Environment::get().getWindowManager()->watchActor(player);
+
+        // todo: only update cell for fo3 mm if the cell is from fo3
 
         mPhysics->updatePtr(old, player);
 
@@ -1083,6 +1149,7 @@ namespace MWWorld
 
         CellStore* current = mWorld.getExterior(cellIndex.x(), cellIndex.y(), wrldId);
         changePlayerCell(current, position, adjustPlayerPos);
+        mWorld.updateDummyCell();
 
         if (changeEvent)
             MWBase::Environment::get().getWindowManager()->fadeScreenIn(0.5);
@@ -1124,7 +1191,8 @@ namespace MWWorld
 
     void Scene::removeObjectFromScene (const Ptr& ptr, bool keepActive)
     {
-        MWBase::Environment::get().getMechanicsManager()->remove (ptr, keepActive);
+        MWBase::Environment::get().getMechanicsManager()->remove(ptr, keepActive);
+        MWBase::Environment::get().getMechanicsManager("FO3")->remove(ptr, keepActive); // todo: see other references to getMechanicsManager("FO3")
         // You'd expect the sounds attached to the object to be stopped here
         // because the object is nowhere to be heard, but in Morrowind, they're not.
         // They're still stopped when the cell is unloaded
@@ -1316,16 +1384,18 @@ namespace MWWorld
 
                 float dist = std::max(std::abs(thisCellCenterX - playerPos.x()), std::abs(thisCellCenterY - playerPos.y()));
                 dist = std::min(dist,std::max(std::abs(thisCellCenterX - predictedPos.x()), std::abs(thisCellCenterY - predictedPos.y())));
-                float loadDist = Constants::CellSizeInUnits / 2 + Constants::CellSizeInUnits - mCellLoadingThreshold + mPreloadDistance;
+                float loadDist = (mWorld.getPlayerPtr().getCell()->isTes4() ? 4096 : Constants::CellSizeInUnits) / 2 + (mWorld.getPlayerPtr().getCell()->isTes4() ? 4096 : Constants::CellSizeInUnits) - mCellLoadingThreshold + mPreloadDistance;
 
                 if (dist < loadDist)
-                    preloadCell(mWorld.getExterior(cellX+dx, cellY+dy));
+                    preloadCell(mWorld.getExterior(cellX+dx, cellY+dy, mCurrentCell->isTes4() ? mCurrentCell->getCell4()->mParent : 0));
             }
         }
     }
 
     void Scene::preloadCell(CellStore *cell, bool preloadSurrounding)
     {
+        if (cell->isTes4() && !mPreloader->getTes4LandManager())
+            mPreloader->setTes4LandManager(mRendering.getTes4LandManager()); // TES4: set the land manager
         if (preloadSurrounding && cell->isExterior())
         {
             int x = cell->getCell()->getGridX();

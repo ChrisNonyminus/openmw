@@ -135,9 +135,10 @@ namespace Resource
     {
     }
 
-    osg::ref_ptr<const SceneUtil::KeyframeHolder> KeyframeManager::get(const std::string &name)
+    osg::ref_ptr<const SceneUtil::KeyframeHolder> KeyframeManager::get(const std::string &name, const std::string& skeletonName)
     {
         const std::string normalized = mVFS->normalizeFilename(name);
+
 
         osg::ref_ptr<osg::Object> obj = mCache->getRefFromObjectCache(normalized);
         if (obj)
@@ -147,7 +148,8 @@ namespace Resource
             osg::ref_ptr<SceneUtil::KeyframeHolder> loaded (new SceneUtil::KeyframeHolder);
             if (Misc::getFileExtension(normalized) == "kf")
             {
-                NifOsg::Loader::loadKf(Nif::NIFFilePtr(new Nif::NIFFile(mVFS->getNormalized(normalized), normalized)), *loaded.get());
+                Nif::NIFFilePtr skeletonNif = skeletonName.empty() ? nullptr : Nif::NIFFilePtr(new Nif::NIFFile(mVFS->getNormalized(mVFS->normalizeFilename(skeletonName)), mVFS->normalizeFilename(skeletonName)));
+                NifOsg::Loader::loadKf(Nif::NIFFilePtr(new Nif::NIFFile(mVFS->getNormalized(normalized), normalized)), *loaded.get(), skeletonNif);
             }
             else
             {

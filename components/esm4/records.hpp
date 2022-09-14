@@ -81,5 +81,9 @@
 #include <components/esm4/loadweap.hpp>
 #include <components/esm4/loadwrld.hpp>
 #include <components/esm4/loadwthr.hpp>
+#include <components/esm4/loadmesg.hpp>
+#include <components/esm4/loadvtyp.hpp>
+#include <components/esm4/loadgmst.hpp>
+#include <components/esm4/loadfact.hpp>
 
 #endif

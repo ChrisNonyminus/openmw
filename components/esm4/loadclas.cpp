@@ -58,6 +58,11 @@ void ESM4::Class::load(ESM4::Reader& reader)
             }
             case ESM4::SUB_DATA:
             {
+                if (subHdr.dataSize == sizeof(FO_Data))
+                {
+                    reader.get(mFOData);
+                    break;
+                }
                 //std::cout << "CLAS " << ESM::printName(subHdr.typeId) << " skipping..." << std::endl;
                 reader.skipSubRecordData();
                 break;

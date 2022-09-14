@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -39,6 +41,7 @@ namespace ESM4
 
     struct Weapon
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_WEAP4;
         struct Data
         {
             // type
@@ -87,6 +90,8 @@ namespace ESM4
         //void save(ESM4::Writer& writer) const;
 
         //void blank();
+
+        static std::string getRecordType() { return "Weapon (TES4)"; }
     };
 }
 

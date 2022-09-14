@@ -47,7 +47,7 @@ namespace MWWorld
         {
             if (mIsTes4)
             {
-                return false; // TODO
+                return true; // TODO
             }
             else
             {
@@ -121,8 +121,10 @@ namespace MWWorld
 
         // The faction that owns this object (and will get angry if
         // you take it and are not a faction member)
-        const std::string& getFaction() const { return mCellRef.mFaction; }
+        const std::string& getFaction() const;
+        ESM4::FormId getESM4Faction() const { return mRefr.mOwner; }
         void setFaction (const std::string& faction);
+        void setESM4Faction(ESM4::FormId faction) { mRefr.mOwner = faction; }
 
         // PC faction rank required to use the item. Sometimes is -1, which means "any rank".
         void setFactionRank(int factionRank);
@@ -162,6 +164,8 @@ namespace MWWorld
 
         // Has this CellRef changed since it was originally loaded?
         bool hasChanged() const { return mChanged; }
+
+        ESM4::Reference& getRefr() { return mRefr; }
 
     private:
         bool mChanged;

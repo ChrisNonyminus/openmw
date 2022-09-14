@@ -93,6 +93,11 @@ namespace MWScript
     class ScriptManager;
 }
 
+namespace FOScript
+{
+    class ScriptManager;
+}
+
 namespace MWMechanics
 {
     class MechanicsManager;
@@ -123,9 +128,13 @@ namespace OMW
             std::unique_ptr<MWWorld::World> mWorld;
             std::unique_ptr<MWSound::SoundManager> mSoundManager;
             std::unique_ptr<MWScript::ScriptManager> mScriptManager;
+            std::unique_ptr<FOScript::ScriptManager> mTES4ScriptManager;
             std::unique_ptr<MWGui::WindowManager> mWindowManager;
             std::unique_ptr<MWMechanics::MechanicsManager> mMechanicsManager;
+            std::map<std::string, std::unique_ptr<MWBase::MechanicsManager>> mOtherMechanicsManagers;
+            std::map<std::string, std::unique_ptr<MWBase::TopiclessJournal>> mTopiclessJournals;
             std::unique_ptr<MWDialogue::DialogueManager> mDialogueManager;
+            std::map<std::string, std::unique_ptr<MWBase::DialogueManager>> mOtherDialogueManagers;
             std::unique_ptr<MWDialogue::Journal> mJournal;
             std::unique_ptr<MWInput::InputManager> mInputManager;
             std::unique_ptr<MWState::StateManager> mStateManager;
@@ -163,7 +172,9 @@ namespace OMW
             unsigned int mRandomSeed;
 
             Compiler::Extensions mExtensions;
+            Compiler::Extensions mTES4Extensions;
             std::unique_ptr<Compiler::Context> mScriptContext;
+            std::unique_ptr<Compiler::Context> mTES4ScriptContext;
 
             Files::Collections mFileCollections;
             bool mFSStrict;

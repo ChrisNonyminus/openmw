@@ -5,6 +5,7 @@
 
 #include <components/debug/debuglog.hpp>
 #include <components/esm3/aisequence.hpp>
+#include <components/esm4/loadpack.hpp>
 
 #include "aipackage.hpp"
 #include "aistate.hpp"
@@ -18,6 +19,10 @@
 #include "aipursue.hpp"
 #include "actorutil.hpp"
 #include "../mwworld/class.hpp"
+#include "../mwworld/store.hpp"
+#include "../mwworld/esmstore.hpp"
+#include "../mwworld/worldimp.hpp"
+#include "../mwbase/environment.hpp"
 
 namespace MWMechanics
 {
@@ -33,6 +38,91 @@ void AiSequence::copy (const AiSequence& sequence)
 
     mNumCombatPackages = sequence.mNumCombatPackages;
     mNumPursuitPackages = sequence.mNumPursuitPackages;
+}
+
+void AiSequence::insertTes4(const ESM4::AIPackage& esmPackage)
+{
+    const auto& esmStore = MWBase::Environment::get().getWorld()->getStore();
+    std::unique_ptr<MWMechanics::AiPackage> package;
+    if (esmPackage.mSrcGame == ESM4::AIPackage::TES4)
+    {
+        if (esmPackage.mData.type == 5 /*wander*/)
+        {
+            std::vector<unsigned char> idles;
+            idles.reserve(8);
+            for (int i = 0; i < 8; ++i)
+                idles.push_back(100); // TODO: find actual chances
+            package = std::make_unique<MWMechanics::AiWander>(
+                esmPackage.mTarget.distance, esmPackage.mSchedule.duration, 0, idles,
+                true /*todo: get patrol flags, which contain whether or not the action is repeatable*/
+            );
+        }
+        else if (esmPackage.mData.type == 2)
+        {
+            // todo: escort
+            //auto& data = esmPackage.mTarget;
+            //auto& pos = MWBase::Environment::get().getWorld()->getPtr(esmStore.getFormName(esmPackage.mLocation.location), false).getBase()->mData.getPosition().pos; // todo: is this correct?
+            //package = std::make_unique<MWMechanics::AiEscort>(esmStore.getFormName(data.target), esmPackage.mSchedule.duration, pos[0], pos[1], pos[2], true);
+        }
+        // todo:
+        //else if (esmPackage.mType == ESM::AI_Travel)
+        //{
+        //    ESM::AITravel data = esmPackage.mTravel;
+        //    package = std::make_unique<MWMechanics::AiTravel>(data.mX, data.mY, data.mZ, data.mShouldRepeat != 0);
+        //}
+        //else if (esmPackage.mType == ESM::AI_Activate)
+        //{
+        //    ESM::AIActivate data = esmPackage.mActivate;
+        //    package = std::make_unique<MWMechanics::AiActivate>(data.mName.toStringView(), data.mShouldRepeat != 0);
+        //}
+        //else //if (esmPackage.mType == ESM::AI_Follow)
+        //{
+        //    ESM::AITarget data = esmPackage.mTarget;
+        //    package = std::make_unique<MWMechanics::AiFollow>(data.mId.toStringView(), data.mDuration, data.mX, data.mY, data.mZ, data.mShouldRepeat != 0);
+        //}
+    }
+    else if (esmPackage.mSrcGame == ESM4::AIPackage::FO)
+    {
+        if (esmPackage.mDataFO.type == 5 /*wander*/ || esmPackage.mDataFO.type == 13 /*patrol*/)
+        {
+            std::vector<unsigned char> idles;
+            idles.reserve(8);
+            for (int i = 0; i < 8; ++i)
+                idles.push_back(100); // TODO: find actual chances
+            package = std::make_unique<MWMechanics::AiWander>(
+                100, 1, 0, idles,
+                true /*todo: get patrol flags, which contain whether or not the action is repeatable*/
+            );
+        }
+        else if (esmPackage.mData.type == 2)
+        {
+            // todo: escort
+            //auto& data = esmPackage.mTarget;
+            //auto& pos = MWBase::Environment::get().getWorld()->getPtr(esmStore.getFormName(esmPackage.mLocation.location), false).getBase()->mData.getPosition().pos; // todo: is this correct?
+            //package = std::make_unique<MWMechanics::AiEscort>(esmStore.getFormName(data.target), esmPackage.mSchedule.duration, pos[0], pos[1], pos[2], true);
+        }
+        // todo:
+        //else if (esmPackage.mType == ESM::AI_Travel)
+        //{
+        //    ESM::AITravel data = esmPackage.mTravel;
+        //    package = std::make_unique<MWMechanics::AiTravel>(data.mX, data.mY, data.mZ, data.mShouldRepeat != 0);
+        //}
+        //else if (esmPackage.mType == ESM::AI_Activate)
+        //{
+        //    ESM::AIActivate data = esmPackage.mActivate;
+        //    package = std::make_unique<MWMechanics::AiActivate>(data.mName.toStringView(), data.mShouldRepeat != 0);
+        //}
+        //else //if (esmPackage.mType == ESM::AI_Follow)
+        //{
+        //    ESM::AITarget data = esmPackage.mTarget;
+        //    package = std::make_unique<MWMechanics::AiFollow>(data.mId.toStringView(), data.mDuration, data.mX, data.mY, data.mZ, data.mShouldRepeat != 0);
+        //}
+    }
+    if (package.get())
+    {
+        onPackageAdded(*package);
+        mPackages.push_back(std::move(package));
+    }
 }
 
 AiSequence::AiSequence() : mDone (false), mLastAiPackage(AiPackageTypeId::None) {}

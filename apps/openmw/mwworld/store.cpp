@@ -6,6 +6,8 @@
 #include <components/esm3/esmwriter.hpp>
 #include <components/esm/records.hpp>
 
+#include <components/esm4/records.hpp>
+
 #include <components/loadinglistener/loadinglistener.hpp>
 #include <components/misc/rng.hpp>
 
@@ -186,6 +188,18 @@ namespace MWWorld
     }
     template<typename T>
     const T* Store<T>::find(std::string_view id) const
+    {
+        const T *ptr = search(id);
+        if (ptr == nullptr)
+        {
+            std::stringstream msg;
+            msg << T::getRecordType() << " '" << id << "' not found";
+            throw std::runtime_error(msg.str());
+        }
+        return ptr;
+    }
+    template<typename T>
+    const T* Store<T>::find(ESM4::FormId id) const
     {
         const T *ptr = search(id);
         if (ptr == nullptr)
@@ -1688,3 +1702,23 @@ template class MWWorld::Store<ESM4::Light>;
 template class MWWorld::Store<ESM4::Sound>;
 template class MWWorld::Store<ESM4::World>;
 template class MWWorld::Store<ESM4::Land>;
+template class MWWorld::Store<ESM4::Creature>;
+template class MWWorld::Store<ESM4::LevelledCreature>;
+template class MWWorld::Store<ESM4::AIPackage>;
+template class MWWorld::Store<ESM4::Script>;
+template class MWWorld::Store<ESM4::Armor>;
+template class MWWorld::Store<ESM4::Weapon>;
+template class MWWorld::Store<ESM4::LevelledItem>;
+template class MWWorld::Store<ESM4::Ammunition>;
+template class MWWorld::Store<ESM4::Message>;
+template class MWWorld::Store<ESM4::Dialogue>;
+template class MWWorld::Store<ESM4::DialogInfo>;
+template class MWWorld::Store<ESM4::VoiceType>;
+template class MWWorld::Store<ESM4::Quest>;
+template class MWWorld::Store<ESM4::Npc>;
+template class MWWorld::Store<ESM4::NavMesh>;
+template class MWWorld::Store<ESM4::Navigation>;
+template class MWWorld::Store<ESM4::Faction>;
+template class MWWorld::Store<ESM4::GameSetting>;
+template class MWWorld::Store<ESM4::Class>;
+template class MWWorld::Store<ESM4::IdleAnimation>;

@@ -74,6 +74,14 @@
 
 #include "mwstate/statemanagerimp.hpp"
 
+#include "f3script/scriptmanagerimp.hpp"
+#include "f3script/interpretercontext.hpp"
+
+#include "f3dialogue/dialoguemanagerimp.hpp"
+#include "f3dialogue/fojournal.hpp"
+
+#include "f3mechanics/fomechanicsmanager.hpp"
+
 namespace
 {
     void checkSDLError(int ret)
@@ -293,9 +301,18 @@ void OMW::Engine::executeLocalScripts()
     std::pair<std::string, MWWorld::Ptr> script;
     while (localScripts.getNext(script))
     {
-        MWScript::InterpreterContext interpreterContext (
-            &script.second.getRefData().getLocals(), script.second);
-        mScriptManager->run (script.first, interpreterContext);
+        if (this->mWorld->getStore().get<ESM::Script>().search(script.first))
+        {
+            MWScript::InterpreterContext interpreterContext (
+                &script.second.getRefData().getLocals(), script.second);
+            mScriptManager->run (script.first, interpreterContext);
+        }
+        else
+        {
+            FOScript::InterpreterContext interpreterContext(
+                &script.second.getRefData().getFOLocals(), script.second);
+            mTES4ScriptManager->run(script.first, interpreterContext);
+        }
     }
 }
 
@@ -367,6 +384,7 @@ bool OMW::Engine::frame(float frametime)
 
                         // global scripts
                         mScriptManager->getGlobalScripts().run();
+                        mTES4ScriptManager->getFOGlobalScripts().run();
                     }
 
                     mWorld->markCellAsUnchanged();
@@ -388,6 +406,10 @@ bool OMW::Engine::frame(float frametime)
             if (mStateManager->getState() != MWBase::StateManager::State_NoGame)
             {
                 mMechanicsManager->update(frametime, guiActive);
+                for (auto& manager : mOtherMechanicsManagers)
+                {
+                    manager.second->update(frametime, guiActive);
+                }
             }
 
             if (mStateManager->getState() == MWBase::StateManager::State_Running)
@@ -494,6 +516,7 @@ OMW::Engine::~Engine()
     mDialogueManager = nullptr;
     mJournal = nullptr;
     mScriptManager = nullptr;
+    mTES4ScriptManager = nullptr;
     mWindowManager = nullptr;
     mWorld = nullptr;
     mStereoManager = nullptr;
@@ -855,9 +878,11 @@ void OMW::Engine::prepareEngine()
             mWindowManager->playVideo(logo, true);
     }
 
+    std::unique_ptr<ToUTF8::StatelessUtf8Encoder> statelessEncoder = std::make_unique<ToUTF8::StatelessUtf8Encoder>(mEncoding);
+
     // Create the world
     mWorld = std::make_unique<MWWorld::World>(mViewer, rootNode, mResourceSystem.get(), mWorkQueue.get(), *mUnrefQueue,
-        mFileCollections, mContentFiles, mGroundcoverFiles, mEncoder.get(), mActivationDistanceOverride, mCellName,
+        mFileCollections, mContentFiles, mGroundcoverFiles, mEncoder.get(), statelessEncoder.get(), mActivationDistanceOverride, mCellName,
         mStartupScript, mResDir.string(), mCfgMgr.getUserDataPath().string());
     mWorld->setupPlayer();
     mWorld->setRandomSeed(mRandomSeed);
@@ -873,30 +898,59 @@ void OMW::Engine::prepareEngine()
       mTranslationDataStorage.loadTranslationData(mFileCollections, mContentFiles[i]);
 
     Compiler::registerExtensions (mExtensions);
+    FOCompiler::registerExtensions(mTES4Extensions);
 
     // Create script system
     mScriptContext = std::make_unique<MWScript::CompilerContext>(MWScript::CompilerContext::Type_Full);
     mScriptContext->setExtensions (&mExtensions);
 
+    mTES4ScriptContext = std::make_unique<MWScript::CompilerContext>(MWScript::CompilerContext::Type_Full);
+    mTES4ScriptContext->setExtensions(&mTES4Extensions);
+
     mScriptManager = std::make_unique<MWScript::ScriptManager>(mWorld->getStore(), *mScriptContext, mWarningsMode,
         mScriptBlacklistUse ? mScriptBlacklist : std::vector<std::string>());
+    mTES4ScriptManager = std::make_unique<FOScript::ScriptManager>(mWorld->getStore(), *mTES4ScriptContext, mWarningsMode,
+        mScriptBlacklistUse ? mScriptBlacklist : std::vector<std::string>());
     mEnvironment.setScriptManager(*mScriptManager);
+    mEnvironment.setTes4ScriptManager(*mTES4ScriptManager);
 
     // Create game mechanics system
     mMechanicsManager = std::make_unique<MWMechanics::MechanicsManager>();
+    mOtherMechanicsManagers["FO3"] = std::make_unique<F3Mechanics::MechanicsManager>();
     mEnvironment.setMechanicsManager(*mMechanicsManager);
+    for (auto& manager : mOtherMechanicsManagers)
+    {
+        mEnvironment.setMechanicsManager(manager.first, *manager.second);
+    }
 
     // Create dialog system
     mJournal = std::make_unique<MWDialogue::Journal>();
     mEnvironment.setJournal(*mJournal);
 
+    mTopiclessJournals["FO3"] = std::make_unique<F3Dialogue::TopiclessJournal>();
+    for (auto& journal : mTopiclessJournals)
+    {
+        mEnvironment.setJournal(journal.first, *journal.second);
+    }
+
     mDialogueManager = std::make_unique<MWDialogue::DialogueManager>(mExtensions, mTranslationDataStorage);
+    mOtherDialogueManagers["FO3"] = std::make_unique<F3Dialogue::DialogueManager>(mTES4Extensions, mTranslationDataStorage);
     mEnvironment.setDialogueManager(*mDialogueManager);
+    for (auto& manager : mOtherDialogueManagers)
+    {
+        mEnvironment.setDialogueManager(manager.first, *manager.second);
+    }
 
     // scripts
     if (mCompileAll)
     {
         std::pair<int, int> result = mScriptManager->compileAll();
+        if (result.first)
+            Log(Debug::Info)
+                << "compiled " << result.second << " of " << result.first << " scripts ("
+                << 100*static_cast<double> (result.second)/result.first
+                << "%)";
+        result = mTES4ScriptManager->compileAll();
         if (result.first)
             Log(Debug::Info)
                 << "compiled " << result.second << " of " << result.first << " scripts ("

@@ -12,10 +12,14 @@
 #include <components/compiler/lineparser.hpp>
 #include <components/compiler/scanner.hpp>
 #include <components/compiler/locals.hpp>
+#include <components/focompiler/extensions0.hpp>
 #include <components/interpreter/interpreter.hpp>
 
 #include "../mwscript/extensions.hpp"
 #include "../mwscript/interpretercontext.hpp"
+
+#include "../f3script/extensions.hpp"
+#include "../f3script/interpretercontext.hpp"
 
 #include "../mwbase/environment.hpp"
 #include "../mwbase/scriptmanager.hpp"
@@ -30,13 +34,21 @@ namespace MWGui
 {
     class ConsoleInterpreterContext : public MWScript::InterpreterContext
     {
-            Console& mConsole;
+        Console& mConsole;
 
-        public:
+    public:
+        ConsoleInterpreterContext(Console& console, MWWorld::Ptr reference);
 
-            ConsoleInterpreterContext (Console& console, MWWorld::Ptr reference);
+        void report(const std::string& message) override;
+    };
+    class FOConsoleInterpreterContext : public FOScript::InterpreterContext
+    {
+        Console& mConsole;
 
-            void report (const std::string& message) override;
+    public:
+        FOConsoleInterpreterContext(Console& console, MWWorld::Ptr reference);
+
+        void report(const std::string& message) override;
     };
 
     ConsoleInterpreterContext::ConsoleInterpreterContext (Console& console,
@@ -161,6 +173,7 @@ namespace MWGui
 
         // compiler
         Compiler::registerExtensions (mExtensions, mConsoleOnlyScripts);
+        FOCompiler::registerExtensions(mExtensions, mConsoleOnlyScripts);
         mCompilerContext.setExtensions (&mExtensions);
     }
 
@@ -206,24 +219,58 @@ namespace MWGui
         {
             std::string_view script = mPtr.getClass().getScript(mPtr);
             if (!script.empty())
-                locals = MWBase::Environment::get().getScriptManager()->getLocals(script);
+            {
+                if (mPtr.getClass().hasFormId())
+                {
+                    locals = MWBase::Environment::get().getTes4ScriptManager()->getLocals(script);
+                }
+                else
+                {
+                    locals = MWBase::Environment::get().getScriptManager()->getLocals(script);
+                }
+            }
         }
         Compiler::Output output (locals);
 
-        if (compile (command + "\n", output))
+        try
         {
-            try
+            if (compile(command + "\n", output))
             {
-                ConsoleInterpreterContext interpreterContext (*this, mPtr);
+                ConsoleInterpreterContext interpreterContext(*this, mPtr);
                 Interpreter::Interpreter interpreter;
-                MWScript::installOpcodes (interpreter, mConsoleOnlyScripts);
+                MWScript::installOpcodes(interpreter, mConsoleOnlyScripts);
                 std::vector<Interpreter::Type_Code> code;
-                output.getCode (code);
-                interpreter.run (code.data(), code.size(), interpreterContext);
+                output.getCode(code);
+                interpreter.run(code.data(), code.size(), interpreterContext);
             }
-            catch (const std::exception& error)
+        }
+        catch (const std::exception& error) // might be a script from tes4
+        {
+            Log(Debug::Warning) << "Compiling the console command as a tes3 script failed with ('"
+                                << error.what() << "'). Assuming it's a tes4 script and trying again... (this is probably a bad idea)";
+            if (!mPtr.isEmpty())
             {
-                printError (std::string ("Error: ") + error.what());
+                std::string_view script = mPtr.getClass().getScript(mPtr);
+                if (!script.empty())
+                    locals = MWBase::Environment::get().getTes4ScriptManager()->getLocals(script);
+            }
+
+            Compiler::Output output2(locals);
+            if (compile(command + "\n", output))
+            {
+                try
+                {
+                    FOConsoleInterpreterContext interpreterContext(*this, mPtr);
+                    Interpreter::Interpreter interpreter;
+                    FOScript::installOpcodes (interpreter, mConsoleOnlyScripts);
+                    std::vector<Interpreter::Type_Code> code;
+                    output.getCode (code);
+                    interpreter.run (code.data(), code.size(), interpreterContext);
+                }
+                catch (const std::exception& error)
+                {
+                    printError (std::string ("Error: ") + error.what());
+                }
             }
         }
     }
@@ -543,5 +590,15 @@ namespace MWGui
     {
         ReferenceInterface::resetReference();
         setSelectedObject(MWWorld::Ptr());
+    }
+    FOConsoleInterpreterContext::FOConsoleInterpreterContext(Console& console, MWWorld::Ptr reference)
+        : FOScript::InterpreterContext(
+        reference.isEmpty() ? nullptr : &reference.getRefData().getFOLocals(), reference),
+      mConsole (console)
+    {
+    }
+    void FOConsoleInterpreterContext::report(const std::string& message)
+    {
+        mConsole.printOK(message);
     }
 }

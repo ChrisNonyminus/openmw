@@ -12,6 +12,8 @@
 #include "../mwdialogue/topic.hpp"
 #include "../mwdialogue/quest.hpp"
 
+#include "../f3dialogue/quest.hpp"
+
 namespace Loading
 {
     class Listener;
@@ -95,6 +97,28 @@ namespace MWBase
             virtual void write (ESM::ESMWriter& writer, Loading::Listener& progress) const = 0;
 
             virtual void readRecord (ESM::ESMReader& reader, uint32_t type) = 0;
+    };
+
+    /// \brief Interface for the post-morrowind versions of the journal (as they lack dialogue topics, which the above interface relies on)
+    class TopiclessJournal
+    {
+    public:
+        typedef std::map<ESM4::FormId, F3Dialogue::Quest> TQuestContainer;
+        typedef TQuestContainer::iterator TQuestIter;
+        typedef TQuestContainer::const_iterator TQuestConstIter;
+
+        virtual const F3Dialogue::Quest& getQuest(ESM4::FormId id) const = 0;
+
+        virtual const F3Dialogue::Quest& getQuest(const std::string& id) const = 0;
+
+        virtual TQuestIter begin() = 0;
+
+        virtual TQuestIter end() = 0;
+
+        virtual TQuestConstIter begin() const = 0;
+        virtual TQuestConstIter end() const = 0;
+
+        virtual std::vector<ESM4::FormId> revealObjectives(ESM4::FormId questId, const std::vector<uint32_t>& objectives) = 0;
     };
 }
 

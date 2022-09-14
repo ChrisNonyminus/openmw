@@ -220,9 +220,9 @@ namespace ESMTerrain
         const ESM4::Land* data = land ? land->getData(ESM::Land::DATA_VNML) : nullptr;
         if (data)
         {
-            normal.x() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3];
-            normal.y() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1];
-            normal.z() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2];
+            normal.x() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3] / 255.f;
+            normal.y() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1] / 255.f;
+            normal.z() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2] / 255.f;
             normal.normalize();
         }
         else
@@ -244,9 +244,9 @@ namespace ESMTerrain
 
         if (const auto* data = getTes4Land(formId, cache)->getData(0))
         {
-            colour[0] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3] / 255.f;
-            colour[1] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1] / 255.f;
-            colour[2] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2] / 255.f;
+            colour[0] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3];
+            colour[1] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1];
+            colour[2] = data->mVertColr[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2];
         }
         else
         {
@@ -521,9 +521,9 @@ namespace ESMTerrain
 
                             if (data)
                             {
-                                normal.x() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3];
-                                normal.y() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1];
-                                normal.z() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2];
+                                normal.x() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3] / 255.f;
+                                normal.y() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 1] / 255.f;
+                                normal.z() = data->mVertNorm[col * ESM4::Land::VERTS_PER_SIDE * 3 + row * 3 + 2] / 255.f;
 
                                 normal.normalize();
                             }

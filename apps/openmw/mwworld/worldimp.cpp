@@ -73,6 +73,8 @@
 #include "../mwphysics/object.hpp"
 #include "../mwphysics/constants.hpp"
 
+#include "../f3script/interpretercontext.hpp"
+
 #include "datetimemanager.hpp"
 #include "player.hpp"
 #include "manualref.hpp"
@@ -148,7 +150,7 @@ namespace MWWorld
         const Files::Collections& fileCollections,
         const std::vector<std::string>& contentFiles,
         const std::vector<std::string>& groundcoverFiles,
-        ToUTF8::Utf8Encoder* encoder, int activationDistanceOverride,
+        ToUTF8::Utf8Encoder* encoder, ToUTF8::StatelessUtf8Encoder* stateless, int activationDistanceOverride,
         const std::string& startCell, const std::string& startupScript,
         const std::string& resourcePath, const std::string& userDataPath)
     : mResourceSystem(resourceSystem), mLocalScripts(mStore),
@@ -166,7 +168,7 @@ namespace MWWorld
         Loading::Listener* listener = MWBase::Environment::get().getWindowManager()->getLoadingScreen();
         listener->loadingOn();
 
-        loadContentFiles(fileCollections, contentFiles, encoder, listener);
+        loadContentFiles(fileCollections, contentFiles, encoder, stateless, listener);
         loadGroundcoverFiles(fileCollections, groundcoverFiles, encoder, listener);
 
         listener->loadingOff();
@@ -1026,6 +1028,8 @@ namespace MWWorld
         mWorldScene->changeToExteriorCell(position, wrldid, adjustPlayerPos, changeEvent);
         addContainerScripts(getPlayerPtr(), getPlayerPtr().getCell());
         mRendering->getCamera()->instantTransition();
+        if (wrldid)
+            mRendering->onExteriorChanged();
     }
 
     void World::changeToCell (const ESM::CellId& cellId, const ESM::Position& position, bool adjustPlayerPos, bool changeEvent)
@@ -1247,8 +1251,10 @@ namespace MWWorld
                     MWBase::Environment::get().getSoundManager()->updatePtr (ptr, newPtr);
                     mPhysics->updatePtr(ptr, newPtr);
 
-                    MWBase::MechanicsManager *mechMgr = MWBase::Environment::get().getMechanicsManager();
+                    MWBase::MechanicsManager* mechMgr = MWBase::Environment::get().getMechanicsManager();
+                    MWBase::MechanicsManager* fo3mechMgr = MWBase::Environment::get().getMechanicsManager("FO3");
                     mechMgr->updateCell(ptr, newPtr);
+                    fo3mechMgr->updateCell(ptr, newPtr);
 
                     std::string_view script = ptr.getClass().getScript(ptr);
                     if (!script.empty())
@@ -1517,7 +1523,7 @@ namespace MWWorld
 
     void World::indexToPosition (int cellX, int cellY, float &x, float &y, bool centre) const
     {
-        const int cellSize = Constants::CellSizeInUnits;
+        const int cellSize = (this->mIsTes4 ? 4096 : Constants::CellSizeInUnits);
 
         x = static_cast<float>(cellSize * cellX);
         y = static_cast<float>(cellSize * cellY);
@@ -1736,12 +1742,27 @@ namespace MWWorld
         }
     }
 
-    const ESM::Potion *World::createRecord (const ESM::Potion& record)
+    const ESM4::Npc* World::createRecord(const ESM4::Npc& record)
     {
         return mStore.insert(record);
     }
 
-    const ESM::Class *World::createRecord (const ESM::Class& record)
+    const ESM::Potion* World::createRecord(const ESM::Potion& record)
+    {
+        return mStore.insert(record);
+    }
+
+    const ESM::Class* World::createRecord(const ESM::Class& record)
+    {
+        return mStore.insert(record);
+    }
+
+    const ESM4::Class* World::createRecord(const ESM4::Class& record)
+    {
+        return mStore.insert(record);
+    }
+
+    const ESM4::Script* World::createRecord(const ESM4::Script& record)
     {
         return mStore.insert(record);
     }
@@ -2925,6 +2946,8 @@ namespace MWWorld
 
         if (ext4)
         {
+            if (!mIsTes4)
+                mIsTes4 = true;
             int x = ext4->mX;
             int y = ext4->mY;
             indexToPosition(x, y, pos.pos[0], pos.pos[1], true);
@@ -2956,6 +2979,8 @@ namespace MWWorld
 
         if (ext)
         {
+            if (mIsTes4)
+                mIsTes4 = false;
             int x = ext->getGridX();
             int y = ext->getGridY();
             indexToPosition(x, y, pos.pos[0], pos.pos[1], true);
@@ -3018,10 +3043,11 @@ namespace MWWorld
     }
 
     void World::loadContentFiles(const Files::Collections& fileCollections, const std::vector<std::string>& content,
-        ToUTF8::Utf8Encoder* encoder, Loading::Listener* listener)
+        ToUTF8::Utf8Encoder* encoder, ToUTF8::StatelessUtf8Encoder* stateless, Loading::Listener* listener)
     {
         GameContentLoader gameContentLoader;
-        EsmLoader esmLoader(mStore, mReaders, encoder, mESMVersions);
+
+        EsmLoader esmLoader(mStore, mReaders, encoder, stateless, mESMVersions);
 
         gameContentLoader.addLoader(".esm", esmLoader);
         gameContentLoader.addLoader(".esp", esmLoader);
@@ -3940,10 +3966,24 @@ namespace MWWorld
 
     void World::activate(const Ptr &object, const Ptr &actor)
     {
-        breakInvisibility(actor);
+        if (actor == MWBase::Environment::get().getWorld()->getPlayerPtr())
+            breakInvisibility(actor);
 
         if (object.getRefData().activate())
         {
+            std::string_view script = object.getClass().getScript(object);
+
+            if (object.getClass().hasFormId())
+            {
+                // execute an "onactivate" function for a tes4 object
+                if (!script.empty())
+                {
+                    FOScript::InterpreterContext interpreterContext(&object.getRefData().getFOLocals(), object);
+                    MWBase::Environment::get().getTes4ScriptManager()->run(script, interpreterContext, "onactivate");
+                      
+                }
+            }
+
             MWBase::Environment::get().getLuaManager()->objectActivated(object, actor);
             std::unique_ptr<MWWorld::Action> action = object.getClass().activate(object, actor);
             action->execute (actor);
@@ -4134,5 +4174,53 @@ namespace MWWorld
     MWWorld::CellStore* World::getWorldspaceDummyCell(uint32_t wrldId)
     {
         return mCells.getDummy(wrldId);
+    }
+    bool World::isTes4()
+    {
+        return mIsTes4;
+    }
+    MWWorld::Ptr World::searchPtrViaFormId(uint32_t formId)
+    {
+        if (formId == 0x00000014) // the formId for the refr to the player is always 0x14
+            return getPlayerPtr();
+        return mWorldScene->searchPtrViaFormId(formId);
+    }
+    MWWorld::Ptr World::searchPtrViaEditorId(const std::string& editorId, bool activeOnly)
+    {
+        if (editorId == "player" || editorId == "playerptr") // the formId for the refr to the player is always 0x14
+            return getPlayerPtr();
+        return mWorldScene->searchPtrViaEditorId(editorId);
+    }
+    void World::updateDummyCell()
+    {
+        struct RefUpdateVisitor
+        {
+            bool operator()(const Ptr& ptr)
+            {
+                osg::Vec2i idx = positionToCellIndex(ptr.getRefData().getPosition().pos[0], ptr.getRefData().getPosition().pos[1]);
+                CellStore* cell = MWBase::Environment::get().getWorld()->getExterior(idx.x(), idx.y(), MWBase::Environment::get().getWorld()->getPlayerPtr().getCell()->getCell4()->mParent);
+                if (!MWBase::Environment::get().getWorld()->isCellActive(cell))
+                {
+                    MWBase::Environment::get().getWorld()->disable(ptr);
+                }
+                else
+                {
+                    MWBase::Environment::get().getWorld()->enable(ptr);
+                }
+                return true;
+            }
+        };
+        CellStore* dummyCell = getWorldspaceDummyCell(getPlayerPtr().getCell()->getCell4()->mParent);
+        RefUpdateVisitor visitor;
+        dummyCell->forEach(visitor);
+        
+    }
+    void World::addObjectToScene(const MWWorld::Ptr& ptr)
+    {
+        mWorldScene->addObjectToScene(ptr);
+    }
+    void World::removeObjectFromScene(const MWWorld::Ptr& ptr)
+    {
+        mWorldScene->removeObjectFromScene(ptr);
     }
 }

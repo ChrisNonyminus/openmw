@@ -145,6 +145,9 @@ namespace MWBase
 
             virtual bool isCellActive(MWWorld::CellStore* cell) const = 0;
 
+            virtual void addObjectToScene(const MWWorld::Ptr& ptr) = 0;
+            virtual void removeObjectFromScene(const MWWorld::Ptr& ptr) = 0;
+
             virtual void testExteriorCells() = 0;
             virtual void testInteriorCells() = 0;
 
@@ -213,6 +216,9 @@ namespace MWBase
             /// \param activeOnly do non search inactive cells.
 
             virtual MWWorld::Ptr searchPtrViaActorId (int actorId) = 0;
+            ///< Search is limited to the active cells.
+
+            virtual MWWorld::Ptr searchPtrViaFormId (uint32_t formId) = 0;
             ///< Search is limited to the active cells.
 
             virtual MWWorld::Ptr searchPtrViaRefNum (const std::string& id, const ESM::RefNum& refNum) = 0;
@@ -356,6 +362,12 @@ namespace MWBase
             virtual bool toggleRenderMode (MWRender::RenderMode mode) = 0;
             ///< Toggle a render mode.
             ///< \return Resulting mode
+            
+            virtual const ESM4::Npc* createRecord(const ESM4::Npc& record) = 0;
+
+            virtual const ESM4::Class* createRecord(const ESM4::Class& record) = 0;
+
+            virtual const ESM4::Script* createRecord(const ESM4::Script& record) = 0;
 
             virtual const ESM::Potion *createRecord (const ESM::Potion& record) = 0;
             ///< Create a new record (of type potion) in the ESM store.
@@ -677,6 +689,12 @@ namespace MWBase
             virtual MWRender::PostProcessor* getPostProcessor() = 0;
 
             virtual void setActorActive(const MWWorld::Ptr& ptr, bool value) = 0;
+
+            virtual bool isTes4() = 0;
+
+            virtual MWWorld::Ptr searchPtrViaEditorId (const std::string& editorId, bool activeOnly) = 0;
+
+            virtual void updateDummyCell() = 0;
     };
 }
 

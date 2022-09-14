@@ -911,12 +911,24 @@ namespace MWGui
 
         if (cell->isExterior())
         {
-            if (!cell->getCell()->mName.empty())
-                mMap->addVisitedLocation (name, cell->getCell()->getGridX (), cell->getCell()->getGridY ());
+            if (cell->isTes4())
+            {
+                if (!cell->getCell4()->mFullName.empty())
+                    mMap->addVisitedLocation(name, cell->getCell4()->mX, cell->getCell4()->mY);
 
-            mMap->cellExplored (cell->getCell()->getGridX(), cell->getCell()->getGridY());
+                mMap->cellExplored(cell->getCell4()->mX, cell->getCell4()->mY);
 
-            setActiveMap(cell->getCell()->getGridX(), cell->getCell()->getGridY(), false);
+                setActiveMap(cell->getCell4()->mX, cell->getCell4()->mY, false);
+            }
+            else
+            {
+                if (!cell->getCell()->mName.empty())
+                    mMap->addVisitedLocation(name, cell->getCell()->getGridX(), cell->getCell()->getGridY());
+
+                mMap->cellExplored(cell->getCell()->getGridX(), cell->getCell()->getGridY());
+
+                setActiveMap(cell->getCell()->getGridX(), cell->getCell()->getGridY(), false);
+            }
         }
         else
         {
@@ -1414,6 +1426,11 @@ namespace MWGui
     MWGui::ConfirmationDialog* WindowManager::getConfirmationDialog() { return mConfirmationDialog; }
     MWGui::TradeWindow* WindowManager::getTradeWindow() { return mTradeWindow; }
     MWGui::PostProcessorHud* WindowManager::getPostProcessorHud() { return mPostProcessorHud; }
+
+    MWGui::MapWindow* WindowManager::getMapWindow()
+    {
+        return mMap;
+    }
 
     void WindowManager::useItem(const MWWorld::Ptr &item, bool bypassBeastRestrictions)
     {

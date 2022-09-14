@@ -294,8 +294,17 @@ namespace Nif
         Controller::read(nif);
         mCumulative = nif->getBoolean();
         unsigned int numSequences = nif->getUInt();
-        nif->skip(4 * numSequences); // Controller sequences
+        mSequences.resize(numSequences);
+        for (auto& seq : mSequences)
+            seq.read(nif);
         nif->skip(4); // Object palette
+    }
+
+    void NiControllerManager::post(NIFFile* nif)
+    {
+        Controller::post(nif);
+        for (auto& seq : mSequences)
+            seq.post(nif);
     }
 
     void NiPoint3Interpolator::read(NIFStream *nif)
@@ -362,6 +371,220 @@ namespace Nif
     void NiColorInterpolator::post(NIFFile *nif)
     {
         data.post(nif);
+    }
+
+    void NiBoneLODController::read(NIFStream* nif)
+    {
+        Controller::read(nif);
+        mLOD = nif->getUInt();
+        unsigned int numLods = nif->getUInt();
+        unsigned int numnodegroups = nif->getUInt(); // num nodegrpups
+        mNodeGroups.resize(numLods);
+        for (size_t i = 0; i < numLods; i++)
+        {
+            mNodeGroups[i].mNodes.resize(nif->getUInt());
+            for (size_t j = 0; j < mNodeGroups[i].mNodes.size(); j++)
+            {
+                mNodeGroups[i].mNodes[j].read(nif);
+            }
+        }
+    }
+
+    void NiBoneLODController::post(NIFFile* nif)
+    {
+        Controller::post(nif);
+        for (size_t i = 0; i < mNodeGroups.size(); i++)
+        {
+            for (size_t j = 0; j < mNodeGroups[i].mNodes.size(); j++)
+            {
+                mNodeGroups[i].mNodes[j].post(nif);
+            }
+        }
+    }
+
+    void NiSequence::ControlledBlock::read(NIFStream* nif)
+    {
+        if (nif->getVersion() <= nif->generateVersion(10, 1, 0, 0))
+        {
+            mTargetName = nif->getSizedString();
+            mController.read(nif);
+        }
+
+        if (nif->getVersion() >= nif->generateVersion(10, 1, 0, 106))
+        {
+            mInterpolator.read(nif);
+            mController2.read(nif);
+            if (nif->getVersion() == nif->generateVersion(10, 1, 0, 106))
+            {
+                nif->skip(4);
+                nif->skip(2);
+            }
+            mPriority = nif->getChar();
+        }
+
+        if (nif->getVersion() == nif->generateVersion(10, 1, 0, 106) || nif->getVersion() >= NIFStream::generateVersion(20, 1, 0, 1))
+        {
+            mNodeName = nif->getString();
+            mPropertyType = nif->getString();
+            mControllerType = nif->getString();
+            mVariable1 = nif->getString();
+            mVariable2 = nif->getString();
+        }
+        else if (nif->getVersion() == 0x0a020000 && nif->getVersion() <= 0x14000005)
+        {
+            mStringPalette.read(nif);
+            mNodeNameIndex = nif->getUInt();
+            mPropertyTypeIndex = nif->getUInt();
+            mControllerTypeIndex = nif->getUInt();
+            mVariable1Index = nif->getUInt();
+            mVariable2Index = nif->getUInt();
+        }
+    }
+    void NiSequence::ControlledBlock::post(NIFFile* nif)
+    {
+        if (nif->getVersion() <= Nif::NIFStream::generateVersion(10, 1, 0, 0))
+        {
+            mController.post(nif);
+        }
+
+        if (nif->getVersion() >= Nif::NIFStream::generateVersion(10, 1, 0, 106))
+        {
+            mInterpolator.post(nif);
+            mController2.post(nif);
+        }
+        if (nif->getVersion() == 0x0a020000 && nif->getVersion() <= 0x14000005)
+        {
+            mStringPalette.post(nif);
+            mPropertyType = mStringPalette->palette[mPropertyTypeIndex];
+            mControllerType = mStringPalette->palette[mControllerTypeIndex];
+            mVariable1 = mStringPalette->palette[mVariable1Index];
+            mVariable2 = mStringPalette->palette[mVariable2Index];
+        }
+    }
+    void NiSequence::read(NIFStream* nif)
+    {
+        mName = nif->getString();
+
+        // probably unused, skip instead?
+        if (nif->getVersion() <= 0x0a010000) // up to 10.1.0.0
+        {
+            mTextKeys.read(nif);
+        }
+
+        uint32_t numControlledBlocks = nif->getUInt();
+        mControlledBlocks.resize(numControlledBlocks);
+        if (nif->getVersion() >= nif->generateVersion(10, 1, 0, 106))
+            mArrayGrowBy = nif->getUInt();
+        for (size_t i = 0; i < mControlledBlocks.size(); i++)
+        {
+            mControlledBlocks[i].read(nif);
+        }
+    }
+    void NiSequence::post(NIFFile* nif)
+    {
+
+        for (size_t i = 0; i < mControlledBlocks.size(); i++)
+        {
+            mControlledBlocks[i].post(nif);
+        }
+    }
+
+    void NiControllerSequence::read(NIFStream* nif)
+    {
+        NiSequence::read(nif);
+        mWeight = nif->getFloat();
+        mTextKeys2.read(nif);
+        mCycleType = nif->getUInt();
+
+        if (nif->getVersion() == 0x0a01006a)
+            mUnknown0 = nif->getChar();
+
+        mFrequency = nif->getFloat();
+        mStartTime = nif->getFloat();
+
+        if (nif->getVersion() >= 0x0a020000 && nif->getVersion() <= 0x0a040001)
+            mUnknownFloat2 = nif->getFloat();
+
+        mStopTime = nif->getFloat();
+
+        if (nif->getVersion() == 0x0a01006a)
+            mUnknownByte = nif->getChar();
+
+        int rIndex = -1;
+        mManager.read(nif);
+
+        mTargetName = nif->getString();
+
+        if (nif->getVersion() >= 0x0a020000 && nif->getVersion() <= 0x14000005)
+            mStringPalette.read(nif);
+
+        if (nif->getVersion() >= 0x14020007 && nif->getUserVersion() >= 11 && (nif->getBethVersion() >= 24 && nif->getBethVersion() <= 28))
+            nif->skip(4); // animnotes ptr
+
+        if (nif->getVersion() >= 0x14020007 && nif->getBethVersion() > 28)
+            nif->skip(2); // unknonwn
+    }
+    void NiControllerSequence::post(NIFFile* nif)
+    {
+        NiSequence::post(nif);
+        mTextKeys2.post(nif);
+        mManager.post(nif);
+
+        if (nif->getVersion() >= 0x0a020000 && nif->getVersion() <= 0x14000005)
+            mStringPalette.post(nif);
+    }
+
+    void NiBSplineData::read(NIFStream* nif)
+    {
+        mFloats.resize(nif->getUInt());
+        for (auto& flt : mFloats)
+        {
+            flt = nif->getFloat();
+        }
+        mCompacts.resize(nif->getUInt());
+        for (auto& c : mCompacts)
+        {
+            c = nif->getUShort();
+        }
+    }
+
+    void NiBSplineBasisData::read(NIFStream* nif)
+    {
+        mNumControlPoints = nif->getUInt();
+    }
+
+    void NiBSplineInterpolator::read(NIFStream* nif)
+    {
+        mStartTime = nif->getFloat();
+        mStopTime = nif->getFloat();
+        mSplineData.read(nif);
+        mBasisData.read(nif);
+    }
+    void NiBSplineInterpolator::post(NIFFile* nif)
+    {
+        mSplineData.post(nif);
+        mBasisData.post(nif);
+    }
+
+    void NiBSplineTransformInterpolator::read(NIFStream* nif)
+    {
+        NiBSplineInterpolator::read(nif);
+        mTranslation = nif->getVector3();
+        mRotation = nif->getQuaternion();
+        mScale = nif->getFloat();
+        mTranslationHandle = nif->getUInt();
+        mRotationHandle = nif->getUInt();
+        mScaleHandle = nif->getUInt();
+    }
+    void NiBSplineCompTransformInterpolator::read(NIFStream* nif)
+    {
+        NiBSplineTransformInterpolator::read(nif);
+        mTranslationOffset = nif->getFloat();
+        mTranslationHalfRange = nif->getFloat();
+        mRotationOffset = nif->getFloat();
+        mRotationHalfRange = nif->getFloat();
+        mScaleOffset = nif->getFloat();
+        mScaleHalfRange = nif->getFloat();
     }
 
 }

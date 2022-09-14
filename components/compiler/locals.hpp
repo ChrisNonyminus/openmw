@@ -15,6 +15,7 @@ namespace Compiler
             std::vector<std::string> mShorts;
             std::vector<std::string> mLongs;
             std::vector<std::string> mFloats;
+            std::vector<std::string> mRefs;
 
             std::vector<std::string>& get (char type);
 

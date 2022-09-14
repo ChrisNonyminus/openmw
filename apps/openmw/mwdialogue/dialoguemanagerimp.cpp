@@ -761,4 +761,7 @@ namespace MWDialogue
                         Misc::StringUtils::lowerCase(mLastTopic), actor.getClass().getName(actor));
         }
     }
+    void DialogueManager::sayTo(const MWWorld::Ptr& actor, const MWWorld::Ptr& target, const std::string& topic)
+    {
+    }
 }

@@ -42,6 +42,7 @@
 #include <components/sceneutil/depth.hpp>
 #include <components/sceneutil/riggeometryosgaextension.hpp>
 #include <components/sceneutil/extradata.hpp>
+#include <components/sceneutil/skeleton.hpp>
 
 #include <components/shader/shadervisitor.hpp>
 #include <components/shader/shadermanager.hpp>
@@ -620,11 +621,11 @@ namespace Resource
         }
     }
 
-    osg::ref_ptr<osg::Node> load (const std::string& normalizedFilename, const VFS::Manager* vfs, Resource::ImageManager* imageManager, Resource::NifFileManager* nifFileManager)
+    osg::ref_ptr<osg::Node> load (const std::string& normalizedFilename, const VFS::Manager* vfs, Resource::ImageManager* imageManager, Resource::NifFileManager* nifFileManager, osg::ref_ptr<SceneUtil::Skeleton> existingSkeleton)
     {
         auto ext = Misc::getFileExtension(normalizedFilename);
         if (ext == "nif")
-            return NifOsg::Loader::load(nifFileManager->get(normalizedFilename), imageManager);
+            return NifOsg::Loader::load(nifFileManager->get(normalizedFilename), imageManager, existingSkeleton);
         else
             return loadNonNif(normalizedFilename, *vfs->get(normalizedFilename), imageManager);
     }
@@ -730,7 +731,7 @@ namespace Resource
         mSharedStateMutex.unlock();
     }
 
-    osg::ref_ptr<const osg::Node> SceneManager::getTemplate(const std::string &name, bool compile)
+    osg::ref_ptr<const osg::Node> SceneManager::getTemplate(const std::string& name, bool compile, osg::ref_ptr<SceneUtil::Skeleton> existingSkeleton)
     {
         std::string normalized = mVFS->normalizeFilename(name);
 
@@ -742,7 +743,7 @@ namespace Resource
             osg::ref_ptr<osg::Node> loaded;
             try
             {
-                loaded = load(normalized, mVFS, mImageManager, mNifFileManager);
+                loaded = load(normalized, mVFS, mImageManager, mNifFileManager, existingSkeleton);
 
                 SceneUtil::ProcessExtraDataVisitor extraDataVisitor(this);
                 loaded->accept(extraDataVisitor);
@@ -756,7 +757,7 @@ namespace Resource
                     {
                         normalized = "meshes/marker_error." + std::string(sMeshTypes[i]);
                         if (mVFS->exists(normalized))
-                            return load(normalized, mVFS, mImageManager, mNifFileManager);
+                            return load(normalized, mVFS, mImageManager, mNifFileManager, nullptr);
                     }
                     Files::IMemStream file(Misc::errorMarker.data(), Misc::errorMarker.size());
                     return loadNonNif("error_marker.osgt", file, mImageManager);

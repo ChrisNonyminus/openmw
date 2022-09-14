@@ -19,6 +19,8 @@
 
 #include "../mwmechanics/npcstats.hpp"
 
+#include "../f3mechanics/stats.hpp"
+
 namespace MWWorld
 {
     std::map<unsigned, Class*>& Class::getClasses()
@@ -63,6 +65,11 @@ namespace MWWorld
     MWMechanics::CreatureStats& Class::getCreatureStats (const Ptr& ptr) const
     {
         throw std::runtime_error ("class does not have creature stats");
+    }
+
+    F3Mechanics::Stats& Class::getFOStats (const Ptr& ptr) const
+    {
+        throw std::runtime_error ("class does not have fallout stats");
     }
 
     MWMechanics::NpcStats& Class::getNpcStats (const Ptr& ptr) const
@@ -289,7 +296,12 @@ namespace MWWorld
         return (ptr.getCellRef().getRefId() != "werewolfrobe");
     }
 
-    bool Class::hasToolTip (const ConstPtr& ptr) const
+    ESM4::FormId Class::getFormId(const MWWorld::Ptr& ptr) const
+    {
+        throw std::runtime_error("Class does not have form id.");
+    }
+
+    bool Class::hasToolTip(const ConstPtr& ptr) const
     {
         return true;
     }
@@ -328,6 +340,11 @@ namespace MWWorld
     std::pair<int, std::string_view> Class::canBeEquipped(const MWWorld::ConstPtr& ptr, const MWWorld::Ptr& npc) const
     {
         return {1, {}};
+    }
+
+    std::string_view Class::getId(const Ptr& ptr) const
+    {
+        throw std::exception("class does not have an available editor id");
     }
 
     void Class::adjustPosition(const MWWorld::Ptr& ptr, bool force) const

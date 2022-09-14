@@ -179,16 +179,33 @@ void LocalMap::requestMap(const MWWorld::CellStore* cell)
 {
     if (cell->isExterior())
     {
-        int cellX = cell->getCell()->getGridX();
-        int cellY = cell->getCell()->getGridY();
+        if (cell->isTes4())
+        {
+            int cellX = cell->getCell4()->mX;
+            int cellY = cell->getCell4()->mY;
 
-        MapSegment& segment = mExteriorSegments[std::make_pair(cellX, cellY)];
-        if (!segment.needUpdate)
-            return;
+            MapSegment& segment = mExteriorSegments[std::make_pair(cellX, cellY)];
+            if (!segment.needUpdate)
+                return;
+            else
+            {
+                requestExteriorMap(cell);
+                segment.needUpdate = false;
+            }
+        }
         else
         {
-            requestExteriorMap(cell);
-            segment.needUpdate = false;
+            int cellX = cell->getCell()->getGridX();
+            int cellY = cell->getCell()->getGridY();
+
+            MapSegment& segment = mExteriorSegments[std::make_pair(cellX, cellY)];
+            if (!segment.needUpdate)
+                return;
+            else
+            {
+                requestExteriorMap(cell);
+                segment.needUpdate = false;
+            }
         }
     }
     else
@@ -261,26 +278,53 @@ void LocalMap::cleanupCameras()
 
 void LocalMap::requestExteriorMap(const MWWorld::CellStore* cell)
 {
-    mInterior = false;
-
-    int x = cell->getCell()->getGridX();
-    int y = cell->getCell()->getGridY();
-
-    osg::BoundingSphere bound = mSceneRoot->getBound();
-    float zmin = bound.center().z() - bound.radius();
-    float zmax = bound.center().z() + bound.radius();
-
-    setupRenderToTexture(cell->getCell()->getGridX(), cell->getCell()->getGridY(), 
-        x * mMapWorldSize + mMapWorldSize / 2.f, y * mMapWorldSize + mMapWorldSize / 2.f,
-        osg::Vec3d(0, 1, 0), zmin, zmax);
-
-    MapSegment& segment = mExteriorSegments[std::make_pair(cell->getCell()->getGridX(), cell->getCell()->getGridY())];
-    if (!segment.mFogOfWarImage)
+    if (cell->isTes4())
     {
-        if (cell->getFog())
-            segment.loadFogOfWar(cell->getFog()->mFogTextures.back());
-        else
-            segment.initFogOfWar();
+        mInterior = false;
+
+        int x = cell->getCell4()->mX;
+        int y = cell->getCell4()->mY;
+
+        osg::BoundingSphere bound = mSceneRoot->getBound();
+        float zmin = bound.center().z() - bound.radius();
+        float zmax = bound.center().z() + bound.radius();
+
+        setupRenderToTexture(x, y,
+            x * mMapWorldSize + mMapWorldSize / 2.f, y * mMapWorldSize + mMapWorldSize / 2.f,
+            osg::Vec3d(0, 1, 0), zmin, zmax);
+
+        MapSegment& segment = mExteriorSegments[std::make_pair(x, y)];
+        if (!segment.mFogOfWarImage)
+        {
+            if (cell->getFog())
+                segment.loadFogOfWar(cell->getFog()->mFogTextures.back());
+            else
+                segment.initFogOfWar();
+        }
+    }
+    else
+    {
+        mInterior = false;
+
+        int x = cell->getCell()->getGridX();
+        int y = cell->getCell()->getGridY();
+
+        osg::BoundingSphere bound = mSceneRoot->getBound();
+        float zmin = bound.center().z() - bound.radius();
+        float zmax = bound.center().z() + bound.radius();
+
+        setupRenderToTexture(cell->getCell()->getGridX(), cell->getCell()->getGridY(),
+            x * mMapWorldSize + mMapWorldSize / 2.f, y * mMapWorldSize + mMapWorldSize / 2.f,
+            osg::Vec3d(0, 1, 0), zmin, zmax);
+
+        MapSegment& segment = mExteriorSegments[std::make_pair(cell->getCell()->getGridX(), cell->getCell()->getGridY())];
+        if (!segment.mFogOfWarImage)
+        {
+            if (cell->getFog())
+                segment.loadFogOfWar(cell->getFog()->mFogTextures.back());
+            else
+                segment.initFogOfWar();
+        }
     }
 }
 

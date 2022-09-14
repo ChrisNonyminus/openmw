@@ -10,6 +10,14 @@ namespace MWMechanics
 
     /// \brief Container for AI package status.
     using AiState = DerivedClassStorage<AiTemporaryBase>;
+
+    enum class Game
+    {
+        MORROWIND,
+        OBLIVION,
+        FO3,
+        FONV,
+    };
 }
 
 #endif

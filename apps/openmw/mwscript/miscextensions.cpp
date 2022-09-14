@@ -1404,8 +1404,9 @@ namespace MWScript
                 {
                     MWWorld::CellStore* cell = ptr.getCell();
                     msg << "Cell: " << MWBase::Environment::get().getWorld()->getCellName(cell) << std::endl;
-                    if (cell->getCell()->isExterior())
-                        msg << "Grid: " << cell->getCell()->getGridX() << " " << cell->getCell()->getGridY() << std::endl;
+                    if (cell->isExterior())
+                        msg << "Grid: " << (cell->isTes4() ? cell->getCell4()->mX : cell->getCell()->getGridX()) << " " << (cell->isTes4() ? cell->getCell4()->mY
+                                                                                                                                        : cell->getCell()->getGridY()) << std::endl;
                     osg::Vec3f pos (ptr.getRefData().getPosition().asVec3());
                     msg << "Coordinates: " << pos.x() << " " << pos.y() << " " << pos.z() << std::endl;
                     auto vfs = MWBase::Environment::get().getResourceSystem()->getVFS();

@@ -4,6 +4,7 @@
 #include <components/nif/niffile.hpp>
 #include <components/sceneutil/keyframe.hpp>
 #include <components/sceneutil/textkeymap.hpp>
+#include <components/sceneutil/skeleton.hpp>
 
 #include <osg/ref_ptr>
 #include <osg/Referenced>
@@ -27,10 +28,10 @@ namespace NifOsg
     {
     public:
         /// Create a scene graph for the given NIF. Auto-detects when skinning is used and wraps the graph in a Skeleton if so.
-        static osg::ref_ptr<osg::Node> load(Nif::NIFFilePtr file, Resource::ImageManager* imageManager);
+        static osg::ref_ptr<osg::Node> load(Nif::NIFFilePtr file, Resource::ImageManager* imageManager, osg::ref_ptr<SceneUtil::Skeleton> existingSkel = nullptr);
 
         /// Load keyframe controllers from the given kf file.
-        static void loadKf(Nif::NIFFilePtr kf, SceneUtil::KeyframeHolder& target);
+        static void loadKf(Nif::NIFFilePtr kf, SceneUtil::KeyframeHolder& target, Nif::NIFFilePtr skeletonNif = nullptr);
 
         /// Set whether or not nodes marked as "MRK" should be shown.
         /// These should be hidden ingame, but visible in the editor.

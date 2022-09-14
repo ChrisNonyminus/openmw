@@ -39,9 +39,23 @@ void ESM4::Quest::load(ESM4::Reader& reader)
     reader.adjustFormId(mFormId);
     mFlags  = reader.hdr().record.flags;
 
+    QuestStage stage;
+    QuestStage::LogEntry entry;
+    ScriptLocalVariableData localVar;
+
+    QuestObjective objective;
+    QuestObjective::Target objTarget;
+
+    bool readingStage = false;
+    bool readingObjective = false;
+    bool readingEntry = false;
+    bool readingTarget = false;
+
     while (reader.getSubRecordHeader())
     {
         const ESM4::SubRecordHeader& subHdr = reader.subRecordHeader();
+
+
         switch (subHdr.typeId)
         {
             case ESM4::SUB_EDID: reader.getZString(mEditorId);  break;
@@ -65,6 +79,20 @@ void ESM4::Quest::load(ESM4::Reader& reader)
             case ESM4::SUB_SCRI: reader.get(mQuestScript); break;
             case ESM4::SUB_CTDA: // FIXME: how to detect if 1st/2nd param is a formid?
             {
+                if (readingEntry)
+                {
+                    TargetCondition cond;
+                    reader.get(cond);
+                    entry.mConditions.push_back(std::move(cond));
+                    break;
+                }
+                if (readingTarget)
+                {
+                    TargetCondition cond;
+                    reader.get(cond);
+                    objTarget.mConditions.push_back(std::move(cond));
+                    break;
+                }
                 if (subHdr.dataSize == 24) // TES4
                 {
                     TargetCondition cond;
@@ -89,17 +117,137 @@ void ESM4::Quest::load(ESM4::Reader& reader)
 
                 break;
             }
-            case ESM4::SUB_SCHR: reader.get(mScript.scriptHeader); break;
+            case ESM4::SUB_SCHR:
+            {
+                if (readingEntry)
+                {
+                    reader.get(entry.mEmbeddedScript.scriptHeader);
+                    break;
+                }
+                reader.get(mScript.scriptHeader);
+                break;
+            }
             case ESM4::SUB_SCDA: reader.skipSubRecordData(); break; // compiled script data
-            case ESM4::SUB_SCTX: reader.getString(mScript.scriptSource); break;
-            case ESM4::SUB_SCRO: reader.getFormId(mScript.globReference); break;
+            case ESM4::SUB_SCTX:
+            {
+                if (readingEntry)
+                {
+                    reader.getString(entry.mEmbeddedScript.scriptSource);
+                    break;
+                }
+                reader.getString(mScript.scriptSource);
+                break;
+            }
+            case ESM4::SUB_SCRO:
+            {
+                if (readingEntry)
+                {
+                    uint32_t ref;
+                    reader.get(ref);
+                    // todo: adjust?
+                    entry.mEmbeddedScript.localRefVarIndex.push_back(ref);
+                    break;
+                }
+                reader.getFormId(mScript.globReference);
+                break;
+            }
             case ESM4::SUB_INDX:
+            {
+                if (readingStage)
+                {
+                    mStages.push_back(stage);
+                    readingStage = false;
+                    stage.clear();
+                }
+                reader.get(stage.mIndex);
+                readingStage = true;
+                break;
+            }
             case ESM4::SUB_QSDT:
+            {
+                if (readingEntry)
+                {
+                    // this is probably the end of the entry
+                    stage.mEntries.push_back(entry);
+                    readingEntry = false;
+                    entry.clear();
+                }
+                reader.get(entry.mStageFlags);
+                readingEntry = true;
+                break;
+            }
             case ESM4::SUB_CNAM:
-            case ESM4::SUB_QSTA:
+            {
+                if (readingEntry)
+                    reader.getZString(entry.mEntry);
+                else 
+                {
+                    reader.skipSubRecordData();
+                }
+                break;
+            }
+            case ESM4::SUB_QSTA: // FO3
+            {
+                if (readingTarget)
+                {
+                    objective.mTargets.push_back(objTarget);
+                    readingTarget = false;
+                    objTarget.clear();
+                }
+                if (readingObjective)
+                {
+                    reader.get(objTarget.mTarget);
+                    readingTarget = true;
+                    break;
+                }
+                //std::cout << "QUST " << ESM::printName(subHdr.typeId) << " skipping..."
+                //<< subHdr.dataSize << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_NNAM: // FO3
+            {
+                if (readingObjective)
+                {
+                    reader.getZString(objective.mDescription);
+                    break;
+                }
+                //std::cout << "QUST " << ESM::printName(subHdr.typeId) << " skipping..."
+                //<< subHdr.dataSize << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_QOBJ: // FO3
+            {
+                if (readingEntry)
+                {
+                    // this is probably the end of the entry
+                    stage.mEntries.push_back(entry);
+                    readingEntry = false;
+                    entry.clear();
+                }
+                if (readingStage)
+                {
+                    mStages.push_back(stage);
+                    readingStage = false;
+                    stage.clear();
+                }
+                if (readingObjective)
+                {
+                    mObjectives.push_back(objective);
+                    readingObjective = false;
+                    objective.clear();
+                }
+                reader.get(objective.mIndex);
+                readingStage = false;
+                readingObjective = true;
+                break;
+            }
             case ESM4::SUB_NAM0: // FO3
+            {
+                reader.get(entry.mNextQuest);
+                break;
+            }
             case ESM4::SUB_ANAM: // TES5
             case ESM4::SUB_DNAM: // TES5
             case ESM4::SUB_ENAM: // TES5
@@ -150,6 +298,24 @@ void ESM4::Quest::load(ESM4::Reader& reader)
             default:
                 throw std::runtime_error("ESM4::QUST::load - Unknown subrecord " + ESM::printName(subHdr.typeId));
         }
+    }
+    if (readingEntry)
+    {
+        // if we were still reading an entry, insert that last entry
+        stage.mEntries.push_back(entry);
+    }
+    if (readingStage)
+    {
+        // if we were still reading a stage, insert that last stage
+        mStages.push_back(stage);
+    }
+    if (readingTarget)
+    {
+        objective.mTargets.push_back(objTarget);
+    }
+    if (readingObjective)
+    {
+        mObjectives.push_back(objective);
     }
     //if (mEditorId == "DAConversations")
         //std::cout << mEditorId << std::endl;

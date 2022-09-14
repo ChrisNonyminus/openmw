@@ -28,6 +28,10 @@
 
 #include "../mwmechanics/npcstats.hpp"
 
+#include "../f3mechanics/stats.hpp"
+
+#include "../f3script/scriptmanagerimp.hpp"
+
 #include "classmodel.hpp"
 
 namespace MWClass
@@ -255,12 +259,23 @@ namespace MWClass
         return ref->mBase->mFullName;
     }
 
+    std::string_view TES4Activator::getId(const MWWorld::Ptr& ptr) const
+    {
+        return ptr.get<ESM4::Activator>()->mBase->mEditorId;
+    }
+
+    ESM4::FormId TES4Activator::getFormId(const MWWorld::Ptr& ptr) const
+    {
+        return ptr.get<ESM4::Activator>()->mBase->mFormId;
+    }
+
     std::string_view TES4Activator::getScript(const MWWorld::ConstPtr& ptr) const
     {
+        const auto& esmStore = MWBase::Environment::get().getWorld()->getStore();
         const MWWorld::LiveCellRef<ESM4::Activator>* ref = ptr.get<ESM4::Activator>();
-        std::stringstream ss;
-        ss << std::hex << ref->mBase->mScriptId;
-        return ss.str();
+        if (ref->mBase->mScriptId && esmStore.get<ESM4::Script>().search(ref->mBase->mScriptId))
+            return esmStore.get<ESM4::Script>().find(ref->mBase->mScriptId)->mEditorId;
+        return "";
     }
 
     bool TES4Activator::hasToolTip(const MWWorld::ConstPtr& ptr) const
@@ -292,6 +307,11 @@ namespace MWClass
     std::unique_ptr<MWWorld::Action> TES4Activator::activate(const MWWorld::Ptr& ptr, const MWWorld::Ptr& actor) const
     {
         // TODO
+        /*const auto* scpt = MWBase::Environment().get().getWorld()->getStore().get<ESM4::Script>().search(getScript(ptr));
+        if (scpt)
+        {
+            
+        }*/
         return std::make_unique<MWWorld::NullAction>();
     }
 

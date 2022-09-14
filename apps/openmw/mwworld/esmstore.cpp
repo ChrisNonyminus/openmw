@@ -262,8 +262,28 @@ using Types = AllTypeGetters<
     TypeGetter<ESM4::Light>,
     TypeGetter<ESM4::Sound>,
     TypeGetter<ESM4::World>,
-    TypeGetter<ESM4::Land>
->;
+    TypeGetter<ESM4::Land>,
+    TypeGetter<ESM4::Creature>,
+    TypeGetter<ESM4::AIPackage>,
+    TypeGetter<ESM4::LevelledCreature>,
+    TypeGetter<ESM4::Armor>,
+    TypeGetter<ESM4::Weapon>,
+    TypeGetter<ESM4::LevelledItem>,
+    TypeGetter<ESM4::Ammunition>,
+    TypeGetter<ESM4::Script>,
+    TypeGetter<ESM4::Message>,
+    TypeGetter<ESM4::Quest>,
+    TypeGetter<ESM4::DialogInfo>,
+    TypeGetter<ESM4::VoiceType>,
+    TypeGetter<ESM4::Dialogue>,
+    TypeGetter<ESM4::Npc>,
+    TypeGetter<ESM4::Navigation>,
+    TypeGetter<ESM4::NavMesh>,
+
+    TypeGetter<ESM4::GameSetting>,
+    TypeGetter<ESM4::IdleAnimation>,
+    TypeGetter<ESM4::Faction>,
+    TypeGetter<ESM4::Class>>;
 
 template <>
 std::tuple<
@@ -317,7 +337,28 @@ std::tuple<
     TypeGetter<ESM4::Light>,
     TypeGetter<ESM4::Sound>,
     TypeGetter<ESM4::World>,
-    TypeGetter<ESM4::Land>
+    TypeGetter<ESM4::Land>,
+    TypeGetter<ESM4::Creature>,
+    TypeGetter<ESM4::AIPackage>,
+    TypeGetter<ESM4::LevelledCreature>,
+    TypeGetter<ESM4::Armor>,
+    TypeGetter<ESM4::Weapon>,
+    TypeGetter<ESM4::LevelledItem>,
+    TypeGetter<ESM4::Ammunition>,
+    TypeGetter<ESM4::Script>,
+    TypeGetter<ESM4::Message>,
+    TypeGetter<ESM4::Quest>,
+    TypeGetter<ESM4::DialogInfo>,
+    TypeGetter<ESM4::VoiceType>,
+    TypeGetter<ESM4::Dialogue>,
+    TypeGetter<ESM4::Npc>,
+    TypeGetter<ESM4::Navigation>,
+    TypeGetter<ESM4::NavMesh>,
+
+    TypeGetter<ESM4::GameSetting>,
+    TypeGetter<ESM4::IdleAnimation>,
+    TypeGetter<ESM4::Faction>,
+    TypeGetter<ESM4::Class>
     >
     Types::sAll = std::make_tuple(
         TypeGetter<ESM::Activator>(),
@@ -370,7 +411,28 @@ std::tuple<
         TypeGetter<ESM4::Light>(),
         TypeGetter<ESM4::Sound>(),
         TypeGetter<ESM4::World>(),
-        TypeGetter<ESM4::Land>());
+        TypeGetter<ESM4::Land>(),
+        TypeGetter<ESM4::Creature>(),
+        TypeGetter<ESM4::AIPackage>(),
+        TypeGetter<ESM4::LevelledCreature>(),
+        TypeGetter<ESM4::Armor>(),
+        TypeGetter<ESM4::Weapon>(),
+        TypeGetter<ESM4::LevelledItem>(),
+        TypeGetter<ESM4::Ammunition>(),
+        TypeGetter<ESM4::Script>(),
+        TypeGetter<ESM4::Message>(),
+        TypeGetter<ESM4::Quest>(),
+        TypeGetter<ESM4::DialogInfo>(),
+        TypeGetter<ESM4::VoiceType>(),
+        TypeGetter<ESM4::Dialogue>(),
+        TypeGetter<ESM4::Npc>(),
+        TypeGetter<ESM4::Navigation>(),
+        TypeGetter<ESM4::NavMesh>(),
+
+        TypeGetter<ESM4::GameSetting>(),
+        TypeGetter<ESM4::IdleAnimation>(),
+        TypeGetter<ESM4::Faction>(),
+        TypeGetter<ESM4::Class>());
 
 static bool isCacheableRecord(int id)
 {
@@ -382,7 +444,9 @@ static bool isCacheableRecord(int id)
         id == ESM::REC_BODY || 
         id == ESM::REC_ACTI4 || id == ESM::REC_REFR4 || id == ESM::REC_STAT4 || 
         id == ESM::REC_LIGH4 || id == ESM::REC_SOUN4 || id == ESM::REC_WRLD4 ||
-        id == ESM::REC_LAND4)
+        id == ESM::REC_LAND4 || id == ESM::REC_CREA4 || id == ESM::REC_LVLC4 ||
+        id == ESM::REC_PACK4 || id == ESM::REC_WEAP4 || id == ESM::REC_ARMO4 ||
+        id == ESM::REC_LVLI4 || id == ESM::REC_AMMO4 || id == ESM::REC_QUST4)
     {
         return true;
     }
@@ -433,25 +497,55 @@ struct ESMStoreImpl
     template <typename T>
     static const T* insert(ESMStore& stores, const T& toInsert)
     {
-        const std::string id = "$dynamic" + std::to_string(stores.mDynamicCount++);
-
-        Store<T>& store = stores.get<T>();
-        if (store.search(id) != nullptr)
+        if constexpr (requires(T & obj) { obj.mFormId; })
         {
-            const std::string msg = "Try to override existing record '" + id + "'";
-            throw std::runtime_error(msg);
+            // todo: generate form ids for esm4 records
+            const std::string id = "$dynamic" + std::to_string(stores.mDynamicCount++);
+            Store<T>& store = const_cast<Store<T>&>(stores.get<T>());
+            if (store.search(id) != nullptr)
+            {
+                const std::string msg = "Try to override existing record '" + id + "'";
+                throw std::runtime_error(msg);
+            }
+            T record = toInsert;
+
+            if constexpr (requires(T & obj) { obj.mEditorId; })
+                record.mEditorId = id;
+            else
+                throw std::runtime_error("Generating form ids not implemented yet");
+
+            T* ptr = store.insert(record);
+            for (auto it = stores.mStores.begin(); it != stores.mStores.end(); ++it)
+            {
+                if (it->second == &store)
+                {
+                    stores.mImpl->mIds[ptr->mEditorId] = it->second->getRecName();
+                }
+            }
+            return ptr;
         }
-        T record = toInsert;
-
-        record.mId = id;
-
-        T* ptr = store.insert(record);
-        auto esm3RecordType_find = stores.mImpl->mRecordToStore.find(T::sRecordId);
-        if (esm3RecordType_find != stores.mImpl->mRecordToStore.end())
+        else
         {
-            stores.mImpl->mIds[ptr->mId] = esm3RecordType_find->first;
+            const std::string id = "$dynamic" + std::to_string(stores.mDynamicCount++);
+
+            Store<T>& store = const_cast<Store<T>&>(stores.get<T>());
+            if (store.search(id) != nullptr)
+            {
+                const std::string msg = "Try to override existing record '" + id + "'";
+                throw std::runtime_error(msg);
+            }
+            T record = toInsert;
+
+            record.mId = id;
+
+            T* ptr = store.insert(record);
+            auto esm3RecordType_find = stores.mImpl->mRecordToStore.find(T::sRecordId);
+            if (esm3RecordType_find != stores.mImpl->mRecordToStore.end())
+            {
+                stores.mImpl->mIds[ptr->mId] = esm3RecordType_find->first;
+            }
+            return ptr;
         }
-        return ptr;
     }
 
     template <class T>
@@ -678,11 +772,11 @@ struct ESM4Reading
             case ESM4::REC_ADDN: break;
             case ESM4::REC_ALCH: return readUnimplementedTypedRecord<ESM4::Potion>(store, reader, dialogue);
             case ESM4::REC_ALOC: return readUnimplementedTypedRecord<ESM4::MediaLocationController>(store, reader, dialogue);
-            case ESM4::REC_AMMO: return readUnimplementedTypedRecord<ESM4::Ammunition>(store, reader, dialogue);
+            case ESM4::REC_AMMO: return readImplementedTypedRecord<ESM4::Ammunition>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_ANIO: return readUnimplementedTypedRecord<ESM4::AnimObject>(store, reader, dialogue);
             case ESM4::REC_APPA: return readUnimplementedTypedRecord<ESM4::Apparatus>(store, reader, dialogue);
             case ESM4::REC_ARMA: return readUnimplementedTypedRecord<ESM4::ArmorAddon>(store, reader, dialogue);
-            case ESM4::REC_ARMO: return readUnimplementedTypedRecord<ESM4::Armor>(store, reader, dialogue);
+            case ESM4::REC_ARMO: return readImplementedTypedRecord<ESM4::Armor>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_ARTO: break;
             case ESM4::REC_ASPC: return readUnimplementedTypedRecord<ESM4::AcousticSpace>(store, reader, dialogue);
             case ESM4::REC_ASTP: break;
@@ -692,7 +786,7 @@ struct ESM4Reading
             case ESM4::REC_CAMS: break;
             case ESM4::REC_CCRD: break;
             case ESM4::REC_CELL: return readImplementedTypedRecord<ESM4::Cell>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
-            case ESM4::REC_CLAS: return readUnimplementedTypedRecord<ESM4::Class>(store, reader, dialogue);
+            case ESM4::REC_CLAS: return readImplementedTypedRecord<ESM4::Class>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_CLFM: return readUnimplementedTypedRecord<ESM4::Colour>(store, reader, dialogue);
             case ESM4::REC_CLMT: break;
             case ESM4::REC_CLOT: return readUnimplementedTypedRecord<ESM4::Clothing>(store, reader, dialogue);
@@ -701,10 +795,10 @@ struct ESM4Reading
             case ESM4::REC_COLL: break;
             case ESM4::REC_CONT: return readUnimplementedTypedRecord<ESM4::Container>(store, reader, dialogue);
             case ESM4::REC_CPTH: break;
-            case ESM4::REC_CREA: return readUnimplementedTypedRecord<ESM4::Creature>(store, reader, dialogue);
+            case ESM4::REC_CREA: return readImplementedTypedRecord<ESM4::Creature>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_CSTY: break;
             case ESM4::REC_DEBR: break;
-            case ESM4::REC_DIAL: return readUnimplementedTypedRecord<ESM4::Dialogue>(store, reader, dialogue);
+            case ESM4::REC_DIAL: return readImplementedTypedRecord<ESM4::Dialogue>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_DLBR: break;
             case ESM4::REC_DLVW: break;
             case ESM4::REC_DOBJ: return readUnimplementedTypedRecord<ESM4::DefaultObj>(store, reader, dialogue);
@@ -716,28 +810,27 @@ struct ESM4Reading
             case ESM4::REC_EQUP: break;
             case ESM4::REC_EXPL: break;
             case ESM4::REC_EYES: return readUnimplementedTypedRecord<ESM4::Eyes>(store, reader, dialogue);
-            case ESM4::REC_FACT: break;
+            case ESM4::REC_FACT: return readImplementedTypedRecord<ESM4 ::Faction>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_FLOR: return readUnimplementedTypedRecord<ESM4::Flora>(store, reader, dialogue);
             case ESM4::REC_FLST: return readUnimplementedTypedRecord<ESM4::FormIdList>(store, reader, dialogue);
             case ESM4::REC_FSTP: break;
             case ESM4::REC_FSTS: break;
             case ESM4::REC_FURN: return readUnimplementedTypedRecord<ESM4::Furniture>(store, reader, dialogue);
             case ESM4::REC_GLOB: return readUnimplementedTypedRecord<ESM4::GlobalVariable>(store, reader, dialogue);
-            case ESM4::REC_GMST: break;
+            case ESM4::REC_GMST: return readImplementedTypedRecord<ESM4 ::GameSetting>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_GRAS: return readUnimplementedTypedRecord<ESM4::Grass>(store, reader, dialogue);
             case ESM4::REC_GRUP: break;
             case ESM4::REC_HAIR: return readUnimplementedTypedRecord<ESM4::Hair>(store, reader, dialogue);
             case ESM4::REC_HAZD: break;
             case ESM4::REC_HDPT: return readUnimplementedTypedRecord<ESM4::HeadPart>(store, reader, dialogue);
-            case ESM4::REC_IDLE:
+            case ESM4::REC_IDLE: /*return readImplementedTypedRecord<ESM4::IdleAnimation>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);*/
                 // FIXME: ESM4::IdleAnimation::load does not work with Oblivion.esm
-                // return readUnimplementedTypedRecord<ESM4::IdleAnimation>(store, reader, dialogue);
                 break;
             case ESM4::REC_IDLM: return readUnimplementedTypedRecord<ESM4::IdleMarker>(store, reader, dialogue);
             case ESM4::REC_IMAD: break;
             case ESM4::REC_IMGS: break;
             case ESM4::REC_IMOD: return readUnimplementedTypedRecord<ESM4::ItemMod>(store, reader, dialogue);
-            case ESM4::REC_INFO: return readUnimplementedTypedRecord<ESM4::DialogInfo>(store, reader, dialogue);
+            case ESM4::REC_INFO: return readImplementedTypedRecord<ESM4::DialogInfo>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_INGR: return readUnimplementedTypedRecord<ESM4::Ingredient>(store, reader, dialogue);
             case ESM4::REC_IPCT: break;
             case ESM4::REC_IPDS: break;
@@ -750,13 +843,13 @@ struct ESM4Reading
             case ESM4::REC_LIGH: return readImplementedTypedRecord<ESM4::Light>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_LSCR: break;
             case ESM4::REC_LTEX: return readUnimplementedTypedRecord<ESM4::LandTexture>(store, reader, dialogue);
-            case ESM4::REC_LVLC: return readUnimplementedTypedRecord<ESM4::LevelledCreature>(store, reader, dialogue);
-            case ESM4::REC_LVLI: return readUnimplementedTypedRecord<ESM4::LevelledItem>(store, reader, dialogue);
+            case ESM4::REC_LVLC: return readImplementedTypedRecord<ESM4::LevelledCreature>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
+            case ESM4::REC_LVLI: return readImplementedTypedRecord<ESM4::LevelledItem>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_LVLN: return readUnimplementedTypedRecord<ESM4::LevelledNpc>(store, reader, dialogue);
             case ESM4::REC_LVSP: break;
             case ESM4::REC_MATO: return readUnimplementedTypedRecord<ESM4::Material>(store, reader, dialogue);
             case ESM4::REC_MATT: break;
-            case ESM4::REC_MESG: break;
+            case ESM4::REC_MESG: return readImplementedTypedRecord<ESM4::Script>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_MGEF: break;
             case ESM4::REC_MISC: return readUnimplementedTypedRecord<ESM4::MiscItem>(store, reader, dialogue);
             case ESM4::REC_MOVT: break;
@@ -764,19 +857,19 @@ struct ESM4Reading
             case ESM4::REC_MSTT: return readUnimplementedTypedRecord<ESM4::MovableStatic>(store, reader, dialogue);
             case ESM4::REC_MUSC: return readUnimplementedTypedRecord<ESM4::Music>(store, reader, dialogue);
             case ESM4::REC_MUST: break;
-            case ESM4::REC_NAVI: return readUnimplementedTypedRecord<ESM4::Navigation>(store, reader, dialogue);
-            case ESM4::REC_NAVM: return readUnimplementedTypedRecord<ESM4::NavMesh>(store, reader, dialogue);
+            case ESM4::REC_NAVI: return readImplementedTypedRecord<ESM4::Navigation>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
+            case ESM4::REC_NAVM: return readImplementedTypedRecord<ESM4::NavMesh>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_NOTE: return readUnimplementedTypedRecord<ESM4::Note>(store, reader, dialogue);
-            case ESM4::REC_NPC_: return readUnimplementedTypedRecord<ESM4::Npc>(store, reader, dialogue);
+            case ESM4::REC_NPC_: return readImplementedTypedRecord<ESM4::Npc>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_OTFT: return readUnimplementedTypedRecord<ESM4::Outfit>(store, reader, dialogue);
-            case ESM4::REC_PACK: return readUnimplementedTypedRecord<ESM4::AIPackage>(store, reader, dialogue);
+            case ESM4::REC_PACK: return readImplementedTypedRecord<ESM4::AIPackage>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_PERK: break;
             case ESM4::REC_PGRD: return readUnimplementedTypedRecord<ESM4::Pathgrid>(store, reader, dialogue);
             case ESM4::REC_PGRE: return readUnimplementedTypedRecord<ESM4::PlacedGrenade>(store, reader, dialogue);
             case ESM4::REC_PHZD: break;
             case ESM4::REC_PROJ: break;
             case ESM4::REC_PWAT: return readUnimplementedTypedRecord<ESM4::PlaceableWater>(store, reader, dialogue);
-            case ESM4::REC_QUST: return readUnimplementedTypedRecord<ESM4::Quest>(store, reader, dialogue);
+            case ESM4::REC_QUST: return readImplementedTypedRecord<ESM4::Quest>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_RACE: return readUnimplementedTypedRecord<ESM4::Race>(store, reader, dialogue);
             case ESM4::REC_REFR: return readImplementedTypedRecord<ESM4::Reference>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_REGN: return readUnimplementedTypedRecord<ESM4::Region>(store, reader, dialogue);
@@ -787,7 +880,7 @@ struct ESM4Reading
             case ESM4::REC_SBSP: return readUnimplementedTypedRecord<ESM4::SubSpace>(store, reader, dialogue);
             case ESM4::REC_SCEN: break;
             case ESM4::REC_SCOL: return readUnimplementedTypedRecord<ESM4::StaticCollection>(store, reader, dialogue);
-            case ESM4::REC_SCPT: return readUnimplementedTypedRecord<ESM4::Script>(store, reader, dialogue);
+            case ESM4::REC_SCPT: return readImplementedTypedRecord<ESM4::Script>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_SCRL: return readUnimplementedTypedRecord<ESM4::Scroll>(store, reader, dialogue);
             case ESM4::REC_SGST: return readUnimplementedTypedRecord<ESM4::SigilStone>(store, reader, dialogue);
             case ESM4::REC_SHOU: break;
@@ -807,9 +900,9 @@ struct ESM4Reading
             case ESM4::REC_TES4: return readUnimplementedTypedRecord<ESM4::Header>(store, reader, dialogue);
             case ESM4::REC_TREE: return readUnimplementedTypedRecord<ESM4::Tree>(store, reader, dialogue);
             case ESM4::REC_TXST: return readUnimplementedTypedRecord<ESM4::TextureSet>(store, reader, dialogue);
-            case ESM4::REC_VTYP: break;
+            case ESM4::REC_VTYP: return readImplementedTypedRecord<ESM4::VoiceType>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_WATR: break;
-            case ESM4::REC_WEAP: return readUnimplementedTypedRecord<ESM4::Weapon>(store, reader, dialogue);
+            case ESM4::REC_WEAP: return readImplementedTypedRecord<ESM4::Weapon>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_WOOP: break;
             case ESM4::REC_WRLD: return readImplementedTypedRecord<ESM4::World>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_WTHR: break;
@@ -823,6 +916,7 @@ struct ESM4Reading
     {
         if (reader.getFileOffset() == 0xB0CFF04 && reader.getFileName().find("FalloutNV.esm") != std::string::npos) // hack for weirdness with one particular record in FalloutNV.esm (it's a land record that doesn't like being decompressed)
         { // TODO: fix the issue so I don't have to do this
+            reader.getRecordHeader();
             reader.skipRecordData();
             return true;
         }
@@ -1128,27 +1222,57 @@ void ESMStore::removeMissingObjects(Store<T>& store)
 template <class T>
 const T* ESMStore::insert(const T& x)
 {
-    const std::string id = "$dynamic" + std::to_string(mDynamicCount++);
-
-    Store<T>& store = const_cast<Store<T>&>(get<T>());
-    if (store.search(id) != nullptr)
+    if constexpr (requires(T & obj) { obj.mFormId; })
     {
-        const std::string msg = "Try to override existing record '" + id + "'";
-        throw std::runtime_error(msg);
-    }
-    T record = x;
-
-    record.mId = id;
-
-    T* ptr = store.insert(record);
-    for (iterator it = mStores.begin(); it != mStores.end(); ++it)
-    {
-        if (it->second == &store)
+        // todo: generate form ids for esm4 records
+        const std::string id = "$dynamic" + std::to_string(mDynamicCount++);
+        Store<T>& store = const_cast<Store<T>&>(get<T>());
+        if (store.search(id) != nullptr)
         {
-            mImpl->mIds[ptr->mId] = it->second->getRecName();
+            const std::string msg = "Try to override existing record '" + id + "'";
+            throw std::runtime_error(msg);
         }
+        T record = x;
+
+        if constexpr (requires(T & obj) { obj.mEditorId; })
+            record.mEditorId = id;
+        else
+            throw std::runtime_error("Generating form ids not implemented yet");
+
+        T* ptr = store.insert(record);
+        for (iterator it = mStores.begin(); it != mStores.end(); ++it)
+        {
+            if (it->second == &store)
+            {
+                mImpl->mIds[ptr->mId] = it->second->getRecName();
+            }
+        }
+        return ptr;
     }
-    return ptr;
+    else
+    {
+        const std::string id = "$dynamic" + std::to_string(mDynamicCount++);
+
+        Store<T>& store = const_cast<Store<T>&>(get<T>());
+        if (store.search(id) != nullptr)
+        {
+            const std::string msg = "Try to override existing record '" + id + "'";
+            throw std::runtime_error(msg);
+        }
+        T record = x;
+
+        record.mId = id;
+
+        T* ptr = store.insert(record);
+        for (iterator it = mStores.begin(); it != mStores.end(); ++it)
+        {
+            if (it->second == &store)
+            {
+                mImpl->mIds[ptr->mId] = it->second->getRecName();
+            }
+        }
+        return ptr;
+    }
 }
 
 template <class T>
@@ -1343,6 +1467,12 @@ const T* ESMStore::insertStatic(const T& x)
     const ESM::Clothing* ESMStore::insert<ESM::Clothing>(const ESM::Clothing& toInsert) { return mImpl->insert(*this, toInsert); }
     template <>
     const ESM::Spell* ESMStore::insert<ESM::Spell>(const ESM::Spell& toInsert) { return mImpl->insert(*this, toInsert); }
+    template <>
+    const ESM4::Npc* ESMStore::insert<ESM4::Npc>(const ESM4::Npc& toInsert) { return mImpl->insert(*this, toInsert); }
+    template <>
+    const ESM4::Class* ESMStore::insert<ESM4::Class>(const ESM4::Class& toInsert) { return mImpl->insert(*this, toInsert); }
+    template <>
+    const ESM4::Script* ESMStore::insert<ESM4::Script>(const ESM4::Script& toInsert) { return mImpl->insert(*this, toInsert); }
 
     template <>
     const ESM::GameSetting* ESMStore::insertStatic<ESM::GameSetting>(const ESM::GameSetting& toInsert) { return mImpl->insertStatic(*this, toInsert); }

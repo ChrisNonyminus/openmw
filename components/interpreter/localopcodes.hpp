@@ -269,6 +269,97 @@ namespace Interpreter
             }
     };
 
+    template <bool TGlobal>
+    class OpStoreScriptMemberShort : public Opcode0
+    {
+
+    public:
+        OpStoreScriptMemberShort() {}
+
+        virtual void execute(Runtime& runtime)
+        {
+            Type_Integer data = runtime[0].mInteger;
+            Type_Integer index = runtime[1].mInteger;
+            std::string_view id = runtime.getStringLiteral(index);
+            index = runtime[2].mInteger;
+            std::string_view variable = runtime.getStringLiteral(index);
+
+            runtime.getContext().setScriptMemberShort(std::string(id), std::string(variable), data, TGlobal);
+
+            runtime.pop();
+            runtime.pop();
+            runtime.pop();
+        }
+    };
+
+    template <bool TGlobal>
+    class OpStoreScriptMemberLong : public Opcode0
+    {
+    public:
+        OpStoreScriptMemberLong() {}
+
+        virtual void execute(Runtime& runtime)
+        {
+            Type_Integer data = runtime[0].mInteger;
+            Type_Integer index = runtime[1].mInteger;
+            std::string_view id = runtime.getStringLiteral(index);
+            index = runtime[2].mInteger;
+            std::string_view variable = runtime.getStringLiteral(index);
+
+            runtime.getContext().setScriptMemberLong(std::string(id), std::string(variable), data, TGlobal);
+
+            runtime.pop();
+            runtime.pop();
+            runtime.pop();
+        }
+    };
+
+    template <bool TGlobal>
+    class OpStoreScriptMemberFloat : public Opcode0
+    {
+
+    public:
+        OpStoreScriptMemberFloat()  {}
+
+        virtual void execute(Runtime& runtime)
+        {
+            Type_Float data = runtime[0].mFloat;
+            Type_Integer index = runtime[1].mInteger;
+            std::string_view id = runtime.getStringLiteral(index);
+            index = runtime[2].mInteger;
+            std::string_view variable = runtime.getStringLiteral(index);
+
+            runtime.getContext().setScriptMemberFloat(std::string(id), std::string(variable), data, TGlobal);
+
+            runtime.pop();
+            runtime.pop();
+            runtime.pop();
+        }
+    };
+
+    template <bool TGlobal>
+    class OpStoreScriptMemberRef : public Opcode0
+    {
+
+    public:
+        OpStoreScriptMemberRef()  {}
+
+        virtual void execute(Runtime& runtime)
+        {
+            uint32_t data = static_cast<uint32_t>(runtime[0].mInteger);
+            Type_Integer index = runtime[1].mInteger;
+            std::string_view id = runtime.getStringLiteral(index);
+            index = runtime[2].mInteger;
+            std::string_view variable = runtime.getStringLiteral(index);
+
+            runtime.getContext().setScriptMemberRef(std::string(id), std::string(variable), data, TGlobal);
+
+            runtime.pop();
+            runtime.pop();
+            runtime.pop();
+        }
+    };
+
     template<bool TGlobal>
     class OpFetchMemberShort : public Opcode0
     {
@@ -321,6 +412,89 @@ namespace Interpreter
                 float value = runtime.getContext().getMemberFloat (id, variable, TGlobal);
                 runtime[0].mFloat = value;
             }
+    };
+    template <bool TGlobal>
+    class OpFetchScriptMemberShort : public Opcode0
+    {
+        bool mGlobal;
+
+    public:
+        OpFetchScriptMemberShort() : mGlobal(TGlobal) {}
+
+        virtual void execute(Runtime& runtime)
+        {
+            Type_Integer index = runtime[0].mInteger;
+            std::string id(runtime.getStringLiteral(index));
+            index = runtime[1].mInteger;
+            std::string variable(runtime.getStringLiteral(index));
+            runtime.pop();
+
+            int value = runtime.getContext().getScriptMemberShort(id, variable, mGlobal);
+            runtime.push(value);
+        }
+    };
+
+    template <bool TGlobal>
+    class OpFetchScriptMemberLong : public Opcode0
+    {
+        bool mGlobal;
+
+    public:
+        OpFetchScriptMemberLong() : mGlobal(TGlobal) {}
+
+        virtual void execute(Runtime& runtime)
+        {
+            Type_Integer index = runtime[0].mInteger;
+            std::string id(runtime.getStringLiteral(index));
+            index = runtime[1].mInteger;
+            std::string variable(runtime.getStringLiteral(index));
+            runtime.pop();
+
+            int value = runtime.getContext().getScriptMemberLong(id, variable, mGlobal);
+            runtime.push(value);
+        }
+    };
+
+    template <bool TGlobal>
+    class OpFetchScriptMemberFloat : public Opcode0
+    {
+        bool mGlobal;
+
+    public:
+        OpFetchScriptMemberFloat() : mGlobal(TGlobal) {}
+
+        virtual void execute(Runtime& runtime)
+        {
+            Type_Integer index = runtime[0].mInteger;
+            std::string id(runtime.getStringLiteral(index));
+            index = runtime[1].mInteger;
+            std::string variable(runtime.getStringLiteral(index));
+            runtime.pop();
+
+            float value = runtime.getContext().getScriptMemberFloat(id, variable, mGlobal);
+            runtime.push(value);
+        }
+    };
+
+    template <bool TGlobal>
+    class OpFetchScriptMemberRef : public Opcode0
+    {
+        bool mGlobal;
+
+    public:
+        OpFetchScriptMemberRef() : mGlobal(TGlobal) {}
+
+        virtual void execute(Runtime& runtime)
+        {
+            Type_Integer index = runtime[0].mInteger;
+            std::string id(runtime.getStringLiteral(index));
+            index = runtime[1].mInteger;
+            std::string variable(runtime.getStringLiteral(index));
+            runtime.pop();
+
+            uint32_t value = runtime.getContext().getScriptMemberRef(id, variable, mGlobal);
+            runtime.push(static_cast<int>(value));
+        }
     };
 }
 

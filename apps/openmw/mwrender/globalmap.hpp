@@ -29,6 +29,7 @@ namespace MWRender
 {
 
     class CreateMapWorkItem;
+    class TES4CreateMapWorkItem;
 
     class GlobalMap
     {
@@ -37,6 +38,7 @@ namespace MWRender
         ~GlobalMap();
 
         void render();
+        void renderTES4(uint32_t wrldId);
 
         int getWidth() const { return mWidth; }
         int getHeight() const { return mHeight; }
@@ -125,12 +127,14 @@ namespace MWRender
 
         osg::ref_ptr<SceneUtil::WorkQueue> mWorkQueue;
         osg::ref_ptr<CreateMapWorkItem> mWorkItem;
+        osg::ref_ptr<TES4CreateMapWorkItem> mTES4WorkItem;
         osg::ref_ptr<WritePng> mWritePng;
 
         int mWidth;
         int mHeight;
 
         int mMinX, mMaxX, mMinY, mMaxY;
+        bool mIsTes4;
     };
 
 }

@@ -9,6 +9,7 @@
 #include "aipackagetypeid.hpp"
 
 #include <components/esm3/loadnpc.hpp>
+#include <components/esm4/loadpack.hpp>
 
 namespace MWWorld
 {
@@ -56,6 +57,9 @@ namespace MWMechanics
             AiPackages::iterator erase(AiPackages::iterator package);
 
         public:
+
+            void insertTes4(const ESM4::AIPackage& package);
+
             ///Default constructor
             AiSequence();
 

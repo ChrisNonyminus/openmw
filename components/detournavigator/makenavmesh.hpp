@@ -5,6 +5,9 @@
 #include "sharednavmesh.hpp"
 #include "recastmesh.hpp"
 
+#include <components/esm4/loadnavm.hpp>
+#include <components/esm4/loadnavi.hpp>
+
 #include <memory>
 #include <vector>
 

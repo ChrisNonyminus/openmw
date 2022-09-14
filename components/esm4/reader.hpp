@@ -72,6 +72,8 @@ namespace ESM4 {
         CellGrid currCellGrid;     // TODO: should keep a map of cell formids
         bool cellGridValid;
 
+        FormId currTopic; // formId of current dialogue topic
+
         RecRefMap worldDummyCells; // key: worldspace form id | value: form id of dummy cell
 
         ReaderContext();
@@ -83,7 +85,7 @@ namespace ESM4 {
 
         ReaderContext        mCtx;
 
-        ToUTF8::Utf8Encoder* mEncoder;
+        ToUTF8::StatelessUtf8Encoder* mEncoder;
 
         std::size_t          mFileSize;
 
@@ -146,7 +148,7 @@ namespace ESM4 {
 
         inline bool isEsm4() const final { return true; }
 
-        inline void setEncoder(ToUTF8::Utf8Encoder* encoder) final { mEncoder = encoder; };
+        inline void setEncoder(ToUTF8::StatelessUtf8Encoder* encoder) final { mEncoder = encoder; };
 
         const std::vector<ESM::MasterData>& getGameFiles() const final { return mHeader.mMaster; }
 
@@ -226,6 +228,11 @@ namespace ESM4 {
         inline void setCurrCell(FormId formId) { mCtx.currCell = formId; }
 
         inline FormId currCell() const { return mCtx.currCell; }
+
+        // Should be set at the beginning of a CELL load
+        inline void setCurrTopic(FormId formId) { mCtx.currTopic = formId; }
+
+        inline FormId currTopic() const { return mCtx.currTopic; }
 
         // Should be set at the beginning of a WRLD load
         inline void setCurrWorld(FormId formId) { mCtx.currWorld = formId; }

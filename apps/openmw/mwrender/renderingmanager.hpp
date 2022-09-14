@@ -199,6 +199,9 @@ namespace MWRender
         /// Clear all worldspace-specific data
         void notifyWorldSpaceChanged();
 
+        /// Update any GUI stuff that needs to be updated on exterior change
+        void onExteriorChanged();
+
         void update(float dt, bool paused);
 
         Animation* getAnimation(const MWWorld::Ptr& ptr);
@@ -331,6 +334,7 @@ namespace MWRender
         float mFirstPersonFieldOfView;
         bool mUpdateProjectionMatrix = false;
         bool mNight = false;
+        bool mWorldSpaceChanged;
 
         void operator = (const RenderingManager&);
         RenderingManager(const RenderingManager&);

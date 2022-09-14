@@ -46,6 +46,22 @@ namespace ESM4
         std::uint16_t unknown;
     };
 
+    struct FOAIData
+    {
+        uint8_t aggression;
+        uint8_t confidence;
+        uint8_t energyLevel;
+        uint8_t responsibility;
+        uint8_t mood;
+        uint8_t unused[3];
+        uint32_t services;
+        int8_t teaches;
+        uint8_t trainLevel;
+        int8_t assistance;
+        uint8_t aggroRadiusBehavior;
+        int32_t aggroRadius;
+    };
+
     struct AttributeValues
     {
         std::uint8_t  strength;
@@ -56,6 +72,17 @@ namespace ESM4
         std::uint8_t  endurance;
         std::uint8_t  personality;
         std::uint8_t  luck;
+    };
+
+    struct FOAttributeValues
+    {
+        std::uint8_t strength;
+        std::uint8_t perception;
+        std::uint8_t endurance;
+        std::uint8_t charisma;
+        std::uint8_t intelligence;
+        std::uint8_t agility;
+        std::uint8_t luck;
     };
 
     struct ACBS_TES4

@@ -1027,7 +1027,15 @@ namespace MWGui
 
     void MapWindow::renderGlobalMap()
     {
-        mGlobalMapRender->render();
+        // check if we're in a TES4 exterior
+        uint32_t wrldId = 0;
+        if (MWBase::Environment::get().getWorld()->getPlayerPtr().isInCell() &&
+            MWBase::Environment::get().getWorld()->getPlayerPtr().getCell()->isTes4())
+            wrldId = MWBase::Environment::get().getWorld()->getPlayerPtr().getCell()->getCell4()->mParent;
+        if (wrldId)
+            mGlobalMapRender->renderTES4(wrldId);
+        else
+            mGlobalMapRender->render();
         resizeGlobalMap();
     }
 

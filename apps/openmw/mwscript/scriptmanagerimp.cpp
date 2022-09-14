@@ -89,7 +89,7 @@ namespace MWScript
         return false;
     }
 
-    bool ScriptManager::run(std::string_view name, Interpreter::Context& interpreterContext)
+    bool ScriptManager::run(std::string_view name, Interpreter::Context& interpreterContext, const std::string& blockType)
     {
         // compile script
         auto iter = mScripts.find(name);

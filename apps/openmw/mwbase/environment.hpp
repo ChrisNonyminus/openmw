@@ -21,6 +21,7 @@ namespace MWBase
     class ScriptManager;
     class DialogueManager;
     class Journal;
+    class TopiclessJournal;
     class SoundManager;
     class MechanicsManager;
     class InputManager;
@@ -39,9 +40,13 @@ namespace MWBase
             World* mWorld = nullptr;
             SoundManager* mSoundManager = nullptr;
             ScriptManager* mScriptManager = nullptr;
+            ScriptManager* mTES4ScriptManager = nullptr; // have a separate script manager for tes4/fo3/fnv scripts
             WindowManager* mWindowManager = nullptr;
             MechanicsManager* mMechanicsManager = nullptr;
+            std::map<std::string, MechanicsManager*> mOtherMechanicsManagers; // string map for getting mechanics managers from other games (I hate this)
             DialogueManager* mDialogueManager = nullptr;
+            std::map<std::string, DialogueManager*> mOtherDialogueManagers; // string map for getting dialogue managers from other games (I hate this)
+            std::map<std::string, TopiclessJournal*> mTopiclessJournals;
             Journal* mJournal = nullptr;
             InputManager* mInputManager = nullptr;
             StateManager* mStateManager = nullptr;
@@ -66,13 +71,21 @@ namespace MWBase
 
             void setScriptManager(ScriptManager& value) { mScriptManager = &value; }
 
+            void setTes4ScriptManager(ScriptManager& value) { mTES4ScriptManager = &value; }
+
             void setWindowManager(WindowManager& value) { mWindowManager = &value; }
 
             void setMechanicsManager(MechanicsManager& value) { mMechanicsManager = &value; }
 
+            void setMechanicsManager(const std::string& game, MechanicsManager& value) { mOtherMechanicsManagers[game] = &value; }
+
             void setDialogueManager(DialogueManager& value) { mDialogueManager = &value; }
 
+            void setDialogueManager(const std::string& game, DialogueManager& value) { mOtherDialogueManagers[game] = &value; }
+
             void setJournal(Journal& value) { mJournal = &value; }
+
+            void setJournal(const std::string& game, TopiclessJournal& journal) { mTopiclessJournals[game] = &journal; }
 
             void setInputManager(InputManager& value) { mInputManager = &value; }
 
@@ -88,13 +101,21 @@ namespace MWBase
 
             Misc::NotNullPtr<ScriptManager> getScriptManager() const { return mScriptManager; }
 
+            Misc::NotNullPtr<ScriptManager> getTes4ScriptManager() const { return mTES4ScriptManager; }
+
             Misc::NotNullPtr<WindowManager> getWindowManager() const { return mWindowManager; }
 
             Misc::NotNullPtr<MechanicsManager> getMechanicsManager() const { return mMechanicsManager; }
 
+            Misc::NotNullPtr<MechanicsManager> getMechanicsManager(const std::string& game) const { return mOtherMechanicsManagers.at(game); }
+
             Misc::NotNullPtr<DialogueManager> getDialogueManager() const { return mDialogueManager; }
 
+            Misc::NotNullPtr<DialogueManager> getDialogueManager(const std::string& game) const { return mOtherDialogueManagers.at(game); }
+
             Misc::NotNullPtr<Journal> getJournal() const { return mJournal; }
+
+            Misc::NotNullPtr<TopiclessJournal> getTopiclessJournal(const std::string& game) const { return mTopiclessJournals.at(game); }
 
             Misc::NotNullPtr<InputManager> getInputManager() const { return mInputManager; }
 

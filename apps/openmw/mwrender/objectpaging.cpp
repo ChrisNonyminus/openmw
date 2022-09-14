@@ -580,7 +580,7 @@ namespace MWRender
                     model = mLODNameCache.insert(found, { key, Misc::ResourceHelpers::getLODMeshName(world->getESMVersions()[ref.mRefNum.mContentFile], model, mSceneManager->getVFS(), lod) })->second;
             }
 
-            osg::ref_ptr<const osg::Node> cnode = mSceneManager->getTemplate(model, false);
+            osg::ref_ptr<const osg::Node> cnode = mSceneManager->getTemplate(model, false, nullptr);
 
             if (activeGrid)
             {

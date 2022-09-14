@@ -348,6 +348,7 @@ namespace Compiler
 
     bool ExprParser::parseKeyword (int keyword, const TokenLoc& loc, Scanner& scanner)
     {
+
         if (const Extensions *extensions = getContext().getExtensions())
         {
             char returnType; // ignored
@@ -375,7 +376,8 @@ namespace Compiler
             keyword==Scanner::K_elseif || keyword==Scanner::K_while ||
             keyword==Scanner::K_endwhile || keyword==Scanner::K_return ||
             keyword==Scanner::K_messagebox || keyword==Scanner::K_set ||
-            keyword==Scanner::K_to)
+            keyword==Scanner::K_to || keyword==Scanner::K_scriptname ||
+            keyword==Scanner::K_scn)
         {
             return parseName (loc.mLiteral, loc, scanner);
         }

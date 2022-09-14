@@ -56,7 +56,7 @@ namespace MWWorld
     }
 
     RefData::RefData()
-    : mBaseNode(nullptr), mDeletedByContentFile(false), mEnabled (true), mPhysicsPostponed(false), mCount (1), mCustomData (nullptr), mChanged(false), mFlags(0)
+        : mBaseNode(nullptr), mDeletedByContentFile(false), mEnabled(true), mPhysicsPostponed(false), mCount(1), mCustomData(nullptr), mChanged(false), mFlags(0), mTES4Flags(0)
     {
         for (int i=0; i<3; ++i)
         {
@@ -69,7 +69,7 @@ namespace MWWorld
     : mBaseNode(nullptr), mDeletedByContentFile(false), mEnabled (true), mPhysicsPostponed(false), 
       mCount (1), mPosition (cellRef.mPos),
       mCustomData (nullptr),
-      mChanged(false), mFlags(0) // Loading from ESM/ESP files -> assume unchanged
+      mChanged(false), mFlags(0), mTES4Flags(0) // Loading from ESM/ESP files -> assume unchanged
     {
     }
 
@@ -78,7 +78,7 @@ namespace MWWorld
           mCount(1), mPosition{ { cellRef.mPlacement.pos.x, cellRef.mPlacement.pos.y, cellRef.mPlacement.pos.z },
               { cellRef.mPlacement.rot.x, cellRef.mPlacement.rot.y, cellRef.mPlacement.rot.z } },
           mCustomData(nullptr),
-          mChanged(false), mFlags(0) // Loading from ESM/ESP files -> assume unchanged
+          mChanged(false), mFlags(0), mTES4Flags(0) // Loading from ESM/ESP files -> assume unchanged
     {
     }
 
@@ -89,7 +89,7 @@ namespace MWWorld
       mPosition (objectState.mPosition),
       mAnimationState(objectState.mAnimationState),
       mCustomData (nullptr),
-      mChanged(true), mFlags(objectState.mFlags) // Loading from a savegame -> assume changed
+      mChanged(true), mFlags(objectState.mFlags), mTES4Flags(0) // Loading from a savegame -> assume changed (TODO: implement mTES4Flags in objectstate)
     {
         // "Note that the ActivationFlag_UseEnabled is saved to the reference,
         // which will result in permanently suppressed activation if the reference script is removed.
@@ -98,7 +98,7 @@ namespace MWWorld
     }
 
     RefData::RefData (const RefData& refData)
-    : mBaseNode(nullptr), mCustomData (nullptr)
+    : mBaseNode(nullptr), mCustomData (nullptr), mTES4Flags(0)
     {
         try
         {
@@ -175,9 +175,15 @@ namespace MWWorld
         return mCount;
     }
 
-    void RefData::setLocals (const ESM::Script& script)
+    void RefData::setLocals(const ESM::Script& script)
     {
-        if (mLocals.configure (script) && !mLocals.isEmpty())
+        if (mLocals.configure(script) && !mLocals.isEmpty())
+            mChanged = true;
+    }
+
+    void RefData::setLocals(const ESM4::Script& script)
+    {
+        if (mTes4Locals.configure(script) && !mTes4Locals.isEmpty())
             mChanged = true;
     }
 
@@ -209,6 +215,11 @@ namespace MWWorld
     MWScript::Locals& RefData::getLocals()
     {
         return mLocals;
+    }
+
+    FOScript::Locals& RefData::getFOLocals()
+    {
+        return mTes4Locals;
     }
 
     bool RefData::isEnabled() const
@@ -271,6 +282,23 @@ namespace MWWorld
         bool ret = (mFlags & Flag_ActivationBuffered);
         mFlags &= ~(Flag_SuppressActivate|Flag_OnActivate);
         return ret;
+    }
+
+    bool RefData::isQuestItem()
+    {
+        return (mTES4Flags & Ref_IsQuestItem) != 0;
+    }
+
+    void RefData::setIsQuestItem(bool value)
+    {
+        if (value)
+        {
+            mTES4Flags |= Ref_IsQuestItem;
+        }
+        else
+        {
+            mTES4Flags &= ~Ref_IsQuestItem;
+        }
     }
 
     bool RefData::activate()
