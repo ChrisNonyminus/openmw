@@ -760,7 +760,7 @@ namespace MWRender
     bool Animation::resetForTes4(AnimState& state, const SceneUtil::TextKeyMap& keys, std::string_view groupname, std::string_view start, std::string_view stop, float startpoint, bool loopfallback)
     {
         auto startkey = keys.rbegin();
-        while (startkey != keys.rend() && !(startkey->second == start))
+        while (startkey != keys.rend() && !(startkey->second.find(start) != std::string::npos))
             ++startkey;
         if (startkey == keys.rend())
             return false;

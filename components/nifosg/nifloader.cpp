@@ -263,6 +263,7 @@ namespace NifOsg
             Nif::NiControllerManager* cm = nullptr;
             Nif::NiMultiTargetTransformController* mt = nullptr;
             Nif::NiBoneLODController* boneLod = nullptr;
+            Nif::NiKeyframeController* kfc = nullptr;
             numRoots = skeleton->numRecords();
             for (size_t i = 0; i < numRoots; ++i)
             {
@@ -279,6 +280,11 @@ namespace NifOsg
                 {
                     boneLod = static_cast<Nif::NiBoneLODController*>(r);
                 }
+                if (r && r->recType == Nif::RC_NiKeyframeController)
+                {
+                    kfc = static_cast<Nif::NiKeyframeController*>(r);
+                }
+
             }
 
             if (!seq)
@@ -299,7 +305,7 @@ namespace NifOsg
             extractTextKeys(extra.getPtr(), target.mTextKeys);
             target.mTextKeys.emplace(0, Misc::StringUtils::lowerCase(animName) + ": "); // test: add group name
             Nif::ExtraPtr nextExtra = extra->next;
-
+            
             Nif::NiMultiTargetTransformController backupMt;
             Nif::NiControllerManager backupCm;
             if (!mt)
@@ -308,13 +314,6 @@ namespace NifOsg
                 backupMt.frequency = 1.0f;
                 backupMt.flags = 8; // todo/fixme/hacky/etc
                 backupMt.phase = 0.f;
-                for (size_t i = 0; i < extra->list.size(); i++)
-                {
-                    if (extra->list[i].text == "start")
-                        backupMt.timeStart = extra->list[i].time;
-                    if (extra->list[i].text == "end")
-                        backupMt.timeStop = extra->list[i].time;
-                }
                 mt = &backupMt;
             }
 
@@ -324,13 +323,6 @@ namespace NifOsg
                 backupCm.frequency = 1.0f;
                 backupCm.flags = 8; // todo/fixme/hacky/etc
                 backupCm.phase = 0.f;
-                for (size_t i = 0; i < extra->list.size(); i++)
-                {
-                    if (extra->list[i].text == "start")
-                        backupCm.timeStart = extra->list[i].time;
-                    if (extra->list[i].text == "end")
-                        backupCm.timeStop = extra->list[i].time;
-                }
                 backupCm.mSequences.push_back(*seq);
                 cm = &backupCm;
             }
@@ -349,11 +341,11 @@ namespace NifOsg
                     if (block.mNodeNameIndex == -1 || block.mNodeName == "")
                         continue;
 
-                    if (!mt)
+                    if (!kfc)
                         continue;
 
                     osg::ref_ptr<SceneUtil::KeyframeController> callback = new NifOsg::SequenceController(mt, block);
-                    setupController(mt, callback, /*animflags*/ 0);
+                    setupController(kfc, callback, /*animflags*/ 0);
 
                     if (!target.mKeyframeControllers.emplace(Misc::StringUtils::lowerCase(block.mNodeName), callback).second)
                         Log(Debug::Verbose) << "Bone " << block.mNodeName << " present more than once in " << skeleton->getFilename() << ", ignoring later version";

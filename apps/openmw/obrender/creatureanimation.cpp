@@ -11,6 +11,7 @@
 #include <components/sceneutil/positionattitudetransform.hpp>
 #include <components/sceneutil/skeleton.hpp>
 #include <components/settings/settings.hpp>
+#include <components/vfs/manager.hpp>
 
 #include <components/nif/niffile.hpp>
 #include <components/nif/extra.hpp>
@@ -27,6 +28,7 @@
 #include "../mwworld/inventorystore.hpp" // TODO: make and include "../obworld/inventorystore.hpp"
 
 #include "../mwclass/creature.hpp" // TODO: make and include "../obclass/creature.hpp"
+#include <components/misc/pathhelpers.hpp>
 
 
 namespace OBRender
@@ -67,7 +69,7 @@ namespace OBRender
             
             mObjectParts.push_back(std::make_unique<MWRender::PartHolder>(this->attach(meshName, false)));
             hideDismember(i);
-            std::shared_ptr<SceneUtil::ControllerSource> src;
+            std::shared_ptr<SceneUtil::ControllerSource> src = std::make_shared<SceneUtil::FrameTimeSource>();
             SceneUtil::AssignControllerSourcesVisitor assignVisitor(src);
             mObjectParts[i]->getNode()->accept(assignVisitor);
         }
@@ -79,6 +81,21 @@ namespace OBRender
 
         MWWorld::LiveCellRef<ESM4::Creature>* ref = mPtr.get<ESM4::Creature>();
 
+        // fixme: this doesn't completely work
+        /*for (const auto& name : mResourceSystem->getVFS()->getRecursiveDirectoryIterator(path))
+        {
+            if (Misc::getFileExtension(name) == "kf")
+            {
+                try
+                {
+                    addAnimSource(skeletonName, name);
+                }
+                catch (std::exception e)
+                {
+                    Log(Debug::Error) << e.what();
+                }
+            }
+        }*/
         std::string animName;
         for (unsigned int i = 0; i < ref->mBase->mKf.size(); ++i)
         {
@@ -89,7 +106,6 @@ namespace OBRender
             animName = path + ref->mBase->mKf[i];
             addAnimSource(skeletonName, animName);
         }
-        // FIXME/HACKY: these don't seem to be in the kfs array but still seem to be used
         addAnimSource(skeletonName, path + "mtbackward.kf");
         addAnimSource(skeletonName, path + "mtfastforward.kf");
         addAnimSource(skeletonName, path + "mtidle.kf");
