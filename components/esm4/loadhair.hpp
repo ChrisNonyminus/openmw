@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -39,6 +41,8 @@ namespace ESM4
 
     struct Hair
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_HAIR4;
+        static std::string getRecordType() { return "Hair (TES4)"; }
 #pragma pack(push, 1)
         struct Data
         {

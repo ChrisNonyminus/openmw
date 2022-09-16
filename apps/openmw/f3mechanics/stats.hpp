@@ -25,7 +25,7 @@ namespace F3Mechanics
     public:
         SkillValue(bool tagged = false);
 
-        void setTag(bool tag) {mTagged = tag;}
+        void setTag(bool tag);
         bool isTagged() { return mTagged; }
     };
 

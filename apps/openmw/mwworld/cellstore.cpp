@@ -295,7 +295,8 @@ namespace MWWorld
         TypeGetter<ESM4::Armor>,
         TypeGetter<ESM4::Weapon>,
         TypeGetter<ESM4::LevelledItem>,
-        TypeGetter<ESM4::Ammunition>
+        TypeGetter<ESM4::Ammunition>,
+        TypeGetter<ESM4::Npc>
         >;
 
     template <>
@@ -331,7 +332,8 @@ namespace MWWorld
         TypeGetter<ESM4::Armor>,
         TypeGetter<ESM4::Weapon>,
         TypeGetter<ESM4::LevelledItem>,
-        TypeGetter<ESM4::Ammunition>>
+        TypeGetter<ESM4::Ammunition>,
+        TypeGetter<ESM4::Npc>>
         CellStoreTypes::sAll = std::make_tuple(
             
         TypeGetter<ESM::Activator>(),
@@ -365,7 +367,8 @@ namespace MWWorld
         TypeGetter<ESM4::Armor>(),
         TypeGetter<ESM4::Weapon>(),
         TypeGetter<ESM4::LevelledItem>(),
-        TypeGetter<ESM4::Ammunition>());
+        TypeGetter<ESM4::Ammunition>(),
+        TypeGetter<ESM4::Npc>());
     template <typename X>
     void CellRefList<X>::load(ESM::CellRef &ref, bool deleted, const MWWorld::ESMStore &esmStore)
     {

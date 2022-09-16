@@ -3307,7 +3307,7 @@ namespace MWWorld
     void World::applyLoopingParticles(const MWWorld::Ptr& ptr) const
     {
         const MWWorld::Class &cls = ptr.getClass();
-        if (cls.isActor())
+        if (cls.isActor() && !cls.hasFormId()) // todo: ignore tes4 actors
         {
             std::set<int> playing;
             for(const auto& params : cls.getCreatureStats(ptr).getActiveSpells())

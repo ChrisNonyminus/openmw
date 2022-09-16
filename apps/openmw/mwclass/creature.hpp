@@ -245,7 +245,7 @@ namespace MWClass
         MWMechanics::Movement& getMovementSettings(const MWWorld::Ptr& ptr) const override;
         ///< Return desired movement.
 
-        //float getMaxSpeed(const MWWorld::Ptr& ptr) const override;
+        float getMaxSpeed(const MWWorld::Ptr& ptr) const override;
 
         std::string getModel(const MWWorld::ConstPtr& ptr) const override;
 

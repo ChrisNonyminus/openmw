@@ -14,12 +14,17 @@ namespace SceneUtil
     public:
         MorphGeometry();
         MorphGeometry(const MorphGeometry& copy, const osg::CopyOp& copyop);
+        ~MorphGeometry();
 
         META_Object(SceneUtil, MorphGeometry)
 
         /// Initialize this geometry from the source geometry.
         /// @note The source geometry will not be modified.
         void setSourceGeometry(osg::ref_ptr<osg::Geometry> sourceGeom);
+
+        /// Bind this geometry to the source geometry.
+        /// @note The source geometry WILL be modified.
+        void bindSourceGeometry(osg::ref_ptr<osg::Geometry> sourceGeom);
 
         // Currently empty as this is difficult to implement. Technically we would need to compile both internal geometries in separate frames but this method is only called once. Alternatively we could compile just the static parts of the model.
         void compileGLObjects(osg::RenderInfo& renderInfo) const override {}
@@ -40,7 +45,12 @@ namespace SceneUtil
 
         typedef std::vector<MorphTarget> MorphTargetList;
 
-        virtual void addMorphTarget( osg::Vec3Array* offsets, float weight = 1.0 );
+        virtual void addMorphTarget(osg::Vec3Array* offsets, float weight = 1.0);
+
+        virtual void cacheMorphTarget(osg::Vec3Array* offsets, const std::string& key, float weight = 1.0);
+
+        void setMorphTarget(const std::string& key);
+        void mixMorphTargets(std::vector<std::string>& key);
 
         /** Set the MorphGeometry dirty.*/
         void dirty();
@@ -57,6 +67,8 @@ namespace SceneUtil
         /** Return the \c MorphTarget at position \c i.*/
         inline MorphTarget& getMorphTarget( unsigned int i ) { return mMorphTargets[i]; }
 
+        inline MorphTarget& getMorphTarget(const std::string& key) { return *mMorphTargetCache[key]; }
+
         osg::ref_ptr<osg::Geometry> getSourceGeometry() const;
 
         void accept(osg::NodeVisitor &nv) override;
@@ -69,6 +81,8 @@ namespace SceneUtil
         void cull(osg::NodeVisitor* nv);
 
         MorphTargetList mMorphTargets;
+
+        std::map<std::string, MorphTarget*> mMorphTargetCache;
 
         osg::ref_ptr<osg::Geometry> mSourceGeometry;
 

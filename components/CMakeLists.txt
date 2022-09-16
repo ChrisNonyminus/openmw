@@ -200,6 +200,16 @@ add_component_dir (esm4
     script
 )
 
+add_component_dir (fglib
+    fgctl
+    fgegm
+    fgegt
+    fgfile
+    fgstream
+    fgsam
+    fgtri
+)
+
 add_component_dir (misc
     constants utf8stream resourcehelpers rng messageformatparser weakcache thread
     compression osguservalues errorMarker color

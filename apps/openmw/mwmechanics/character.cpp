@@ -325,98 +325,105 @@ void CharacterController::refreshHitRecoilAnims()
     if (!charClass.isActor())
         return;
     const auto world = MWBase::Environment::get().getWorld();
-    auto& stats = charClass.getCreatureStats(mPtr);
-    bool knockout = stats.getFatigue().getCurrent() < 0 || stats.getFatigue().getBase() == 0;
-    bool recovery = stats.getHitRecovery();
-    bool knockdown = stats.getKnockedDown();
-    bool block = stats.getBlock();
-    bool isSwimming = world->isSwimming(mPtr);
-
-    if (mHitState != CharState_None)
+    if (!charClass.hasFormId())
     {
-        if (!mAnimation->isPlaying(mCurrentHit))
+        auto& stats = charClass.getCreatureStats(mPtr);
+        bool knockout = stats.getFatigue().getCurrent() < 0 || stats.getFatigue().getBase() == 0;
+        bool recovery = stats.getHitRecovery();
+        bool knockdown = stats.getKnockedDown();
+        bool block = stats.getBlock();
+        bool isSwimming = world->isSwimming(mPtr);
+
+        if (mHitState != CharState_None)
         {
+            if (!mAnimation->isPlaying(mCurrentHit))
+            {
+                mHitState = CharState_None;
+                mCurrentHit.clear();
+                stats.setKnockedDown(false);
+                stats.setHitRecovery(false);
+                stats.setBlock(false);
+                resetCurrentIdleState();
+            }
+            else if (isKnockedOut())
+                mAnimation->setLoopingEnabled(mCurrentHit, knockout);
+            return;
+        }
+
+        if (!knockout && !knockdown && !recovery && !block)
+            return;
+
+        MWRender::Animation::AnimPriority priority(Priority_Knockdown);
+        std::string_view startKey = "start";
+        std::string_view stopKey = "stop";
+        if (knockout)
+        {
+            mHitState = isSwimming ? CharState_SwimKnockOut : CharState_KnockOut;
+            stats.setKnockedDown(true);
+        }
+        else if (knockdown)
+        {
+            mHitState = isSwimming ? CharState_SwimKnockDown : CharState_KnockDown;
+        }
+        else if (recovery)
+        {
+            mHitState = isSwimming ? CharState_SwimHit : CharState_Hit;
+            priority = Priority_Hit;
+        }
+        else if (block)
+        {
+            mHitState = CharState_Block;
+            priority = Priority_Hit;
+            priority[MWRender::Animation::BoneGroup_LeftArm] = Priority_Block;
+            priority[MWRender::Animation::BoneGroup_LowerBody] = Priority_WeaponLowerBody;
+            startKey = "block start";
+            stopKey = "block stop";
+        }
+
+        mCurrentHit = hitStateToAnimGroup(mHitState);
+
+        if (isRecovery())
+        {
+            mCurrentHit = chooseRandomGroup(mCurrentHit);
+            if (mHitState == CharState_SwimHit && !mAnimation->hasAnimation(mCurrentHit))
+                mCurrentHit = chooseRandomGroup(hitStateToAnimGroup(CharState_Hit));
+        }
+
+        if (!mAnimation->hasAnimation(mCurrentHit))
+        {
+            // The hit animation is missing. Reset the current hit state and immediately cancel all states as if the animation were instantaneous.
             mHitState = CharState_None;
             mCurrentHit.clear();
             stats.setKnockedDown(false);
             stats.setHitRecovery(false);
             stats.setBlock(false);
             resetCurrentIdleState();
+            return;
         }
-        else if (isKnockedOut())
-            mAnimation->setLoopingEnabled(mCurrentHit, knockout);
-        return;
-    }
 
-    if (!knockout && !knockdown && !recovery && !block)
-        return;
-
-    MWRender::Animation::AnimPriority priority(Priority_Knockdown);
-    std::string_view startKey = "start";
-    std::string_view stopKey = "stop";
-    if (knockout)
-    {
-        mHitState = isSwimming ? CharState_SwimKnockOut : CharState_KnockOut;
-        stats.setKnockedDown(true);
-    }
-    else if (knockdown)
-    {
-        mHitState = isSwimming ? CharState_SwimKnockDown : CharState_KnockDown;
-    }
-    else if (recovery)
-    {
-        mHitState = isSwimming ? CharState_SwimHit : CharState_Hit;
-        priority = Priority_Hit;
-    }
-    else if (block)
-    {
-        mHitState = CharState_Block;
-        priority = Priority_Hit;
-        priority[MWRender::Animation::BoneGroup_LeftArm] = Priority_Block;
-        priority[MWRender::Animation::BoneGroup_LowerBody] = Priority_WeaponLowerBody;
-        startKey = "block start";
-        stopKey = "block stop";
-    }
-
-    mCurrentHit = hitStateToAnimGroup(mHitState);
-
-    if (isRecovery())
-    {
-        mCurrentHit = chooseRandomGroup(mCurrentHit);
-        if (mHitState == CharState_SwimHit && !mAnimation->hasAnimation(mCurrentHit))
-            mCurrentHit = chooseRandomGroup(hitStateToAnimGroup(CharState_Hit));
-    }
-
-    if (!mAnimation->hasAnimation(mCurrentHit))
-    {
-        // The hit animation is missing. Reset the current hit state and immediately cancel all states as if the animation were instantaneous.
-        mHitState = CharState_None;
-        mCurrentHit.clear();
-        stats.setKnockedDown(false);
-        stats.setHitRecovery(false);
-        stats.setBlock(false);
-        resetCurrentIdleState();
-        return;
-    }
-
-    // Cancel upper body animations
-    if (isKnockedOut() || isKnockedDown())
-    {
-        if (!mCurrentWeapon.empty())
-            mAnimation->disable(mCurrentWeapon);
-        if (mUpperBodyState > UpperBodyState::WeaponEquipped)
+        // Cancel upper body animations
+        if (isKnockedOut() || isKnockedDown())
         {
-            mUpperBodyState = UpperBodyState::WeaponEquipped;
-            if (mWeaponType > ESM::Weapon::None)
-                mAnimation->showWeapons(true);
+            if (!mCurrentWeapon.empty())
+                mAnimation->disable(mCurrentWeapon);
+            if (mUpperBodyState > UpperBodyState::WeaponEquipped)
+            {
+                mUpperBodyState = UpperBodyState::WeaponEquipped;
+                if (mWeaponType > ESM::Weapon::None)
+                    mAnimation->showWeapons(true);
+            }
+            else if (mUpperBodyState < UpperBodyState::WeaponEquipped)
+            {
+                mUpperBodyState = UpperBodyState::None;
+            }
         }
-        else if (mUpperBodyState < UpperBodyState::WeaponEquipped)
-        {
-            mUpperBodyState = UpperBodyState::None;
-        }
-    }
 
-    mAnimation->play(mCurrentHit, priority, MWRender::Animation::BlendMask_All, true, 1, startKey, stopKey, 0.0f, ~0ul);
+        mAnimation->play(mCurrentHit, priority, MWRender::Animation::BlendMask_All, true, 1, startKey, stopKey, 0.0f, ~0ul);
+    }
+    else
+    {
+        // todo: fo stats
+    }
 }
 
 void CharacterController::refreshJumpAnims(JumpingState jump, bool force)
@@ -873,28 +880,57 @@ CharacterController::CharacterController(const MWWorld::Ptr &ptr, MWRender::Anim
             mAnimation->showCarriedLeft(updateCarriedLeftVisible(mWeaponType));
         }
 
-        if(!cls.getCreatureStats(mPtr).isDead())
+        if (cls.hasFormId())
         {
-            mIdleState = CharState_Idle;
-            if (cls.getCreatureStats(mPtr).getFallHeight() > 0)
-                mJumpState = JumpState_InAir;
+            if (!cls.getFOStats(mPtr).mDead)
+            {
+                mIdleState = CharState_Idle;
+                if (cls.getFOStats(mPtr).mFallHeight > 0)
+                    mJumpState = JumpState_InAir;
+            }
+            else
+            {
+                const auto& cStats = mPtr.getClass().getFOStats(mPtr);
+                if (cStats.mDeathAnimationFinished)
+                {
+                    // Set the death state, but don't play it yet
+                    // We will play it in the first frame, but only if no script set the skipAnim flag
+                    signed char deathanim = cStats.mDeathAnimation;
+                    if (deathanim == -1)
+                        mDeathState = chooseRandomDeathState();
+                    else
+                        mDeathState = static_cast<CharacterState>(CharState_Death1 + deathanim);
+
+                    mFloatToSurface = false;
+                }
+                // else: nothing to do, will detect death in the next frame and start playing death animation
+            }
         }
         else
         {
-            const MWMechanics::CreatureStats& cStats = mPtr.getClass().getCreatureStats(mPtr);
-            if (cStats.isDeathAnimationFinished())
+            if (!cls.getCreatureStats(mPtr).isDead())
             {
-                // Set the death state, but don't play it yet
-                // We will play it in the first frame, but only if no script set the skipAnim flag
-                signed char deathanim = cStats.getDeathAnimation();
-                if (deathanim == -1)
-                    mDeathState = chooseRandomDeathState();
-                else
-                    mDeathState = static_cast<CharacterState>(CharState_Death1 + deathanim);
-
-                mFloatToSurface = false;
+                mIdleState = CharState_Idle;
+                if (cls.getCreatureStats(mPtr).getFallHeight() > 0)
+                    mJumpState = JumpState_InAir;
             }
-            // else: nothing to do, will detect death in the next frame and start playing death animation
+            else
+            {
+                const MWMechanics::CreatureStats& cStats = mPtr.getClass().getCreatureStats(mPtr);
+                if (cStats.isDeathAnimationFinished())
+                {
+                    // Set the death state, but don't play it yet
+                    // We will play it in the first frame, but only if no script set the skipAnim flag
+                    signed char deathanim = cStats.getDeathAnimation();
+                    if (deathanim == -1)
+                        mDeathState = chooseRandomDeathState();
+                    else
+                        mDeathState = static_cast<CharacterState>(CharState_Death1 + deathanim);
+
+                    mFloatToSurface = false;
+                }
+                // else: nothing to do, will detect death in the next frame and start playing death animation
+            }
         }
     }
     else
@@ -904,9 +940,9 @@ CharacterController::CharacterController(const MWWorld::Ptr &ptr, MWRender::Anim
 
         mIdleState = CharState_Idle;
     }
-
+    bool isAlive = cls.isActor() && (cls.hasFormId() ? !cls.getFOStats(mPtr).mDead : !cls.getCreatureStats(mPtr).isDead());
     // Do not update animation status for dead actors
-    if(mDeathState == CharState_None && (!cls.isActor() || !cls.getCreatureStats(mPtr).isDead()))
+    if (mDeathState == CharState_None && (!cls.isActor() || isAlive))
         refreshCurrentAnims(mIdleState, mMovementState, mJumpState, true);
 
     mAnimation->runAnimation(0.f);
@@ -1757,16 +1793,15 @@ void CharacterController::update(float duration)
 
     float scale = mPtr.getCellRef().getScale();
 
+    bool isTes4 = cls.hasFormId();
     static const bool normalizeSpeed = Settings::Manager::getBool("normalise race speed", "Game");
-    if (!normalizeSpeed && mPtr.getClass().isNpc())
+    if (!normalizeSpeed && !isTes4 && mPtr.getClass().isNpc())
     {
         const ESM::NPC* npc = mPtr.get<ESM::NPC>()->mBase;
         const ESM::Race* race = world->getStore().get<ESM::Race>().find(npc->mRace);
         float weight = npc->isMale() ? race->mData.mWeight.mMale : race->mData.mWeight.mFemale;
         scale *= weight;
     }
-
-    bool isTes4 = cls.hasFormId();
 
     if(!cls.isActor())
         updateAnimQueue();
@@ -2556,7 +2591,7 @@ void CharacterController::updateMagicEffects() const
 void CharacterController::setVisibility(float visibility) const
 {
     // We should take actor's invisibility in account
-    if (mPtr.getClass().isActor())
+    if (mPtr.getClass().isActor() && !mPtr.getClass().hasFormId())
     {
         float alpha = 1.f;
         if (mPtr.getClass().getCreatureStats(mPtr).getMagicEffects().get(ESM::MagicEffect::Invisibility).getModifier()) // Ignore base magnitude (see bug #3555).

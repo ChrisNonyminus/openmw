@@ -283,7 +283,11 @@ using Types = AllTypeGetters<
     TypeGetter<ESM4::GameSetting>,
     TypeGetter<ESM4::IdleAnimation>,
     TypeGetter<ESM4::Faction>,
-    TypeGetter<ESM4::Class>>;
+    TypeGetter<ESM4::Class>,
+    TypeGetter<ESM4::Race>,
+    TypeGetter<ESM4::Hair>,
+    TypeGetter<ESM4::Eyes>,
+    TypeGetter<ESM4::LevelledNpc>>;
 
 template <>
 std::tuple<
@@ -358,7 +362,11 @@ std::tuple<
     TypeGetter<ESM4::GameSetting>,
     TypeGetter<ESM4::IdleAnimation>,
     TypeGetter<ESM4::Faction>,
-    TypeGetter<ESM4::Class>
+    TypeGetter<ESM4::Class>,
+    TypeGetter<ESM4::Race>,
+    TypeGetter<ESM4::Hair>,
+    TypeGetter<ESM4::Eyes>,
+    TypeGetter<ESM4::LevelledNpc>
     >
     Types::sAll = std::make_tuple(
         TypeGetter<ESM::Activator>(),
@@ -432,7 +440,11 @@ std::tuple<
         TypeGetter<ESM4::GameSetting>(),
         TypeGetter<ESM4::IdleAnimation>(),
         TypeGetter<ESM4::Faction>(),
-        TypeGetter<ESM4::Class>());
+        TypeGetter<ESM4::Class>(),
+        TypeGetter<ESM4::Race>(),
+        TypeGetter<ESM4::Hair>(),
+        TypeGetter<ESM4::Eyes>(),
+        TypeGetter<ESM4::LevelledNpc>());
 
 static bool isCacheableRecord(int id)
 {
@@ -446,7 +458,8 @@ static bool isCacheableRecord(int id)
         id == ESM::REC_LIGH4 || id == ESM::REC_SOUN4 || id == ESM::REC_WRLD4 ||
         id == ESM::REC_LAND4 || id == ESM::REC_CREA4 || id == ESM::REC_LVLC4 ||
         id == ESM::REC_PACK4 || id == ESM::REC_WEAP4 || id == ESM::REC_ARMO4 ||
-        id == ESM::REC_LVLI4 || id == ESM::REC_AMMO4 || id == ESM::REC_QUST4)
+        id == ESM::REC_LVLI4 || id == ESM::REC_AMMO4 || id == ESM::REC_QUST4 ||
+        id == ESM::REC_NPC_4)
     {
         return true;
     }
@@ -809,18 +822,18 @@ struct ESM4Reading
             case ESM4::REC_ENCH: break;
             case ESM4::REC_EQUP: break;
             case ESM4::REC_EXPL: break;
-            case ESM4::REC_EYES: return readUnimplementedTypedRecord<ESM4::Eyes>(store, reader, dialogue);
-            case ESM4::REC_FACT: return readImplementedTypedRecord<ESM4 ::Faction>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
+            case ESM4::REC_EYES: return readImplementedTypedRecord<ESM4::Eyes>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
+            case ESM4::REC_FACT: return readImplementedTypedRecord<ESM4::Faction>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_FLOR: return readUnimplementedTypedRecord<ESM4::Flora>(store, reader, dialogue);
             case ESM4::REC_FLST: return readUnimplementedTypedRecord<ESM4::FormIdList>(store, reader, dialogue);
             case ESM4::REC_FSTP: break;
             case ESM4::REC_FSTS: break;
             case ESM4::REC_FURN: return readUnimplementedTypedRecord<ESM4::Furniture>(store, reader, dialogue);
             case ESM4::REC_GLOB: return readUnimplementedTypedRecord<ESM4::GlobalVariable>(store, reader, dialogue);
-            case ESM4::REC_GMST: return readImplementedTypedRecord<ESM4 ::GameSetting>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
+            case ESM4::REC_GMST: return readImplementedTypedRecord<ESM4::GameSetting>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_GRAS: return readUnimplementedTypedRecord<ESM4::Grass>(store, reader, dialogue);
             case ESM4::REC_GRUP: break;
-            case ESM4::REC_HAIR: return readUnimplementedTypedRecord<ESM4::Hair>(store, reader, dialogue);
+            case ESM4::REC_HAIR: return readImplementedTypedRecord<ESM4::Hair>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_HAZD: break;
             case ESM4::REC_HDPT: return readUnimplementedTypedRecord<ESM4::HeadPart>(store, reader, dialogue);
             case ESM4::REC_IDLE: /*return readImplementedTypedRecord<ESM4::IdleAnimation>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);*/
@@ -845,7 +858,7 @@ struct ESM4Reading
             case ESM4::REC_LTEX: return readUnimplementedTypedRecord<ESM4::LandTexture>(store, reader, dialogue);
             case ESM4::REC_LVLC: return readImplementedTypedRecord<ESM4::LevelledCreature>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_LVLI: return readImplementedTypedRecord<ESM4::LevelledItem>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
-            case ESM4::REC_LVLN: return readUnimplementedTypedRecord<ESM4::LevelledNpc>(store, reader, dialogue);
+            case ESM4::REC_LVLN: return readImplementedTypedRecord<ESM4::LevelledNpc>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_LVSP: break;
             case ESM4::REC_MATO: return readUnimplementedTypedRecord<ESM4::Material>(store, reader, dialogue);
             case ESM4::REC_MATT: break;
@@ -870,7 +883,7 @@ struct ESM4Reading
             case ESM4::REC_PROJ: break;
             case ESM4::REC_PWAT: return readUnimplementedTypedRecord<ESM4::PlaceableWater>(store, reader, dialogue);
             case ESM4::REC_QUST: return readImplementedTypedRecord<ESM4::Quest>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
-            case ESM4::REC_RACE: return readUnimplementedTypedRecord<ESM4::Race>(store, reader, dialogue);
+            case ESM4::REC_RACE: return readImplementedTypedRecord<ESM4::Race>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_REFR: return readImplementedTypedRecord<ESM4::Reference>(store, reader, ESM::NAME(typeId | ESM::esm4RecnameFlag), dialogue);
             case ESM4::REC_REGN: return readUnimplementedTypedRecord<ESM4::Region>(store, reader, dialogue);
             case ESM4::REC_RELA: break;

@@ -35,6 +35,7 @@
 #include "../mwmechanics/creaturestats.hpp"
 
 #include "vismask.hpp"
+#include <components/sceneutil/riggeometry.hpp>
 
 namespace MWRender
 {
@@ -106,27 +107,34 @@ public:
     void apply(osg::Node& node) override
     {
         std::string bonename;
-        if (node.getUserValue("Bone", bonename))
+        if (node.getUserDataContainer() && node.getUserDataContainer()->getUserValue("Bone", bonename))
+        {
             mBoneName = bonename;
+            return;
+        }
         traverse(node);
     }
     std::string mBoneName;
     Resource::ResourceSystem* mResourcesystem;
 };
 
-osg::ref_ptr<osg::Node> ActorAnimation::attach(const std::string& model, bool isLight)
+osg::ref_ptr<osg::Node> ActorAnimation::attach(const std::string& model, bool isLight, const std::string& boneName)
 {
     osg::ref_ptr<const osg::Node> templateNode = mResourceSystem->getSceneManager()->getTemplate(model, true, mSkeleton);
     const NodeMap& nodeMap = getNodeMap();
-    std::string bonename = "Bip01";
     if (mSkeleton != nullptr && mSkeleton->containsNode(templateNode))
     {
         return mSkeleton->getChild(mSkeleton->getChildIndex(templateNode));
     }
+    bool needToRotate = false;
     BoneRetriever visitor;
     const_cast<osg::Node*>(templateNode.get())->accept(visitor);
+    std::string bonename = boneName;
     if (!visitor.mBoneName.empty())
+    {
         bonename = visitor.mBoneName;
+        needToRotate = true; // need to rotate (dumb fix for tes4 models)
+    }
 
     auto found = nodeMap.find(bonename);
     if (found == nodeMap.end())
@@ -136,7 +144,86 @@ osg::ref_ptr<osg::Node> ActorAnimation::attach(const std::string& model, bool is
         osg::Quat rotation(osg::DegreesToRadians(-90.f), osg::Vec3f(1, 0, 0));
         return SceneUtil::attach(templateNode, mObjectRoot, bonename, found->second, mResourceSystem->getSceneManager(), &rotation);
     }
+    else if (needToRotate)
+    {
+        osg::Quat rotation(osg::DegreesToRadians(90.f), osg::Vec3f(0, 1, 0));
+        return SceneUtil::attach(templateNode, mObjectRoot, bonename, found->second, mResourceSystem->getSceneManager(), &rotation);
+    }
     return SceneUtil::attach(templateNode, mObjectRoot, bonename, found->second, mResourceSystem->getSceneManager());
+}
+
+class GeometryRetriever : public osg::NodeVisitor
+{
+public:
+    GeometryRetriever()
+        : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
+    {
+    }
+
+    void apply(osg::Node& node) override
+    {
+        if (node.asGeometry() != nullptr)
+        {
+            mGeom = node.asGeometry();
+            return;
+        }
+        if (auto* rig = dynamic_cast<SceneUtil::RigGeometry*>(&node))
+        {
+            mGeom = rig->getSourceGeometry();
+            return;
+        }
+        traverse(node);
+    }
+    osg::Geometry* mGeom;
+};
+
+osg::ref_ptr<osg::Node> ActorAnimation::attachAndMorph(const std::string& model, bool isLight, const std::string& boneName)
+{
+    osg::ref_ptr<const osg::Node> templateNode = mResourceSystem->getSceneManager()->getTemplate(model, true, mSkeleton);
+    const NodeMap& nodeMap = getNodeMap();
+    if (mSkeleton != nullptr && mSkeleton->containsNode(templateNode))
+    {
+        return mSkeleton->getChild(mSkeleton->getChildIndex(templateNode));
+    }
+
+    bool needToRotate = false;
+    BoneRetriever visitor;
+    const_cast<osg::Node*>(templateNode.get())->accept(visitor);
+    std::string bonename = boneName;
+    if (!visitor.mBoneName.empty())
+    {
+        bonename = visitor.mBoneName;
+        needToRotate = true; // need to rotate (dumb fix for tes4 models)
+    }
+    else 
+    {
+
+        auto found = nodeMap.find(bonename);
+        if (found == nodeMap.end())
+            throw std::runtime_error("Can't find attachment node " + std::string{ bonename });
+        GeometryRetriever getGeom;
+        osg::Node* node = templateNode->clone(osg::CopyOp(osg::CopyOp::DEEP_COPY_ALL))->asNode();
+        node->accept(getGeom);
+        found->second->addChild(node);
+        // just return the soruce geometry (probably not a good idea)
+
+        return getGeom.mGeom;
+    }
+
+    auto found = nodeMap.find(bonename);
+    if (found == nodeMap.end())
+        throw std::runtime_error("Can't find attachment node " + std::string{ bonename });
+    if (isLight)
+    {
+        osg::Quat rotation(osg::DegreesToRadians(-90.f), osg::Vec3f(1, 0, 0));
+        return SceneUtil::attachAndCreateMorph(templateNode, mObjectRoot, bonename, found->second, mResourceSystem->getSceneManager(), &rotation);
+    }
+    else if (needToRotate)
+    {
+        osg::Quat rotation(osg::DegreesToRadians(90.f), osg::Vec3f(0, 1, 0));
+        return SceneUtil::attachAndCreateMorph(templateNode, mObjectRoot, bonename, found->second, mResourceSystem->getSceneManager(), &rotation);
+    }
+    return SceneUtil::attachAndCreateMorph(templateNode, mObjectRoot, bonename, found->second, mResourceSystem->getSceneManager());
 }
 
 std::string ActorAnimation::getShieldMesh(const MWWorld::ConstPtr& shield, bool female) const

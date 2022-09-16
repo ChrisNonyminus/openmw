@@ -304,6 +304,11 @@ namespace MWMechanics
     MWWorld::ContainerStoreIterator getActiveWeapon(const MWWorld::Ptr& actor, int *weaptype)
     {
         MWWorld::InventoryStore &inv = actor.getClass().getInventoryStore(actor);
+        if (actor.getClass().hasFormId())
+        {
+            // if the actor is actually a tes4 actor, abort
+            return inv.end();
+        }
         CreatureStats &stats = actor.getClass().getCreatureStats(actor);
         if(stats.getDrawState() == MWMechanics::DrawState::Spell)
         {

@@ -48,6 +48,9 @@ namespace FOCompiler
         const unsigned int opcodeSetQuestObject = 0x2000334;
         const unsigned int opcodeSetStage = 0x2000335;
         const unsigned int opcodeOnLoad = 0x2000336;
+        const unsigned int opcodeModifyFaceGen = 0x2000337;
+        const unsigned int opcodeModifyFaceGenExplicit
+            = 0x2000338;
     }
 }
 

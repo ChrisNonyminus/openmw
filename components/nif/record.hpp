@@ -159,7 +159,8 @@ enum RecordType
   RC_NiBSplineInterpolator,
   RC_NiBSplineData,
   RC_NiBSplineBasisData,
-  RC_NiBSplineCompTransformInterpolator
+  RC_NiBSplineCompTransformInterpolator,
+  RC_NiFloatExtraDataController
 };
 
 /// Base class for all records

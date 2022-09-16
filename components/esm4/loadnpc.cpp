@@ -84,8 +84,10 @@ void ESM4::Npc::load(ESM4::Reader& reader)
             }
             case ESM4::SUB_SNAM:
             {
-                reader.get(mFaction);
-                reader.adjustFormId(mFaction.faction);
+                ActorFaction faction;
+                reader.get(faction);
+                reader.adjustFormId(faction.faction);
+                mFactions.push_back(faction);
                 break;
             }
             case ESM4::SUB_RNAM: reader.getFormId(mRace);      break;
@@ -100,7 +102,7 @@ void ESM4::Npc::load(ESM4::Reader& reader)
             {
                 if (esmVer == ESM::VER_094 || esmVer == ESM::VER_170 || mIsFONV)
                 {
-                    reader.skipSubRecordData(); // FIXME: process the subrecord rather than skip
+                    reader.get(mFOAIData);
                     break;
                 }
 
@@ -121,8 +123,13 @@ void ESM4::Npc::load(ESM4::Reader& reader)
             {
                 if (esmVer == ESM::VER_094 || esmVer == ESM::VER_170 || mIsFONV)
                 {
-                    if (subHdr.dataSize != 0) // FIXME FO3
-                        reader.skipSubRecordData();
+                    reader.get(mFOData.health);
+                    reader.get(mFOData.attribs);
+                    if (subHdr.dataSize > 11)
+                    {
+                        std::vector<uint8_t> unused(subHdr.dataSize - 11);
+                        reader.get(unused.data(), unused.size());
+                    }
                     break; // zero length
                 }
 
@@ -144,9 +151,10 @@ void ESM4::Npc::load(ESM4::Reader& reader)
             case ESM4::SUB_MODB: reader.get(mBoundRadius); break;
             case ESM4::SUB_KFFZ:
             {
-                std::string str;
-                if (!reader.getZString(str))
-                    throw std::runtime_error ("NPC_ KFFZ data read error");
+                std::string str(subHdr.dataSize, '\0');
+                reader.get(str.data(), subHdr.dataSize);
+                /*if (!reader.getZString(str))
+                    throw std::runtime_error ("NPC_ KFFZ data read error");*/
 
                 // Seems to be only below 3, and only happens 3 times while loading TES4:
                 //   Forward_SheogorathWithCane.kf
@@ -259,7 +267,17 @@ void ESM4::Npc::load(ESM4::Reader& reader)
             case ESM4::SUB_ATKR:
             case ESM4::SUB_CRIF:
             case ESM4::SUB_CSDT:
+            {
+                //std::cout << "NPC_ " << ESM::printName(subHdr.typeId) << " skipping..." << std::endl;
+                reader.skipSubRecordData();
+                break;
+            }
             case ESM4::SUB_DNAM:
+            {
+                //std::cout << "NPC_ " << ESM::printName(subHdr.typeId) << " skipping..." << std::endl;
+                reader.get(mFOSkills);
+                break;
+            }
             case ESM4::SUB_ECOR:
             case ESM4::SUB_ANAM:
             case ESM4::SUB_ATKD:

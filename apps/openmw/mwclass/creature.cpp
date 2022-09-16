@@ -1000,6 +1000,11 @@ namespace MWClass
         }
     }
 
+    float ESM4Creature::getMaxSpeed(const MWWorld::Ptr& ptr) const
+    {
+        return 1.0f; // todo
+    }
+
     std::string ESM4Creature::getModel(const MWWorld::ConstPtr& ptr) const
     {
         const MWWorld::LiveCellRef<ESM4::Creature>* ref = ptr.get<ESM4::Creature>();
@@ -1074,7 +1079,6 @@ namespace MWClass
             auto tempData = std::make_unique<ESM4CreatureCustomData>();
             ESM4CreatureCustomData* data = tempData.get();
             MWMechanics::CreatureCustomDataResetter resetter{ ptr };
-            ptr.getRefData().setCustomData(std::move(tempData));
 
             // creature stats (todo: only do fallout stats if it's a fallout creature)
 
@@ -1084,9 +1088,9 @@ namespace MWClass
             data->mFOStats.mStats[F3Mechanics::Stat_Perception].setBase(ref->mBase->mFOData.attribs.perception);
             data->mFOStats.mStats[F3Mechanics::Stat_Endurance].setBase(ref->mBase->mFOData.attribs.endurance);
             data->mFOStats.mStats[F3Mechanics::Stat_Charisma].setBase(ref->mBase->mFOData.attribs.charisma);
-            data->mFOStats.mStats[F3Mechanics::Stat_Intelligence].setBase(ref->mBase->mFOData.attribs.charisma);
-            data->mFOStats.mStats[F3Mechanics::Stat_Agility].setBase(ref->mBase->mFOData.attribs.charisma);
-            data->mFOStats.mStats[F3Mechanics::Stat_Luck].setBase(ref->mBase->mFOData.attribs.charisma);
+            data->mFOStats.mStats[F3Mechanics::Stat_Intelligence].setBase(ref->mBase->mFOData.attribs.intelligence);
+            data->mFOStats.mStats[F3Mechanics::Stat_Agility].setBase(ref->mBase->mFOData.attribs.agility);
+            data->mFOStats.mStats[F3Mechanics::Stat_Luck].setBase(ref->mBase->mFOData.attribs.luck);
 
             data->mFOStats.mHealth.setBase(ref->mBase->mFOData.health);
             data->mFOStats.mLevel = ref->mBase->mBaseConfig.fo3.levelOrMult; // todo: level scaling by player
@@ -1164,7 +1168,7 @@ namespace MWClass
 
             resetter.mPtr = {};
                 
-            getInventoryStore(ptr).autoEquip(ptr);
+            ptr.getRefData().setCustomData(std::move(tempData));
         }
     }
 

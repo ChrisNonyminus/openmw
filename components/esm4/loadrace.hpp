@@ -32,6 +32,8 @@
 #include <map>
 #include <array>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 #include "actor.hpp" // AttributeValues, BodyTemplate
 
@@ -43,6 +45,8 @@ namespace ESM4
 
     struct Race
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_RACE4;
+        static std::string getRecordType() { return "Race (TES4)"; }
 #pragma pack(push, 1)
         struct Data
         {

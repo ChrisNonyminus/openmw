@@ -32,6 +32,8 @@
 
 #include "formid.hpp"
 
+#include <components/esm/defs.hpp>
+
 namespace ESM4
 {
     class Reader;
@@ -39,6 +41,7 @@ namespace ESM4
 
     struct Clothing
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_CLOT4;
 #pragma pack(push, 1)
         struct Data
         {
@@ -72,6 +75,8 @@ namespace ESM4
 
         void load(ESM4::Reader& reader);
         //void save(ESM4::Writer& writer) const;
+
+        static std::string getRecordType() { return "Clothing (TES4)"; }
 
         //void blank();
     };

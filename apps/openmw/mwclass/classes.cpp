@@ -117,5 +117,6 @@ namespace MWClass
         TES4Light::registerSelf();
         TES4Sound::registerSelf();
         ESM4Creature::registerSelf();
+        Tes4Npc::registerSelf();
     }
 }

@@ -59,7 +59,6 @@ namespace FOCompiler
     {
         void registerExtensions (Extensions& extensions)
         {
-
         }
     }
 
@@ -104,6 +103,8 @@ namespace FOCompiler
             extensions.registerFunction("onload", 'l', "", opcodeOnLoad);
             extensions.registerInstruction("setquestobject", "cl", opcodeSetQuestObject);
             extensions.registerInstruction("setstage", "cl", opcodeSetStage);
+            extensions.registerInstruction("modifyfacegen", "cll", opcodeModifyFaceGen, opcodeModifyFaceGenExplicit);
+            extensions.registerInstruction("mfg", "cll", opcodeModifyFaceGen, opcodeModifyFaceGenExplicit);
         }
     }
 

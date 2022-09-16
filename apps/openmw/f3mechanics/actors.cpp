@@ -134,8 +134,8 @@ namespace F3Mechanics
     {
         const F3Mechanics::Stats& stats = ptr.getClass().getFOStats (ptr);
         const MWWorld::Store<ESM4::GameSetting>& settings = MWBase::Environment::get().getWorld()->getStore().get<ESM4::GameSetting>();
-        float fAVDSkillPrimaryBonusMult = settings.find("fAVDSkillPrimaryBonusMult")->mFloatValue;
-        float fAVDSkillLuckBonusMult = settings.find("fAVDSkillLuckBonusMult")->mFloatValue;
+        float fAVDSkillPrimaryBonusMult = settings.search("fAVDSkillPrimaryBonusMult") != nullptr ? settings.search("fAVDSkillPrimaryBonusMult")->mFloatValue : 1.0f;
+        float fAVDSkillLuckBonusMult = settings.search("fAVDSkillLuckBonusMult") != nullptr ? settings.search("fAVDSkillLuckBonusMult")->mFloatValue : 1.0f;
         if (const auto* avdNv = settings.search(skillAVDSettingNV[skill])) // it's a nv skill
         {
             float fAVDSkillBase = avdNv->mFloatValue;

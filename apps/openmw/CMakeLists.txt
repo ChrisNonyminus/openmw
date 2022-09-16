@@ -111,6 +111,7 @@ add_openmw_dir (mwbase
 
 add_openmw_dir(obrender
     creatureanimation
+    tes4npcanimation
 )
 
 add_openmw_dir(f3mechanics

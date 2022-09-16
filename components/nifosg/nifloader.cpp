@@ -438,7 +438,7 @@ namespace NifOsg
             created->setDataVariance(osg::Object::STATIC);
             for (const Nif::Node* root : roots)
             {
-                auto node = handleNode(root, nullptr, nullptr, imageManager, std::vector<unsigned int>(), 0, false, false, false, &textkeys->mTextKeys, nullptr, objSkeleton);
+                auto node = handleNode(root, nullptr, nullptr, imageManager, std::vector<unsigned int>(), 0, false, false, false, &textkeys->mTextKeys, created, objSkeleton);
                 created->addChild(node);
             }
             if (mHasNightDayLabel)
@@ -464,8 +464,6 @@ namespace NifOsg
                 }
                 else
                 {
-                    skel->addChild(created);
-                    return created;
                 }
             }
 
@@ -763,9 +761,9 @@ namespace NifOsg
                     {
                         node->setUserValue(Misc::OsgUserValues::sExtraData, sd->string.substr(extraDataIdentifer.length()));
                     }
-                    else if (sd->name == "Prn") // parent bone (for fo3/nv meshes)
+                    else if (Misc::StringUtils::lowerCase(sd->name) == "prn") // parent bone (for fo3/nv meshes)
                     {
-                        node->setUserValue("Bone", Misc::StringUtils::lowerCase(sd->string)); // fixme: for some reason this value isn't being set? or the node visitor I'm using in actoranimation.cpp can't find it
+                        rootNode->getOrCreateUserDataContainer()->setUserValue("Bone", (sd->string)); // fixme: for some reason this value isn't being set? or the node visitor I'm using in actoranimation.cpp can't find it
                     }
                 }
             }

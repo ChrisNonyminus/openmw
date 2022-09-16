@@ -177,6 +177,7 @@ static std::map<std::string, CreateRecord> makeFactory()
         {"NiBSplineData"                    , &construct <NiBSplineData                     , RC_NiBSplineData                      >},
         {"NiBSplineBasisData"               , &construct <NiBSplineBasisData                , RC_NiBSplineBasisData                 >},
         {"NiBSplineCompTransformInterpolator", &construct<NiBSplineCompTransformInterpolator, RC_NiBSplineCompTransformInterpolator> },
+        {"NiFloatExtraDataController",         &construct<NiFloatExtraDataController,         RC_NiFloatExtraDataController> },
     };
 }
 

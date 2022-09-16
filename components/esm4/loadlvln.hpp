@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 #include "inventory.hpp" // LVLO
 
@@ -40,6 +42,8 @@ namespace ESM4
 
     struct LevelledNpc
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_LVLN4;
+        static std::string getRecordType() { return "Levelled NPC (TES4)"; }
         FormId mFormId;       // from the header
         std::uint32_t mFlags; // from the header, see enum type RecordFlag for details
 

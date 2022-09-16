@@ -49,6 +49,7 @@
 #include "../mwworld/cellstore.hpp"
 #include "../mwworld/localscripts.hpp"
 #include "../mwworld/esmstore.hpp"
+#include "../mwworld/manualref.hpp"
 
 #include "../mwrender/objects.hpp"
 #include "../mwrender/renderinginterface.hpp"
@@ -56,6 +57,11 @@
 
 #include "../mwgui/tooltips.hpp"
 #include "../mwgui/ustring.hpp"
+
+#include "../f3mechanics/stats.hpp"
+#include "../f3mechanics/actors.hpp"
+
+#include "../obrender/tes4npcanimation.hpp"
 
 namespace
 {
@@ -1539,4 +1545,535 @@ namespace MWClass
 
         return getSwimSpeedImpl(ptr, getGmst(), mageffects, running ? getRunSpeed(ptr) : getWalkSpeed(ptr));
     }
+
+    
+    struct FONpcCustomData : public MWWorld::CustomData
+    {
+        F3Mechanics::Stats mFOStats;
+        MWMechanics::Movement mMovement;
+        MWMechanics::NpcStats mDummyMWStats;
+        MWWorld::InventoryStore* mInventoryStore;
+        MWWorld::ContainerStore* mContainerStore;
+
+        MWWorld::Ptr mPlaced;
+
+        FONpcCustomData() : mPlaced(MWWorld::Ptr()) {}
+        FONpcCustomData(const FONpcCustomData& data)
+        {
+            mFOStats = data.mFOStats;
+            mMovement = data.mMovement;
+            mInventoryStore = data.mInventoryStore;
+            mContainerStore = data.mContainerStore;
+            mPlaced = data.mPlaced;
+        }
+        ~FONpcCustomData() {}
+
+        virtual std::unique_ptr<MWWorld::CustomData> clone() const
+        {
+            return std::make_unique<FONpcCustomData>(*this);
+        }
+    };
+
+    inline const ESM4::LevelledNpc* getFO3LevelledNpc(const ESM4::Npc* npc)
+    {
+        if (npc && npc->mBaseTemplate != 0
+            && (npc->mModel.empty() || npc->mModel == "marker_creature.nif"))
+        {
+            ESM4::FormId base = npc->mBaseTemplate;
+            const MWWorld::ESMStore& store = MWBase::Environment::get().getWorld()->getStore();
+            if (const ESM4::Npc* newNpc = store.get<ESM4::Npc>().search(base))
+            {
+                std::cout << "newNpc " << newNpc->mEditorId << std::endl; // FIXME
+
+                return getFO3LevelledNpc(newNpc); // recurse!
+            }
+            else if (const ESM4::LevelledNpc* lvlActor = store.get<ESM4::LevelledNpc>().search(base))
+            {
+                //std::cout << "newlvl " << lvlActor->mEditorId << std::endl; // FIXME
+
+                return lvlActor;
+            }
+            else
+                throw std::runtime_error("levelled actor not found!");
+        }
+        else
+            return nullptr;
+    }
+
+    Tes4Npc::Tes4Npc()
+        : MWWorld::RegisteredClass<Tes4Npc, Actor>(ESM4::Npc::sRecordId)
+    {
+    }
+    void Tes4Npc::ensureCustomData(const MWWorld::Ptr& ptr) const
+    {
+        if (!ptr.getRefData().getCustomData())
+        {
+            const auto& esmStore = MWBase::Environment::get().getWorld()->getStore();
+            MWWorld::LiveCellRef<ESM4::Npc>* ref = ptr.get<ESM4::Npc>();
+            std::unique_ptr<FONpcCustomData> data = std::make_unique<FONpcCustomData>();
+
+            // creature stats (todo: only do fallout stats if it's a fallout creature)
+            F3Mechanics::Skill tagSkills[4] = { F3Mechanics::Skill_MAX, F3Mechanics::Skill_MAX, F3Mechanics::Skill_MAX, F3Mechanics::Skill_MAX };
+
+            if (!ref->mBase->mClass)
+            {
+                data->mFOStats.mStats[F3Mechanics::Stat_Strength].setBase(ref->mBase->mFOData.attribs.strength);
+                data->mFOStats.mStats[F3Mechanics::Stat_Perception].setBase(ref->mBase->mFOData.attribs.perception);
+                data->mFOStats.mStats[F3Mechanics::Stat_Endurance].setBase(ref->mBase->mFOData.attribs.endurance);
+                data->mFOStats.mStats[F3Mechanics::Stat_Charisma].setBase(ref->mBase->mFOData.attribs.charisma);
+                data->mFOStats.mStats[F3Mechanics::Stat_Intelligence].setBase(ref->mBase->mFOData.attribs.intelligence);
+                data->mFOStats.mStats[F3Mechanics::Stat_Agility].setBase(ref->mBase->mFOData.attribs.agility);
+                data->mFOStats.mStats[F3Mechanics::Stat_Luck].setBase(ref->mBase->mFOData.attribs.luck);
+                for (size_t skill = 0; skill < 14; skill++)
+                    data->mFOStats.mSkillOffsets[skill] = ref->mBase->mFOSkills.offsets[skill];
+            }
+            else
+            {
+                const ESM4::Class* clas = esmStore.get<ESM4::Class>().find(ref->mBase->mClass);
+                data->mFOStats.mStats[F3Mechanics::Stat_Strength].setBase(clas->mSpecial.strength);
+                data->mFOStats.mStats[F3Mechanics::Stat_Perception].setBase(clas->mSpecial.perception);
+                data->mFOStats.mStats[F3Mechanics::Stat_Endurance].setBase(clas->mSpecial.endurance);
+                data->mFOStats.mStats[F3Mechanics::Stat_Charisma].setBase(clas->mSpecial.charisma);
+                data->mFOStats.mStats[F3Mechanics::Stat_Intelligence].setBase(clas->mSpecial.intelligence);
+                data->mFOStats.mStats[F3Mechanics::Stat_Agility].setBase(clas->mSpecial.agility);
+                data->mFOStats.mStats[F3Mechanics::Stat_Luck].setBase(clas->mSpecial.luck);
+                tagSkills[0] = static_cast<F3Mechanics::Skill>(int(clas->mFOData.mTagSkill1) - 32);
+                tagSkills[1] = static_cast<F3Mechanics::Skill>(int(clas->mFOData.mTagSkill2) - 32);
+                tagSkills[2] = static_cast<F3Mechanics::Skill>(int(clas->mFOData.mTagSkill3) - 32);
+                tagSkills[3] = static_cast<F3Mechanics::Skill>(int(clas->mFOData.mTagSkill4) - 32);
+            }
+
+            data->mFOStats.mHealth.setBase(ref->mBase->mFOData.health);
+            data->mFOStats.mLevel = ref->mBase->mBaseConfig.fo3.levelOrMult; // todo: level scaling by player
+            data->mFOStats.mCaps = ref->mBase->mBaseConfig.fo3.barterGold;
+
+            data->mFOStats.mActorValues["Fight"] = MWMechanics::Stat<int>(ref->mBase->mFOAIData.aggression, 0);
+            data->mFOStats.mActorValues["Alarm"] = MWMechanics::Stat<int>(1, 0); // todo
+            data->mFOStats.mActorValues["Hello"] = MWMechanics::Stat<int>(1, 0); // todo
+            data->mFOStats.mActorValues["Flee"] = MWMechanics::Stat<int>(1, 0); // todo
+
+            //data->mCreatureStats.setAttribute(ESM::Attribute::Strength, ref->mBase->mData.attribs.strength);
+            //data->mCreatureStats.setAttribute(ESM::Attribute::Intelligence, ref->mBase->mData.attribs.intelligence);
+            //data->mCreatureStats.setAttribute(ESM::Attribute::Willpower, ref->mBase->mData.attribs.willpower);
+            //data->mCreatureStats.setAttribute(ESM::Attribute::Agility, ref->mBase->mData.attribs.agility);
+            //data->mCreatureStats.setAttribute(ESM::Attribute::Speed, ref->mBase->mData.attribs.speed);
+            //data->mCreatureStats.setAttribute(ESM::Attribute::Endurance, ref->mBase->mData.attribs.endurance);
+            //data->mCreatureStats.setAttribute(ESM::Attribute::Personality, ref->mBase->mData.attribs.personality);
+            //data->mCreatureStats.setAttribute(ESM::Attribute::Luck, ref->mBase->mData.attribs.luck);
+            //data->mCreatureStats.setHealth(static_cast<float>(ref->mBase->mData.health));
+            //data->mCreatureStats.setMagicka(static_cast<float>(ref->mBase->mData.magic));
+            ////data->mCreatureStats.setFatigue(static_cast<float>(ref->mBase->mData.)); // TODO
+
+            //const auto& esmStore = MWBase::Environment::get().getWorld()->getStore();
+            //data->mCreatureStats.setLevel(ref->mBase->mBaseConfig.tes4.levelOrOffset);
+
+            std::vector<ESM4::AIPackage> packages;
+            for (auto& packageId : ref->mBase->mAIPackages)
+            {
+                const auto* aiPackage = MWBase::Environment::get().getWorld()->getStore().get<ESM4::AIPackage>().search(packageId);
+                if (!aiPackage)
+                    continue;
+                packages.push_back(*aiPackage);
+            }
+
+            data->mFOStats.mAiSequence.fill(packages);
+
+            // todo:
+            /*data->mCreatureStats.setAiSetting(MWMechanics::AiSetting::Hello, ref->mBase->mAIData.);
+            data->mCreatureStats.setAiSetting(MWMechanics::AiSetting::Fight, ref->mBase->mAiData.mFight);
+            data->mCreatureStats.setAiSetting(MWMechanics::AiSetting::Flee, ref->mBase->mAiData.mFlee);
+            data->mCreatureStats.setAiSetting(MWMechanics::AiSetting::Alarm, ref->mBase->mAiData.mAlarm);*/
+
+            for (auto& faction : ref->mBase->mFactions)
+            {
+                data->mFOStats.mFactionRanks[faction.faction] = faction.rank;
+            }
+
+            // Persistent actors with 0 health do not play death animation
+            if (data->mFOStats.mDead)
+                data->mFOStats.mDeathAnimationFinished = (isPersistent(ptr));
+
+            // todO: spells
+            /*bool spellsInitialised = data->mCreatureStats.getSpells().setSpells(ref->mBase->mEditorId);
+            if (!spellsInitialised)
+                data->mCreatureStats.getSpells().addAllToInstance(ref->mBase->mSpell);*/
+            data->mInventoryStore = new MWWorld::InventoryStore();
+            data->mContainerStore = new MWWorld::ContainerStore();
+
+            // todo: inventory
+            // setting ownership is used to make the NPC auto-equip his initial equipment only, and not bartered items
+            ESM::InventoryList inventory;
+            for (unsigned int i = 0; i < ref->mBase->mInventory.size(); ++i)
+            {
+                ESM::ContItem item;
+                item.mCount = ref->mBase->mInventory.at(i).count;
+                item.mItem.assign(esmStore.getFormName(ref->mBase->mInventory.at(i).item)); // FIXME
+
+                inventory.mList.push_back(item);
+            }
+            auto& prng = MWBase::Environment::get().getWorld()->getPrng();
+            //data->mInventoryStore->fill(inventory, ref->mBase->mEditorId, prng);
+
+            //data->mCreatureStats.setGoldPool(ref->mBase->mBaseConfig.tes4.barterGold);
+
+
+            //getInventoryStore(ptr).autoEquip(ptr);
+            ptr.getRefData().setCustomData(std::move(data));
+            // post processing
+            for (size_t skill = F3Mechanics::Skill::Skill_Barter; skill < F3Mechanics::Skill::Skill_MAX; skill++)
+            {
+                getFOStats(ptr).mSkills[skill].setBase(F3Mechanics::calcBaseSkill(ptr, static_cast<F3Mechanics::Skill>(skill)));
+            }
+            if (tagSkills[0] != F3Mechanics::Skill::Skill_MAX)
+            {
+                for (auto& tag : tagSkills)
+                {
+                    //getFOStats(ptr).mSkills[tag].setTag(true);
+                }
+            }
+        }
+    }
+    MWWorld::Ptr Tes4Npc::copyToCellImpl(const MWWorld::ConstPtr& ptr, MWWorld::CellStore& cell) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Npc>* ref = ptr.get<ESM4::Npc>();
+
+        return MWWorld::Ptr(cell.insert(ref), &cell);
+    }
+    void Tes4Npc::insertObjectRendering(const MWWorld::Ptr& ptr, const std::string& model, MWRender::RenderingInterface& renderingInterface) const
+    {
+        // this might be a levelled actor (e.g. FO3) - check if the model is empty
+        const ESM4::Npc* npc = ptr.get<ESM4::Npc>()->mBase;
+        if (npc && npc->mBaseTemplate != 0 && (npc->mModel.empty() || npc->mModel == "marker_creature.nif"))
+        {
+            const ESM4::LevelledNpc* lvlActor = getFO3LevelledNpc(npc);
+            if (lvlActor)
+            {
+                const MWWorld::ESMStore& store = MWBase::Environment::get().getWorld()->getStore();
+                MWWorld::ManualRef ref(store, lvlActor->mEditorId);
+                ref.getPtr().getCellRef().setPosition(ptr.getCellRef().getPosition());
+
+                // FIXME: update inventory details, etc. (probably have to use customData)
+
+                // FIXME: basically we spawn a new one each time, need to keep track and delete the old one
+                //        actually, rather than deleting the old one we should be remembering
+                //        that the ptr already exists
+                ensureCustomData(ptr); // NOTE: this is ptr's custom data, not ref->getPtr()
+                FONpcCustomData* data = dynamic_cast<FONpcCustomData*>(ptr.getRefData().getCustomData());
+
+                if (data->mPlaced.isEmpty())
+                {
+                    data->mPlaced = MWBase::Environment::get().getWorld()->placeObject(ref.getPtr(), ptr.getCell(), ptr.getCellRef().getPosition());
+                }
+            }
+        }
+        else
+            renderingInterface.getObjects().insertNPC(ptr);
+    }
+    std::string_view Tes4Npc::getName(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Npc>* ref = ptr.get<ESM4::Npc>();
+        return ref->mBase->mFullName;
+    }
+    MWMechanics::CreatureStats& Tes4Npc::getCreatureStats(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+
+        return dynamic_cast<FONpcCustomData&>(*ptr.getRefData().getCustomData()).mDummyMWStats;
+    }
+    MWMechanics::NpcStats& Tes4Npc::getNpcStats(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+
+        return dynamic_cast<FONpcCustomData&>(*ptr.getRefData().getCustomData()).mDummyMWStats;
+    }
+    std::string_view Tes4Npc::getId(const MWWorld::Ptr& ptr) const
+    {
+        return ptr.get<ESM4::Npc>()->mBase->mEditorId;
+    }
+
+    ESM4::FormId Tes4Npc::getFormId(const MWWorld::Ptr& ptr) const
+    {
+        return ptr.get<ESM4::Npc>()->mBase->mFormId;
+    }
+
+    F3Mechanics::Stats& Tes4Npc::getFOStats(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+
+        return dynamic_cast<FONpcCustomData&>(*ptr.getRefData().getCustomData()).mFOStats;
+    }
+
+    MWWorld::ContainerStore& Tes4Npc::getContainerStore(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+        return *(dynamic_cast<FONpcCustomData&>(*ptr.getRefData().getCustomData()).mContainerStore);
+    }
+
+    bool Tes4Npc::hasToolTip(const MWWorld::ConstPtr& ptr) const
+    {
+        if (!ptr.getRefData().getCustomData() || MWBase::Environment::get().getWindowManager()->isGuiMode())
+            return true;
+        return !dynamic_cast<const FONpcCustomData&>(*ptr.getRefData().getCustomData()).mFOStats.mDead || !dynamic_cast<const FONpcCustomData&>(*ptr.getRefData().getCustomData()).mFOStats.mAiSequence.isInCombat();
+    }
+
+    MWGui::ToolTipInfo Tes4Npc::getToolTipInfo(const MWWorld::ConstPtr& ptr, int count) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Npc>* ref = ptr.get<ESM4::Npc>();
+
+        bool fullHelp = MWBase::Environment::get().getWindowManager()->getFullHelp();
+
+        
+        MWGui::ToolTipInfo info;
+
+        info.caption = getName(ptr);
+        /*if (fullHelp && getNpcStats(ptr).isWerewolf())
+        {
+            info.caption += " (";
+            info.caption += ref->mBase->mEditorId;
+            info.caption += ")";
+        }*/
+
+        if (fullHelp)
+        {
+            const MWWorld::ESMStore& store = MWBase::Environment::get().getWorld()->getStore();
+            const ESM4::Script* script = store.get<ESM4::Script>().search(ref->mBase->mScriptId);
+            if (script)
+            {
+                info.text = MWGui::ToolTips::getMiscString(script->mScript.scriptSource, "Script");
+            }
+        }
+
+        return info;
+    }
+
+    MWWorld::InventoryStore& Tes4Npc::getInventoryStore(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+        return *(dynamic_cast<FONpcCustomData&>(*ptr.getRefData().getCustomData()).mInventoryStore);
+    }
+
+    bool Tes4Npc::evaluateHit(const MWWorld::Ptr& ptr, MWWorld::Ptr& victim, osg::Vec3f& hitPosition) const
+    {
+        return false; // todo
+    }
+
+    void Tes4Npc::hit(const MWWorld::Ptr& ptr, float attackStrength, int type, const MWWorld::Ptr& victim, const osg::Vec3f& hitPosition, bool success) const
+    {
+        // todo
+    }
+
+    void Tes4Npc::onHit(const MWWorld::Ptr& ptr, float damage, bool ishealth, const MWWorld::Ptr& object, const MWWorld::Ptr& attacker, const osg::Vec3f& hitPosition, bool successful) const
+    {
+        // todo
+    }
+
+    void Tes4Npc::getModelsToPreload(const MWWorld::Ptr& ptr, std::vector<std::string>& models) const
+    {
+        // todo
+    }
+
+    std::unique_ptr<MWWorld::Action> Tes4Npc::activate(const MWWorld::Ptr& ptr, const MWWorld::Ptr& actor) const
+    {
+        // player got activated by another NPC
+        if (ptr == MWMechanics::getPlayer())
+            return std::make_unique<MWWorld::ActionTalk>(actor);
+
+        //// Werewolfs can't activate NPCs
+        //if (actor.getClass().isNpc() && actor.getClass().getNpcStats(actor).isWerewolf())
+        //{
+        //    const MWWorld::ESMStore& store = MWBase::Environment::get().getWorld()->getStore();
+        //    auto& prng = MWBase::Environment::get().getWorld()->getPrng();
+        //    const ESM::Sound* sound = store.get<ESM::Sound>().searchRandom("WolfNPC", prng);
+
+        //    std::unique_ptr<MWWorld::Action> action = std::make_unique<MWWorld::FailedAction>("#{sWerewolfRefusal}");
+        //    if (sound)
+        //        action->setSound(sound->mId);
+
+        //    return action;
+        //}
+
+        const auto& stats = getFOStats(ptr);
+
+        if (stats.mDead)
+        {
+            bool canLoot = Settings::Manager::getBool("can loot during death animation", "Game");
+
+            // by default user can loot friendly actors during death animation
+            if (canLoot && !stats.mAiSequence.isInCombat())
+                return std::make_unique<MWWorld::ActionOpen>(ptr);
+
+            // otherwise wait until death animation
+            if (stats.mDeathAnimationFinished)
+                return std::make_unique<MWWorld::ActionOpen>(ptr);
+        }
+        else if (!stats.mAiSequence.isInCombat())
+        {
+            if (stats.mKnockdown || MWBase::Environment::get().getMechanicsManager()->isSneaking(actor))
+                return std::make_unique<MWWorld::ActionOpen>(ptr); // stealing
+
+            return std::make_unique<MWWorld::ActionTalk>(ptr);
+        }
+        else // In combat
+        {
+            const bool stealingInCombat = Settings::Manager::getBool("always allow stealing from knocked out actors", "Game");
+            if (stealingInCombat && stats.mKnockdown)
+                return std::make_unique<MWWorld::ActionOpen>(ptr); // stealing
+        }
+
+        // Tribunal and some mod companions oddly enough must use open action as fallback
+        if (!getScript(ptr).empty() && ptr.getRefData().getLocals().getIntVar(getScript(ptr), "companion"))
+            return std::make_unique<MWWorld::ActionOpen>(ptr);
+
+        return std::make_unique<MWWorld::FailedAction>();
+    }
+
+    float Tes4Npc::getSkill(const MWWorld::Ptr& ptr, int skill) const
+    {
+        return getFOStats(ptr).mSkills[skill].getModified();
+    }
+
+    std::string_view Tes4Npc::getScript(const MWWorld::ConstPtr& ptr) const
+    {
+        const MWWorld::LiveCellRef<ESM4::Npc>* ref = ptr.get<ESM4::Npc>();
+
+        if (ref->mBase->mScriptId)
+            return MWBase::Environment::get().getWorld()->getStore().get<ESM4::Script>().find(ref->mBase->mScriptId)->mEditorId;
+        else
+            return "";
+    }
+
+    float Tes4Npc::getMaxSpeed(const MWWorld::Ptr& ptr) const
+    {
+        return 1.0f; // todo
+    }
+
+    float Tes4Npc::getJump(const MWWorld::Ptr& ptr) const
+    {
+        return 0.0f; // todo
+    }
+
+    MWMechanics::Movement& Tes4Npc::getMovementSettings(const MWWorld::Ptr& ptr) const
+    {
+        ensureCustomData(ptr);
+
+        return dynamic_cast<FONpcCustomData&>(*ptr.getRefData().getCustomData()).mMovement;
+    }
+
+    float Tes4Npc::getCapacity(const MWWorld::Ptr& ptr) const
+    {
+        return getFOStats(ptr).mStats[F3Mechanics::SPECIAL::Stat_Strength].getModified() * 25; // todo
+    }
+
+    float Tes4Npc::getEncumbrance(const MWWorld::Ptr& ptr) const
+    {
+        //const auto& fostats = getFOStats(ptr);
+        float weight = getContainerStore(ptr).getWeight();
+        if (weight < 0.0f)
+            weight = 0.0f;
+        return weight;
+       
+    }
+
+    float Tes4Npc::getArmorRating(const MWWorld::Ptr& ptr) const
+    {
+        return 1.0f; // todo
+    }
+
+    bool Tes4Npc::consume(const MWWorld::Ptr& consumable, const MWWorld::Ptr& actor) const
+    {
+        return false; // todo
+    }
+
+    void Tes4Npc::adjustScale(const MWWorld::ConstPtr& ptr, osg::Vec3f& scale, bool rendering) const
+    {
+        // todo
+    }
+
+    void Tes4Npc::skillUsageSucceeded(const MWWorld::Ptr& ptr, int skill, int usageType, float extraFactor) const
+    {
+        // todo
+    }
+
+    bool Tes4Npc::isEssential(const MWWorld::ConstPtr& ptr) const
+    {
+        return false; // todo
+    }
+
+    int Tes4Npc::getServices(const MWWorld::ConstPtr& actor) const
+    {
+        return 0; // todo
+    }
+
+    bool Tes4Npc::isPersistent(const MWWorld::ConstPtr& ptr) const
+    {
+        return false; // todo
+    }
+
+    std::string_view Tes4Npc::getSoundIdFromSndGen(const MWWorld::Ptr& ptr, std::string_view name) const
+    {
+        return std::string_view(); // todo
+    }
+
+    std::string Tes4Npc::getModel(const MWWorld::ConstPtr& ptr) const
+    {
+        return std::string(); // todo
+    }
+
+    int Tes4Npc::getBloodTexture(const MWWorld::ConstPtr& ptr) const
+    {
+        return 0;
+    }
+
+}
+
+bool MWClass::Tes4Npc::canWalk(const MWWorld::ConstPtr& ptr) const
+{
+    return true; // todo
+}
+
+bool MWClass::Tes4Npc::isBipedal(const MWWorld::ConstPtr& ptr) const
+{
+    return true;
+}
+
+void MWClass::Tes4Npc::respawn(const MWWorld::Ptr& ptr) const
+{
+    // todo
+}
+
+int MWClass::Tes4Npc::getBaseFightRating(const MWWorld::ConstPtr& ptr) const
+{
+    return 5; // todo
+}
+
+std::string_view MWClass::Tes4Npc::getPrimaryFaction(const MWWorld::ConstPtr& ptr) const
+{
+    const MWWorld::LiveCellRef<ESM4::Npc>* ref = ptr.get<ESM4::Npc>();
+    return ""; //todo
+}
+
+int MWClass::Tes4Npc::getPrimaryFactionRank(const MWWorld::ConstPtr& ptr) const
+{
+    return 0; // todo
+}
+
+float MWClass::Tes4Npc::getWalkSpeed(const MWWorld::Ptr& ptr) const
+{
+    return 1.0f; // todo
+}
+
+float MWClass::Tes4Npc::getRunSpeed(const MWWorld::Ptr& ptr) const
+{
+    return 1.0f; // todo
+}
+
+float MWClass::Tes4Npc::getSwimSpeed(const MWWorld::Ptr& ptr) const
+{
+    return 1.0f; // todo
+}
+
+void MWClass::Tes4Npc::setFaceGenEmotion(const MWWorld::Ptr& ptr, std::map<std::string, float> fgPoses)
+{
+    OBRender::TES4NpcAnimation* anim =  static_cast<OBRender::TES4NpcAnimation*>(MWBase::Environment::get().getWorld()->getAnimation(ptr));
+    anim->applyFaceMorphs(fgPoses);
 }

@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <string>
 
+#include <components/esm/defs.hpp>
+
 #include "formid.hpp"
 
 namespace ESM4
@@ -39,6 +41,7 @@ namespace ESM4
 
     struct Eyes
     {
+        static constexpr ESM::RecNameInts sRecordId = ESM::REC_EYES4;
 #pragma pack(push, 1)
         struct Data
         {
@@ -58,6 +61,7 @@ namespace ESM4
         void load(ESM4::Reader& reader);
         //void save(ESM4::Writer& writer) const;
 
+        static std::string getRecordType() { return "Eyes (TES4)"; }
         //void blank();
     };
 }

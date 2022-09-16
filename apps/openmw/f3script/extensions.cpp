@@ -18,6 +18,8 @@
 #include "../mwbase/soundmanager.hpp"
 #include "../mwbase/windowmanager.hpp"
 
+#include "../mwclass/npc.hpp"
+
 #include "../mwworld/inventorystore.hpp"
 #include "../mwworld/class.hpp"
 #include "../mwworld/esmstore.hpp"
@@ -276,6 +278,70 @@ namespace FOScript
                 }
             }
         };
+        template <class R>
+        class OpModifyFaceGen : public Interpreter::Opcode0
+        {
+        public:
+            void execute(Interpreter::Runtime& runtime) override
+            {
+                MWWorld::Ptr ptr = R()(runtime);
+
+                InterpreterContext& context
+                    = static_cast<InterpreterContext&>(runtime.getContext());
+
+                if (!(ptr.getClass().isNpc() && ptr.getClass().hasFormId()))
+                    return; // isn't a tes4 npc, abort!
+
+                std::string emotionType = ::Misc::StringUtils::lowerCase(std::string(runtime.getStringLiteral(runtime[0].mInteger)));
+                runtime.pop();
+                static const std::string sPhonemes[] = {
+                    "Aah", "BigAah", "BMP", "ChjSh", "DST", "Eee", "Eh", "FV", "i", "k", "N", "Oh", "OohQ", "R", "Th", "W"
+                };
+                static const std::string sExpressions[] = {
+                    "Anger", "Fear", "Happy", "Sad", "Surprise", "MoodNeutral", "MoodAfraid", "MoodAnnoyed", 
+                    "MoodCocky", "MoodDrugged", "MoodPleasant", "MoodAngry", "MoodSad", "Pained", "CombatAnger"
+                };
+                static const std::string sModifiers[] = {
+                    "BlinkLeft", "BlinkRight", "BrowDownLeft", "BrowDownRight", "BrowInLeft", "BrowInRight", 
+                    "BrowUpLeft", "BrowUpRight", "LookDown", "LookLeft", "LookRight", "LookUp", "SquintLeft", "SquintRight",
+                    "HeadPitch", "HeadRoll", "HeadYaw"
+                };
+                if (emotionType == "reset")
+                {
+                    // todo: reset. this can't be done at the moment as at the moment only one emotion can be active at a time in my current implementation
+                }
+                else if (emotionType == "expression")
+                {
+                    std::string exp = sExpressions[runtime[0].mInteger];
+                    runtime.pop();
+                    float intensity = runtime[0].mInteger / 100.f;
+                    runtime.pop();
+                    std::map<std::string, float> fgPoses;
+                    fgPoses[exp] = intensity;
+                    dynamic_cast<MWClass::Tes4Npc&>(const_cast<MWWorld::Class&>(ptr.getClass())).setFaceGenEmotion(ptr, fgPoses);
+                }
+                else if (emotionType == "phoneme")
+                {
+                    std::string exp = sPhonemes[runtime[0].mInteger];
+                    runtime.pop();
+                    float intensity = runtime[0].mInteger / 100.f;
+                    runtime.pop();
+                    std::map<std::string, float> fgPoses;
+                    fgPoses[exp] = intensity;
+                    dynamic_cast<MWClass::Tes4Npc&>(const_cast<MWWorld::Class&>(ptr.getClass())).setFaceGenEmotion(ptr, fgPoses);
+                }
+                else if (emotionType == "modifier")
+                {
+                    std::string exp = sModifiers[runtime[0].mInteger];
+                    runtime.pop();
+                    float intensity = runtime[0].mInteger / 100.f;
+                    runtime.pop();
+                    std::map<std::string, float> fgPoses;
+                    fgPoses[exp] = intensity;
+                    dynamic_cast<MWClass::Tes4Npc&>(const_cast<MWWorld::Class&>(ptr.getClass())).setFaceGenEmotion(ptr, fgPoses);
+                }
+            }
+        };
         void installOpcodes(Interpreter::Interpreter& interpreter)
         {
             interpreter.installSegment5<OpGetIsID<ImplicitRef>>(FOCompiler::Misc::opcodeGetIsID);
@@ -284,6 +350,8 @@ namespace FOScript
             interpreter.installSegment5<OpGameMode>(FOCompiler::Misc::opcodeGameMode);
             interpreter.installSegment5<OpSetStage>(FOCompiler::Misc::opcodeSetStage);
             interpreter.installSegment5<OpOnLoad>(FOCompiler::Misc::opcodeOnLoad);
+            interpreter.installSegment5<OpModifyFaceGen<ImplicitRef>>(FOCompiler::Misc::opcodeModifyFaceGen);
+            interpreter.installSegment5<OpModifyFaceGen<ExplicitRef>>(FOCompiler::Misc::opcodeModifyFaceGenExplicit);
         }
     }
     namespace Sound

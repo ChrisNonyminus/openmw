@@ -15,6 +15,7 @@
 #include "vismask.hpp"
 
 #include "../obrender/creatureanimation.hpp"
+#include "../obrender/tes4npcanimation.hpp"
 
 
 namespace MWRender
@@ -115,12 +116,25 @@ void Objects::insertNPC(const MWWorld::Ptr &ptr)
     insertBegin(ptr);
     ptr.getRefData().getBaseNode()->setNodeMask(Mask_Actor);
 
-    osg::ref_ptr<NpcAnimation> anim (new NpcAnimation(ptr, osg::ref_ptr<osg::Group>(ptr.getRefData().getBaseNode()), mResourceSystem));
-
-    if (mObjects.emplace(ptr.mRef, anim).second)
+    if (ptr.getType() == ESM::REC_NPC_4)
     {
-        ptr.getClass().getInventoryStore(ptr).setInvListener(anim.get(), ptr);
-        ptr.getClass().getInventoryStore(ptr).setContListener(anim.get());
+        osg::ref_ptr<OBRender::TES4NpcAnimation> anim(new OBRender::TES4NpcAnimation(ptr, osg::ref_ptr<osg::Group>(ptr.getRefData().getBaseNode()), mResourceSystem));
+
+        if (mObjects.emplace(ptr.mRef, anim).second)
+        {
+            ptr.getClass().getInventoryStore(ptr).setInvListener(anim.get(), ptr);
+            ptr.getClass().getInventoryStore(ptr).setContListener(anim.get());
+        }
+    }
+    else
+    {
+        osg::ref_ptr<NpcAnimation> anim(new NpcAnimation(ptr, osg::ref_ptr<osg::Group>(ptr.getRefData().getBaseNode()), mResourceSystem));
+
+        if (mObjects.emplace(ptr.mRef, anim).second)
+        {
+            ptr.getClass().getInventoryStore(ptr).setInvListener(anim.get(), ptr);
+            ptr.getClass().getInventoryStore(ptr).setContListener(anim.get());
+        }
     }
 }
 

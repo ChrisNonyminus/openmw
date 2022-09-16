@@ -90,10 +90,10 @@ namespace F3Mechanics
             ESM4::Class::FO_ActorValues skillAv = static_cast<ESM4::Class::FO_ActorValues>(i + 32);
             bool isTagged = (clas->mFOData.mTagSkill1 == skillAv) || (clas->mFOData.mTagSkill2 == skillAv) || (clas->mFOData.mTagSkill3 == skillAv) || (clas->mFOData.mTagSkill4 == skillAv);
             stats.mSkills[i].setTag(isTagged);
-            if (isTagged)
+            /*if (isTagged)
             {
                 stats.mSkills[i].setModifier(fAVDTagSkillBonus);
-            }
+            }*/
         }
 
         // FIXME: use whatever formulae and GMSTs exist for calculating health and actionpoints

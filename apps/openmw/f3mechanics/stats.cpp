@@ -9,6 +9,13 @@ namespace F3Mechanics
     {
     }
 
+    void SkillValue::setTag(bool tag)
+    {
+        mTagged = tag;
+        if (mTagged)
+            setBase(getBase() + 15); // todo: get fAVDTagSkillBonus
+    }
+
     Stats::Stats ()
         : mDead (false), mDeathAnimationFinished(false), mDied (false), mMurdered(false), mFriendlyHits (0),
           mTalkedTo (false), mAlarmed (false), mAttacked (false),

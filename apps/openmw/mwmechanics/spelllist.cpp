@@ -42,6 +42,8 @@ namespace MWMechanics
                 return ::withBaseRecord<ESM::Creature>(mId, function);
             case ESM::REC_NPC_:
                 return ::withBaseRecord<ESM::NPC>(mId, function);
+            case ESM::REC_NPC_4: // todo: adding esm4 npcs fucks up the search for the player esm3 npc. so, this case label will detect that, disregard it, and hopefully get the esm3 record instead. this is a temporary fix until the esm4 and esm3 implementations are more seperated.
+                return ::withBaseRecord<ESM::NPC>(mId, function);
             default:
                 throw std::logic_error("failed to update base record for " + mId);
         }
@@ -54,6 +56,8 @@ namespace MWMechanics
             case ESM::REC_CREA:
                 return getSpellList<ESM::Creature>(mId);
             case ESM::REC_NPC_:
+                return getSpellList<ESM::NPC>(mId);
+            case ESM::REC_NPC_4: // todo: adding esm4 npcs fucks up the search for the player esm3 npc. so, this case label will detect that, disregard it, and hopefully get the esm3 record instead. this is a temporary fix until the esm4 and esm3 implementations are more seperated.
                 return getSpellList<ESM::NPC>(mId);
             default:
                 throw std::logic_error("failed to get spell list for " + mId);

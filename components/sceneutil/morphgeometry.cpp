@@ -24,6 +24,15 @@ MorphGeometry::MorphGeometry(const MorphGeometry &copy, const osg::CopyOp &copyo
     setSourceGeometry(copy.getSourceGeometry());
 }
 
+MorphGeometry::~MorphGeometry()
+{
+    for (auto& target : mMorphTargetCache)
+    {
+        delete target.second;
+    }
+    mMorphTargetCache.clear();
+}
+
 void MorphGeometry::setSourceGeometry(osg::ref_ptr<osg::Geometry> sourceGeom)
 {
     for (unsigned int i=0; i<2; ++i)
@@ -60,9 +69,53 @@ void MorphGeometry::setSourceGeometry(osg::ref_ptr<osg::Geometry> sourceGeom)
     }
 }
 
+void MorphGeometry::bindSourceGeometry(osg::ref_ptr<osg::Geometry> sourceGeom)
+{
+    for (unsigned int i = 0; i < 2; ++i)
+        mGeometry[i] = nullptr;
+
+    mSourceGeometry = sourceGeom;
+    
+
+    for (unsigned int i = 0; i < 2; ++i)
+    {
+        mGeometry[i] = mSourceGeometry; // test
+    }
+}
+
 void MorphGeometry::addMorphTarget(osg::Vec3Array *offsets, float weight)
 {
     mMorphTargets.push_back(MorphTarget(offsets, weight));
+    mMorphedBoundingBox = false;
+    dirty();
+}
+
+void MorphGeometry::cacheMorphTarget(osg::Vec3Array* offsets, const std::string& key, float weight)
+{
+    mMorphTargetCache.emplace(key, new MorphTarget(offsets, weight));
+}
+
+void MorphGeometry::setMorphTarget(const std::string& key)
+{
+    if (!mMorphTargetCache.count(key))
+        return;
+    mMorphTargets.clear();
+    mMorphTargets.push_back(*mMorphTargetCache["Base"]); // hacky
+    mMorphTargets.push_back(*mMorphTargetCache[key]);
+    mMorphedBoundingBox = false;
+    dirty();
+}
+
+void MorphGeometry::mixMorphTargets(std::vector<std::string>& keys)
+{
+    mMorphTargets.clear();
+    mMorphTargets.push_back(*mMorphTargetCache["Base"]); // hacky
+    for (auto& key : keys)
+    {
+        if (!mMorphTargetCache.count(key))
+            continue;
+        mMorphTargets.push_back(*mMorphTargetCache[key]);
+    }
     mMorphedBoundingBox = false;
     dirty();
 }

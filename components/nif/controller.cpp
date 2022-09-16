@@ -340,6 +340,32 @@ namespace Nif
         data.post(nif);
     }
 
+    void NiExtraDataController::read(NIFStream* nif)
+    {
+        NiFloatInterpController::read(nif);
+        mExtraDataName = nif->getString();
+    }
+
+    void NiExtraDataController::post(NIFFile* nif)
+    {
+        NiFloatInterpController::post(nif);
+    }
+
+    void NiFloatExtraDataController::read(NIFStream* nif)
+    {
+        NiExtraDataController::read(nif);
+        /*unsigned char numBytes = nif->getChar();
+        nif->skip(7);
+        nif->skip(numBytes);
+        mFloatData.read(nif);*/
+    }
+
+    void NiFloatExtraDataController::post(NIFFile* nif)
+    {
+        NiExtraDataController::post(nif);
+        //mFloatData.post(nif);
+    }
+
     void NiTransformInterpolator::read(NIFStream *nif)
     {
         defaultPos = nif->getVector3();

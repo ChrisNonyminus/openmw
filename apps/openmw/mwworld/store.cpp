@@ -1722,3 +1722,7 @@ template class MWWorld::Store<ESM4::Faction>;
 template class MWWorld::Store<ESM4::GameSetting>;
 template class MWWorld::Store<ESM4::Class>;
 template class MWWorld::Store<ESM4::IdleAnimation>;
+template class MWWorld::Store<ESM4::Race>;
+template class MWWorld::Store<ESM4::Hair>;
+template class MWWorld::Store<ESM4::Eyes>;
+template class MWWorld::Store<ESM4::LevelledNpc>;

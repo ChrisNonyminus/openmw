@@ -166,6 +166,18 @@ namespace ESM4
             AttributeValues attribs;
         };
 
+        struct FOData
+        {
+            int32_t health;
+            FOAttributeValues attribs;
+        };
+
+        struct FOSkills
+        {
+            uint8_t values[14];
+            uint8_t offsets[14];
+        };
+
 #pragma pack(pop)
 
         FormId mFormId;       // from the header
@@ -173,6 +185,11 @@ namespace ESM4
 
         bool mIsTES4;
         bool mIsFONV;
+
+        FOData mFOData;
+        FOSkills mFOSkills;
+
+        FOAIData mFOAIData;
 
         std::string mEditorId;
         std::string mFullName;
@@ -196,7 +213,7 @@ namespace ESM4
         AIData mAIData;
         std::vector<FormId> mAIPackages; // seems to be in priority order, 0 = highest priority
         ActorBaseConfig mBaseConfig; // union
-        ActorFaction mFaction;
+        std::vector<ActorFaction> mFactions;
         Data   mData;
         FormId mCombatStyle;
         FormId mSoundBase;
