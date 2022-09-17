@@ -1362,9 +1362,7 @@ namespace OBRender
         image->setTextureSize(img->s(), img->t());
 
         replaceMeshTexture(attached, image);
-        osg::ref_ptr<SceneUtil::MorphGeometry> morph = new SceneUtil::MorphGeometry;
-        morph->bindSourceGeometry(attached->asGeometry());
-        return std::make_unique<MWRender::PartHolder>(morph);
+        return std::make_unique<MWRender::PartHolder>(attached);
         // todo: set texture
     }
     MWRender::PartHolderPtr TES4NpcAnimation::createObject(const std::string& meshName, SceneUtil::Skeleton* skeletonModel, const std::string& texture)

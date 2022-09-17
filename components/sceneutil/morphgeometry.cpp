@@ -80,6 +80,22 @@ void MorphGeometry::bindSourceGeometry(osg::ref_ptr<osg::Geometry> sourceGeom)
     for (unsigned int i = 0; i < 2; ++i)
     {
         mGeometry[i] = mSourceGeometry; // test
+        osg::Geometry& to = *mGeometry[i];
+        to.setSupportsDisplayList(false);
+        to.setUseVertexBufferObjects(true);
+        to.setCullingActive(false); // make sure to disable culling since that's handled by this class
+
+        // vertices are modified every frame, so we need to deep copy them.
+        // assign a dedicated VBO to make sure that modifications don't interfere with source geometry's VBO.
+        osg::ref_ptr<osg::VertexBufferObject> vbo(new osg::VertexBufferObject);
+        vbo->setUsage(GL_DYNAMIC_DRAW_ARB);
+
+        osg::ref_ptr<osg::Array> vertexArray = to.getVertexArray();
+        if (vertexArray)
+        {
+            vertexArray->setVertexBufferObject(vbo);
+            to.setVertexArray(vertexArray);
+        }
     }
 }
 

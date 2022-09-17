@@ -36,6 +36,7 @@
 
 #include "vismask.hpp"
 #include <components/sceneutil/riggeometry.hpp>
+#include <components/sceneutil/morphgeometry.hpp>
 
 namespace MWRender
 {
@@ -204,10 +205,12 @@ osg::ref_ptr<osg::Node> ActorAnimation::attachAndMorph(const std::string& model,
         GeometryRetriever getGeom;
         osg::Node* node = templateNode->clone(osg::CopyOp(osg::CopyOp::DEEP_COPY_ALL))->asNode();
         node->accept(getGeom);
+        osg::ref_ptr<SceneUtil::MorphGeometry> morph = new SceneUtil::MorphGeometry;
+        morph->bindSourceGeometry(getGeom.mGeom);
         found->second->addChild(node);
-        // just return the soruce geometry (probably not a good idea)
+        found->second->addChild(morph);
 
-        return getGeom.mGeom;
+        return morph;
     }
 
     auto found = nodeMap.find(bonename);
