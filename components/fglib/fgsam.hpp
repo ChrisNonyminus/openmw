@@ -98,6 +98,16 @@ namespace FgLib
                                   const std::vector<float>& npcAsymCoeff,
             bool hat, const VFS::Manager* manager) const;
 
+        // use pre-existing tri
+        bool buildMorphedVertices(std::vector<osg::Vec3f>& fgMorphVertices,
+            const std::vector<osg::Vec3f>& fgVertices,
+            const std::string& nif,
+            const std::vector<float>& raceSymCoeff,
+            const std::vector<float>& raceAsymCoeff,
+            const std::vector<float>& npcSymCoeff,
+            const std::vector<float>& npcAsymCoeff,
+            const FgTri* existingTri, const VFS::Manager* manager) const;
+
         // populates fgTexture
         // returns ref to osg texture
         //

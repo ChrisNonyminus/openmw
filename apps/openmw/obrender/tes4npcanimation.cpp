@@ -1190,10 +1190,12 @@ namespace OBRender
         textureName = "textures\\" + headParts[ESM4::Race::Head].texture;
 
         // deprecated
-        const std::vector<float>& sRaceCoeff = mRace->mSymShapeModeCoefficients;
+        const std::vector<float>& sRaceCoeff = isFemale ? mRace->mSymShapeModeCoeffFemale : mRace->mSymShapeModeCoefficients;
+        const std::vector<float>& aRaceCoeff = isFemale ? mRace->mAsymShapeModeCoeffFemale : mRace->mAsymShapeModeCoefficients;
         const std::vector<float>& sRaceTCoeff = mRace->mSymTextureModeCoefficients;
         const std::vector<float>& sCoeff = mNpc->mSymShapeModeCoefficients;
         const std::vector<float>& sTCoeff = mNpc->mSymTextureModeCoefficients;
+        const std::vector<float>& aCoeff = mNpc->mAsymShapeModeCoefficients;
 
         FgLib::FgSam sam;
         osg::Vec3f sym;
@@ -1215,6 +1217,15 @@ namespace OBRender
             SceneUtil::MorphGeometry* morph = dynamic_cast<SceneUtil::MorphGeometry*>(object->getNode().get());
             assert(morph->getSourceGeometry()->getVertexArray()->getDataType() == osg::Array::Vec3ArrayType);
             auto* srcVerts = static_cast<osg::Vec3Array*>(morph->getSourceGeometry()->getVertexArray());
+            /*if (srcVerts->getNumElements() * 3 != sCoeff.size())
+                throw std::runtime_error("number of vertices in the set of coefficients differ to the MorphGeometry!");*/
+            std::vector<osg::Vec3f> newVerts;
+            if (!sam.buildMorphedVertices(newVerts, srcVerts->asVector(), Misc::StringUtils::lowerCase(meshName), sRaceCoeff, aRaceCoeff, sCoeff, aCoeff, tri, mResourceSystem->getVFS()))
+                throw std::runtime_error("Could not build morph vertices.");
+            for (size_t v = 0; v < srcVerts->getNumElements(); v++)
+            {
+                srcVerts->at(v) = newVerts[v];
+            }
             osg::ref_ptr<osg::Vec3Array> baseverts = new osg::Vec3Array();
             for (size_t v = 0; v < srcVerts->getNumElements(); v++)
             {

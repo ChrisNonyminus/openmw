@@ -98,6 +98,47 @@ namespace FgLib
             egm, tri, raceSymCoeff, raceAsymCoeff, npcSymCoeff, npcAsymCoeff, manager);
     }
 
+    bool FgSam::buildMorphedVertices(std::vector<osg::Vec3f>& fgMorphVertices,
+        const std::vector<osg::Vec3f>& fgVertices,
+        const std::string& nif,
+        const std::vector<float>& raceSymCoeff,
+        const std::vector<float>& raceAsymCoeff,
+        const std::vector<float>& npcSymCoeff,
+        const std::vector<float>& npcAsymCoeff,
+        const FgTri* existingTri, const VFS::Manager* manager) const
+    {
+        FgFile<FgEgm> egmFile;
+        const FgEgm* egm = egmFile.getOrLoadByMeshName(nif, manager);
+
+        if (egm == nullptr)
+            return false; // not possible to recover
+
+        FgFile<FgTri> triFile;
+        const FgTri* tri = existingTri != nullptr ? existingTri : triFile.getOrLoadByMeshName(nif, manager);
+
+        if (tri == nullptr)
+            return false; // not possible to recover
+
+//        if (tri->needsNifVertices()) // TRI doesn't exist, so nothing populated
+//        {
+//            std::string name = nif;
+//            Misc::StringUtils::lowerCaseInPlace(name);
+//            size_t pos = name.find_last_of(".");
+//            if (pos != std::string::npos && name.substr(pos + 1) == "nif")
+//                name = name.substr(0, pos + 1) + "tri";
+//
+//                // use the supplied fgVertices to create a dummy TRI file then store it
+//#if defined(__GNUC__) && __GNUC__ < 8
+//            tri = triFile.replaceFile(name, std::unique_ptr<FgTri>(new FgTri(fgVertices)));
+//#else
+//            tri = triFile.replaceFile(name, std::make_unique<FgTri>(fgVertices));
+//#endif
+//        }
+
+        return buildMorphedVerticesImpl(fgMorphVertices,
+            egm, tri, raceSymCoeff, raceAsymCoeff, npcSymCoeff, npcAsymCoeff, manager);
+    }
+
     // variant for Hat/NoHat hair
     bool FgSam::buildMorphedVertices(std::vector<osg::Vec3f>& fgMorphVertices,
         const std::vector<osg::Vec3f>& fgVertices,
